@@ -60,8 +60,8 @@ committed. Not before.
 | ✅ | **1.6.1** Files / S3 | done — 12 tests |
 | ✅ | **1.6.2** OpenTelemetry | done — 7 tests |
 | 🟡 | **1.6.5** Environments, secrets, deploy and rollback | Images, config and runbook written. **Exit check unmet: there is no staging** — DR-003 is open |
-| **4** | **1.7.2** Translation keys | No user-visible literal outside the message catalogue |
-| **5** | **1.7.3** Locale, timezone, date and number formatting | The same instant renders correctly for two people in different timezones |
+| ✅ | **1.7.2** Translation keys | done |
+| ✅ | **1.7.3** Locale, timezone, date and number formatting | done — 10 tests |
 | **6** | **1.7.4** Shared primitives and the five universal route states | No page component declares its own button styling or a literal colour |
 | ⛔ | **1.2.6** Invite, password set, reset | **Blocked: a mail provider.** The outbox delivers; nothing is registered to send |
 | ⛔ | **0A.2** Private remote | **Blocked: the client.** 14 commits exist on one laptop |
