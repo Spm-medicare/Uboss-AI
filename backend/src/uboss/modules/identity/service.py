@@ -23,12 +23,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from uboss.core.context import SecurityContext
 from uboss.core.errors import NotAuthenticated
-from uboss.core.permissions import Action, actions_from_rows
+from uboss.core.permissions import Action, Grant, actions_from_rows
 from uboss.core.settings import Settings
 from uboss.db.base import bind_session_lookup, bind_tenant, bind_verified_user
 from uboss.modules.audit import service as audit
 from uboss.modules.audit.models import AuditOutcome
-from uboss.modules.identity import credentials, passwords, tokens
+from uboss.modules.identity import credentials, passwords, policies, tokens
 from uboss.modules.identity.credentials import Credential
 from uboss.modules.identity.models import (
     Membership,
@@ -241,7 +241,7 @@ async def start_session(
     #  committed — the caller commits, and the audit row goes with it.
     await session.flush()
 
-    roles, granted = await access_for(session, membership.id)
+    roles, granted, ceiling = await access_for(session, membership)
 
     context = SecurityContext(
         tenant_id=tenant.id,
@@ -252,6 +252,7 @@ async def start_session(
         display_name=membership.display_name,
         roles=roles,
         granted_actions=granted,
+        policy_grants=ceiling,
         org_node_id=membership.org_node_id,
         step_up_at=row.step_up_at,
         step_up_expires_at=(
@@ -350,9 +351,9 @@ async def record_authenticated_sign_in_denial(
 
 
 async def access_for(
-    session: AsyncSession, membership_id: uuid.UUID
-) -> tuple[tuple[str, ...], frozenset[Action]]:
-    """The role keys a membership holds, and what those roles actually permit.
+    session: AsyncSession, membership: Membership
+) -> tuple[tuple[str, ...], frozenset[Action], tuple[Grant, ...]]:
+    """Everything a caller may do: their roles, what those grant, and what narrows it.
 
     One query joining `membership_roles` → `roles` → `role_permissions`, because roles are a
     table (PLAN §17) and their permissions are rows, not a dictionary in code.
@@ -363,6 +364,10 @@ async def access_for(
 
     An outer join, so a role with no permissions still appears in the names — a person's roles
     should be shown even when they currently grant nothing.
+
+    The third return value is PLAN §14 chain above the role: the company and department policies
+    that narrow what those roles grant. Resolved here, once, at the moment the session is
+    verified — so one request cannot answer "may they?" two different ways.
     """
     rows = (
         await session.execute(
@@ -370,7 +375,7 @@ async def access_for(
             .select_from(MembershipRole)
             .join(Role, Role.id == MembershipRole.role_id)
             .outerjoin(RolePermission, RolePermission.role_id == Role.id)
-            .where(MembershipRole.membership_id == membership_id)
+            .where(MembershipRole.membership_id == membership.id)
         )
     ).all()
 
@@ -378,7 +383,15 @@ async def access_for(
     permissions = [
         (action, conditional) for _key, action, conditional in rows if action is not None
     ]
-    return tuple(sorted(keys)), actions_from_rows(permissions)
+    granted = actions_from_rows(permissions)
+
+    ceiling = await policies.grants_above_role(
+        session,
+        tenant_id=membership.tenant_id,
+        org_node_id=membership.org_node_id,
+        role_actions=granted,
+    )
+    return tuple(sorted(keys)), granted, ceiling
 
 
 # ---------------------------------------------------------------------------------------------
@@ -481,7 +494,7 @@ async def resolve_session(
             locked.token_rotated_at = now
             row = locked
 
-    roles, granted = await access_for(session, membership.id)
+    roles, granted, ceiling = await access_for(session, membership)
 
     if row.last_seen_at < now - LAST_SEEN_THROTTLE:
         await session.execute(
@@ -497,6 +510,7 @@ async def resolve_session(
         display_name=membership.display_name,
         roles=roles,
         granted_actions=granted,
+        policy_grants=ceiling,
         org_node_id=membership.org_node_id,
         step_up_at=row.step_up_at,
         step_up_expires_at=(

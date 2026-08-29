@@ -98,13 +98,28 @@ def reversible(path: Path) -> tuple[bool, str]:
 
 
 def blocking_statements(path: Path) -> list[tuple[str, str]]:
+    """Statements in `upgrade()` that will take a blocking lock or destroy data.
+
+    Scoped to `upgrade()` on purpose. A `DROP TABLE` inside `downgrade()` is the *correct* way to
+    reverse a migration that created one — flagging it would raise an alarm on every well-written
+    reversible migration, and an alarm that fires every time is an alarm nobody reads.
+
+    Docstrings and comments are stripped first, because they describe these operations while
+    explaining them.
+    """
     source = path.read_text(encoding="utf-8")
-    #  Comments and docstrings mention these operations while explaining them; matching those
-    #  would produce a warning on every well-documented migration.
-    code = re.sub(r'""".*?"""', "", source, flags=re.DOTALL)
+
+    start = source.find("def upgrade(")
+    if start < 0:
+        return []
+    end = source.find("\ndef downgrade(", start)
+    upgrade_body = source[start:] if end < 0 else source[start:end]
+
+    code = re.sub(r'""".*?"""', "", upgrade_body, flags=re.DOTALL)
     code = "\n".join(
         line for line in code.splitlines() if not line.strip().startswith("#")
     )
+
     found: list[tuple[str, str]] = []
     for pattern, why in BLOCKING_PATTERNS:
         match = re.search(pattern, code, flags=re.IGNORECASE)

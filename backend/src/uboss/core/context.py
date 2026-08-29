@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from uboss.core.errors import PermissionDenied
-from uboss.core.permissions import Action, Grant, Scope, decide
+from uboss.core.permissions import Action, Decision, Grant, decide, effective
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,50 +54,55 @@ class SecurityContext:
     #: from choosing how long its proof remains valid.
     step_up_expires_at: datetime | None = None
     is_service_account: bool = False
-    #: Policy layers above the role, resolved when the context is built. Empty means nothing
-    #: above the role narrowed anything — not that everything is allowed.
+    #: The configured links of PLAN §14 chain — company and department — resolved when the
+    #: session is verified. Empty means no scope has restricted anything, which is not the same
+    #: as nothing being allowed.
     policy_grants: tuple[Grant, ...] = field(default=())
 
     @property
     def actions(self) -> frozenset[Action]:
-        """What this caller may do anywhere in the tenant, before resource-level checks.
+        """What this caller may actually do anywhere in the tenant.
+
+        Their roles' actions **after** every configured scope has narrowed them. This is what a
+        screen should show and what "can they?" means everywhere outside this class.
+
+        It is deliberately not `granted_actions`. That is the baseline — what the roles put on
+        the table before company and department policy take things away — and reporting it would
+        show a person a `publish` button that every attempt to use would refuse.
 
         Empty when their roles grant nothing, or when they hold no role at all. That is the
-        fail-closed answer and it is also the honest one while the Gate 0 §0.2 role matrix is
-        unapproved: a carried-over role with no permission rows grants nothing, visibly, rather
-        than falling back to a set someone invented.
+        fail-closed answer, and the honest one while the Gate 0 §0.2 matrix is unapproved: a
+        carried-over role with no permission rows grants nothing, visibly, rather than falling
+        back to a set someone invented.
         """
-        return self.granted_actions
+        return effective(self.granted_actions, self.grants_for())
 
     def grants_for(self, resource_grant: Grant | None = None) -> list[Grant]:
-        """Assemble the ceiling chain for one decision.
+        """The narrowing layers for one decision.
 
-        Two different things are happening in this chain, and keeping them apart is what makes
-        the ceiling correct:
-
-        * **Roles grant.** Everything this person may do comes from the roles their organisation
-          gave them. If no role grants an action, nothing else can hand it to them.
-        * **Scope policies narrow.** A company or department policy is a *restriction* — it can
-          take an action away from every role beneath it. A scope with no policy configured has
-          not restricted anything, so it is simply absent from the chain rather than
-          contributing an empty set.
-
-        That distinction is why a brand-new tenant works: nobody has written a company policy
-        yet, so nothing is narrowed, and a manager's role still grants what a manager's role
-        grants. Failing closed applies to a *missing grant*, which is refused. It does not mean
-        treating an unwritten optional restriction as a total prohibition — that would make an
-        unconfigured system indistinguishable from a locked-out one.
+        Only restrictions live here. What *grants* is `granted_actions`, resolved from the
+        caller's roles — a role is a principal in PLAN §14, not a scope, so it does not belong
+        in the chain. An earlier version put it at the department link, which worked only for as
+        long as no real department policy existed to collide with it.
         """
-        chain: list[Grant] = [
-            grant for grant in self.policy_grants if grant.scope is not Scope.DEPARTMENT
-        ]
-        chain.append(Grant(scope=Scope.DEPARTMENT, actions=self.actions, source="role"))
+        chain = list(self.policy_grants)
         if resource_grant is not None:
             chain.append(resource_grant)
         return chain
 
     def may(self, action: Action, resource_grant: Grant | None = None) -> bool:
-        return decide(action, self.grants_for(resource_grant)).allowed
+        return self.explain(action, resource_grant).allowed
+
+    def explain(self, action: Action, resource_grant: Grant | None = None) -> Decision:
+        """The full answer, including which layer refused.
+
+        For the audit trail and an administrator's screen. The caller who was refused never
+        sees it.
+        """
+        #  The *baseline* goes in, not `actions` — that property has already applied the chain,
+        #  and narrowing an already-narrowed set would still be correct but would lose the
+        #  ability to say which layer refused.
+        return decide(action, self.granted_actions, self.grants_for(resource_grant))
 
     def require(self, action: Action, resource_grant: Grant | None = None) -> None:
         """Refuse the request unless the action is permitted.
@@ -106,8 +111,7 @@ class SecurityContext:
         explains itself is a refusal that confirms a record exists. The full reason goes to the
         audit trail, where an administrator can read it.
         """
-        decision = decide(action, self.grants_for(resource_grant))
-        if not decision.allowed:
+        if not self.may(action, resource_grant):
             raise PermissionDenied("You do not have permission to do this.")
 
     def has_stepped_up(self, now: datetime | None = None) -> bool:

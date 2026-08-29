@@ -35,6 +35,7 @@ if config.config_file_name is not None:
 #  list grows as modules are built; an omission would generate a DROP for a live table.
 from uboss.modules.audit import models as audit_models  # noqa: F401, E402
 from uboss.modules.identity import models as identity_models  # noqa: F401, E402
+from uboss.modules.identity import policies as identity_policies  # noqa: F401, E402
 from uboss.modules.tenancy import models as tenancy_models  # noqa: F401, E402
 
 target_metadata = Base.metadata

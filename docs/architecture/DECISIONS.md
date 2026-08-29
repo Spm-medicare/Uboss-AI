@@ -671,3 +671,71 @@ multi-workspace challenge → select-workspace without a password → 200
 ten recorded failures → counter resets, account locks, correct password refused 401
 auth_record_verified → unlocked, counter zero
 ```
+
+---
+
+## 24. Roles grant; scopes only narrow — and they are different things in the code
+
+**Corrects a shortcut in decisions 4 and 19.**
+
+PLAN §14's chain is company → department → resource → action, with one rule: a lower scope can
+never grant more power than the parent policy. PLAN §14 also lists roles under *Principals*, not
+under scopes.
+
+The implementation had the role entering the chain **as the department layer**. That worked only
+because no real department policy existed. Migration 0007 creates them, and the two would have
+collided — the role grant would have overwritten a genuine department restriction, or been
+overwritten by it. Neither is a small bug.
+
+**Decided.** They are separated:
+
+```python
+effective(baseline: frozenset[Action], grants: list[Grant]) -> frozenset[Action]
+decide(action, baseline, grants) -> Decision
+```
+
+`baseline` is the union of what the caller's roles hold — the only thing that *grants*. `grants`
+are the configured links of the chain, each holding what that link permits, intersected so a link
+can only take away. A scope with no policy is skipped, not treated as empty.
+
+**A second bug this exposed.** `SecurityContext.actions` returned the baseline. So `/auth/me`
+reported `publish` to an administrator whose company policy withheld it — a button that every
+attempt to press would refuse. It now returns the narrowed set, and `explain()` passes the
+baseline separately so a refusal can still name the layer that caused it.
+
+**Verified:**
+
+```
+Initech, company policy "Release freeze" withholding publish + integrate
+  → 8 actions
+
+Acme, no policy, identical `admin` role
+  → 10 actions
+```
+
+No code change and no sign-out between them — the policy is read when the session is resolved.
+
+---
+
+## 25. What a policy is, and what a grant is
+
+**`scope_policies` withholds.** A row lists an action taken away from every role beneath that
+scope. There is no column that could add one, which is what makes the chain safe to leave
+unconfigured: a company that has written no policy has not taken anything away, so a brand-new
+tenant works.
+
+**`resource_grants` narrows too.** It answers "may this principal do this on this object" and is
+PLAN §17's "resource grants". It cannot hand out an action the principal's roles do not already
+hold, because the chain is intersected — a grant naming something the role lacks resolves to
+nothing.
+
+**One thing modelled ahead of its dependency, deliberately.** `scope_policies.org_node_id` names
+the hierarchy node a department policy covers. The hierarchy arrives in Gate 2, so there is no
+foreign key yet and no department policy can be created. The column exists now because the
+*company* half is needed now, and adding it later would be a second migration over the same
+table. A department policy scoped to a node nobody occupies applies to nobody — correct, not a
+gap.
+
+**Two decisions deferred to the client, not invented:** `resource_grants.principal_kind` accepts
+all five principals from PLAN §14, but only `user` can be resolved today. Teams, guests and
+service accounts have no tables yet; the application refuses the others rather than guessing.

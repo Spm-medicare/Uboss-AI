@@ -97,57 +97,65 @@ class Decision:
     reason: str = ""
 
 
-def effective(grants: list[Grant]) -> frozenset[Action]:
-    """Intersect the chain, widest scope first.
+def effective(baseline: frozenset[Action], grants: list[Grant]) -> frozenset[Action]:
+    """What a caller may do: what their roles grant, narrowed by every configured scope.
 
-    Intersection — not union — is the whole point. A union would let a resource-level grant
-    re-add something company policy removed, which is exactly the escalation PLAN section 14
-    forbids.
+    Two different things, kept apart because conflating them is how a ceiling gets breached:
 
-    A scope that supplied no grant is skipped rather than treated as an empty set. A policy is a
-    *restriction*: a company that has not written one has not taken anything away. What actually
-    grants an action is the caller's role, which reaches this chain as the department layer —
-    see `SecurityContext.grants_for`. An empty list still returns nothing, so a caller with no
-    roles at all is refused.
+    * **`baseline` grants.** The union of the actions the caller's roles hold. A role is a
+      *principal* in PLAN §14, not a scope — it is what puts an action on the table at all.
+      Nothing below can add to it.
+    * **`grants` narrow.** Each is one link of PLAN §14's chain — company, department, resource,
+      action — holding what that link permits. Intersected, so a link can only take away.
+
+    Intersection is the whole point. A union would let a resource grant re-add something company
+    policy removed, which is precisely the escalation the ceiling exists to prevent.
+
+    A scope that supplied no grant is **skipped**, not treated as empty: a company that has
+    written no policy has not taken anything away. An empty baseline still returns nothing, so a
+    caller with no roles is refused everything — that is where failing closed applies.
     """
     by_scope = {grant.scope: grant for grant in grants}
-    allowed: frozenset[Action] | None = None
+    allowed = baseline
     for scope in CEILING_ORDER:
         grant = by_scope.get(scope)
         if grant is None:
-            # A layer that said nothing has not granted anything. Fail closed.
+            # This layer has restricted nothing.
             continue
-        allowed = grant.actions if allowed is None else allowed & grant.actions
-    return allowed or frozenset()
+        allowed &= grant.actions
+    return allowed
 
 
-def decide(action: Action, grants: list[Grant]) -> Decision:
-    """Resolve one action against the chain and say where it stopped.
+def decide(action: Action, baseline: frozenset[Action], grants: list[Grant]) -> Decision:
+    """Resolve one action, and say exactly where it stopped.
 
     Walks the layers in order so the *first* one that withholds the action is named. That is the
-    layer an administrator has to change, and naming a later one would send them to the wrong
-    screen.
+    layer an administrator has to change; naming a later one sends them to the wrong screen.
+
+    The reason is written for an administrator and for the audit trail. It is never returned to
+    the caller who was refused — "the department blocked this" confirms the resource exists.
     """
-    running: frozenset[Action] | None = None
+    if action not in baseline:
+        return Decision(
+            allowed=False,
+            action=action,
+            reason=f"no role held by this principal grants {action}",
+        )
+
+    running = baseline
     for scope in CEILING_ORDER:
         grant = next((g for g in grants if g.scope is scope), None)
         if grant is None:
             continue
-        running = grant.actions if running is None else running & grant.actions
+        running &= grant.actions
         if action not in running:
             layer = grant.source or "policy"
             return Decision(
                 allowed=False,
                 action=action,
                 blocked_at=scope,
-                reason=f"{action} is not permitted by {scope} policy ({layer})",
+                reason=f"{action} is withheld by {scope} policy ({layer})",
             )
-    if running is None:
-        return Decision(
-            allowed=False,
-            action=action,
-            reason="no policy applies to this principal, so nothing is permitted",
-        )
     return Decision(allowed=True, action=action)
 
 
