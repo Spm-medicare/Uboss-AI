@@ -11,8 +11,8 @@ and "the page opens" are not evidence. A sub-step without a passing check is not
 
 **Status: 0 of 8 Gates passed. 0 of 28 steps complete. 9 in progress. 19 not started.**
 
-Within them: **1.1, 1.3 and 1.4 are complete**, 1.2.1–1.2.5 are done, and **1.6.3 — the
-automated suite that was blocking every Gate — now runs 39 tests.**
+Within them: **1.1, 1.3, 1.4 and 1.5 are complete**, 1.2.1–1.2.5 are done, and the automated
+suite that was blocking every Gate runs **55 tests**.
 
 Legend: ✅ done and verified · 🟡 partly done · ⬜ not started
 
@@ -102,15 +102,16 @@ restored), then forward to head again (functions back, grant revoked, 3 users / 
 | 1.2.3 | CSRF / Origin validation on every unsafe method | ✅ verified |
 | 1.2.4 | Absolute and idle expiry, token rotation with grace | ✅ verified |
 | 1.2.5 | Step-up re-authentication, time-boxed | ✅ verified |
-| 1.2.6 | Invite, password set, reset, recovery | ⬜ **blocked on 1.5.2** |
+| 1.2.6 | Invite, password set, reset, recovery | ⬜ **needs a mail provider** |
 
 **1.2.6 rules that do not bend:** requesting a reset answers identically whether or not the
 account exists · no reusable plaintext password is ever sent · completing a reset revokes every
 session in every tenant · the screen never says "email sent" unless an email was accepted for
 delivery.
 
-**Blocked because** without a working outbox and a real mail provider the only honest build is
-one that tells the person delivery is unavailable — which is not a usable invite flow.
+**The outbox is no longer the blocker** — 1.5.3 delivers. What is missing is a mail provider and
+its credentials, which is a client decision. Until one is registered, an invite event is
+dead-lettered as undeliverable rather than reported as sent.
 
 ## 1.3 — Real permission ceiling  ✅
 
@@ -192,19 +193,46 @@ a re-read then succeeds                 version 3
 cross-tenant update refused             same 409, nothing about the row
 ```
 
-## 1.5 — Audit and minimum outbox  🟡
+## 1.5 — Audit and minimum outbox  ✅
 
 | | | |
 |---|---|---|
 | 1.5.1 | Append-only audit, atomic with the change it describes | ✅ verified |
-| 1.5.2 | Least-privilege relay role | ⬜ |
-| 1.5.3 | The relay — lease, publish, retry, dead-letter | ⬜ |
+| 1.5.2 | Least-privilege relay role | ✅ |
+| 1.5.3 | The relay — lease, publish, retry, dead-letter | ✅ |
 
 Delivery is **at least once**; every consumer tolerates a duplicate. Nothing claims exactly-once.
 
-**1.5.2 done when** the role reads due outbox rows and is refused on every other table.
-**1.5.3 done when** an event survives a relay kill mid-publish and is delivered exactly one more
-time, and a permanently failing event lands in the dead-letter view instead of disappearing.
+**1.5.2 — done.** `uboss_relay` holds `SELECT` and `UPDATE` on `outbox_events` and nothing else:
+
+```
+outbox_events    SELECT ✔  UPDATE ✔  INSERT ✗  DELETE ✗
+the other 13 tables      all four ✗
+```
+
+No `INSERT` — it delivers events, it does not invent them. No `DELETE` — a published row is
+history and a dead row is evidence.
+
+**A migration cannot create this role, and `uboss_owner` has no `CREATEROLE`.** It is the only
+credential in the system that reads across every tenant, so bringing it into existence is an
+operator action taken once, like provisioning a tenant. The migration checks and stops with
+instructions rather than granting itself the power to continue.
+
+**1.5.3 — done.** `modules/audit/relay.py`. Claim under a lease, publish outside the
+transaction, mark in a second one. Holding a database transaction open across a network call is
+how a pool runs out during an outage at somebody else's service.
+
+**Delivery is at least once**, and the test proves it rather than the design claiming it:
+`test_an_event_survives_a_worker_killed_mid_publish` claims an event, publishes it, abandons the
+worker, and asserts the next one delivers it **exactly one more time** — not zero, not three.
+
+**No publisher is registered.** Email waits on a provider the client has not supplied, so every
+event is dead-lettered with `no publisher is registered` and the worker says so on start-up. A
+placeholder that logged and returned would mark everything delivered and send nothing — the
+exact failure the outbox exists to prevent.
+
+16 tests. One found a real bug: the backoff capped its exponent at `2**10 = 1024`, so the stated
+one-hour ceiling was unreachable.
 
 ## 1.6 — Files, observability and delivery pipeline  ⬜
 
@@ -212,11 +240,11 @@ time, and a permanently failing event lands in the dead-letter view instead of d
 |---|---|---|
 | 1.6.1 | S3-compatible files — tenant-prefixed keys, hash, scan state, signed URLs | ⬜ |
 | 1.6.2 | OpenTelemetry traces and metrics on the existing correlation id | ⬜ |
-| 1.6.3 | **Automated test suite** | ✅ 39 tests |
+| 1.6.3 | **Automated test suite** | ✅ 55 tests |
 | 1.6.4 | CI — lint, types, migrations, secret scan, tests, both builds | ⬜ |
 | 1.6.5 | Environments, secret manager, rehearsed deploy and rollback | ⬜ |
 
-**1.6.3 — done. 39 tests, `pytest tests/`.**
+**1.6.3 — done. 55 tests, `pytest tests/`.**
 
 Every run builds a throwaway database by running the migrations, and drops it afterwards. Built
 by alembic rather than `create_all`, because `create_all` produces the tables the models
@@ -229,6 +257,7 @@ what the security suite exists to test.
 | `security/test_permission.py` | 12 | role matrix, ceiling, step-up, separation of duty, denials |
 | `integration/test_idempotency.py` | 9 | replay, conflict, concurrent duplicate, concurrency |
 | `integration/test_migrations.py` | 8 | head, drift, honest downgrades, role privileges |
+| `integration/test_outbox_relay.py` | 16 | relay role reach, lease, retry, dead-letter, crash recovery |
 
 **The security suite runs as `uboss_app`**, the role every API request uses. Running it as the
 owner would prove nothing: FORCE is off (DECISIONS 22), so the owner sees everything by design.
@@ -341,10 +370,9 @@ as a plan and behave as a guess.
 # Order
 
 ```
-NOW    1.5.2, 1.5.3     outbox relay
+NOW    1.6.4, 1.6.5     CI and deployment
 
-THEN   1.2.6            invite and reset  (needs the relay)
-       1.6.4, 1.6.5     CI and deployment
+THEN   1.2.6            invite and reset  (waiting on a mail provider)
        1.7.1 → 1.7.4    frontend foundation
 
        ══ Gate 1 closes ══

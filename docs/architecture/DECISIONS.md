@@ -909,3 +909,49 @@ three `add_column` calls. It is written down now.
   and the schema has not moved.
 
 **39 tests.** `scripts/check.sh` runs them with everything else CI will.
+
+---
+
+## 30. The outbox relay, and the only cross-tenant credential in the system
+
+**Supersedes DECISIONS 18**, which recorded that the relay role was deliberately *not* created
+because nothing used it yet. Something does now: invite and password reset (1.2.6) cannot be
+built honestly without delivery.
+
+**The role's reach is one table.** `uboss_relay` has `SELECT` and `UPDATE` on `outbox_events`.
+Not `INSERT` — it delivers events, it does not invent them. Not `DELETE` — a published row is
+history and a dead row is evidence. Nothing at all on the other thirteen tables.
+
+A role-scoped policy (`FOR ALL TO uboss_relay USING (true)`) lets it see every tenant's due rows.
+`uboss_app` is unaffected: PostgreSQL ORs permissive policies, and this one names a role
+`uboss_app` is not.
+
+**A migration cannot create it, and that is the design.** `uboss_owner` has no `CREATEROLE`. The
+migration checks for the role and stops with instructions if it is absent, rather than granting
+itself the power to continue. Bringing the system's only cross-tenant credential into existence
+is a person's decision taken once — the same shape as provisioning a tenant (DECISIONS 17).
+
+**Three short transactions, not one long one.** Claim under a lease, publish outside any
+transaction, mark in a second. `SELECT ... FOR UPDATE SKIP LOCKED` held across the publish would
+keep a database transaction open for the length of a network call, which is how a connection pool
+runs out during an outage at somebody else's service.
+
+**`attempts` is incremented when an event is claimed, not when it fails.** A worker that dies
+mid-publish never reaches the failure path. Counting there would let a poisonous event be retried
+for ever by a succession of workers it kept killing.
+
+**Delivery is at least once, and the suite proves it rather than the design asserting it.**
+`test_an_event_survives_a_worker_killed_mid_publish` claims an event, publishes it, abandons the
+worker, and asserts the next one delivers it **exactly one more time** — not zero, not three.
+That is the whole meaning of the guarantee, and it is the kind of claim that is easy to write in
+a docstring and never check.
+
+**No publisher is registered, and the worker says so on start-up.** Email waits on a provider and
+credentials the client has not supplied. Until one is registered every event is dead-lettered
+with `no publisher is registered for …`. A placeholder that logged and returned would mark
+everything delivered and send nothing — precisely the failure the outbox pattern exists to make
+impossible.
+
+**One test found a real bug.** `backoff_for` capped its exponent at `2**10 = 1024`, so the
+documented one-hour ceiling was unreachable — the exponent cap bound before the seconds cap. The
+exponent is now capped above where the seconds cap bites.

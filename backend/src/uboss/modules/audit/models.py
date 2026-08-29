@@ -164,6 +164,14 @@ class OutboxEvent(Base, PrimaryKey, TenantOwned):
 
     correlation_id: Mapped[str] = mapped_column(String(64), nullable=False, server_default="")
 
+    #: The relay claim. `leased_until` is what releases it — a worker that dies holds nothing,
+    #: and another picks the event up once the lease passes. `leased_by` names the worker for an
+    #: operator looking at something stuck; it is not a lock.
+    leased_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    leased_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
     __table_args__ = (
         CheckConstraint(
             "status IN ('pending', 'published', 'dead')", name="status_known"

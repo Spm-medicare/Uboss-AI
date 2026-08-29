@@ -60,6 +60,8 @@ ignore = [
 #  which is where they are read most. N818's `...Error` suffix would make every one of them
 #  noisier without telling the reader anything new.
 "src/uboss/core/errors.py" = ["N818"]
+#  Same reason: `raise PublisherMissing(...)` reads as a sentence where it is raised.
+"src/uboss/modules/audit/relay.py" = ["N818"]
 
 [tool.mypy]
 python_version = "3.12"

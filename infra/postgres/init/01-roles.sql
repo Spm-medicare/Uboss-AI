@@ -25,6 +25,15 @@ CREATE ROLE uboss_owner LOGIN PASSWORD 'uboss_owner';
 ALTER ROLE uboss_owner CREATEDB;
 CREATE ROLE uboss_app LOGIN PASSWORD 'uboss_app';
 
+-- The outbox relay. This is the ONLY credential in the system that reads across every tenant,
+-- and its reach is deliberately tiny: migration 0008 grants it SELECT and UPDATE on
+-- outbox_events and nothing else — no other table, no schema rights, no ability to create.
+--
+-- It exists because delivery cannot be tenant-scoped: one worker drains the queue for everybody.
+-- A migration cannot create it (uboss_owner has no CREATEROLE, on purpose), so bringing this
+-- credential into existence is a deliberate operator action, taken once.
+CREATE ROLE uboss_relay LOGIN PASSWORD 'uboss_relay';
+
 ALTER DATABASE uboss OWNER TO uboss_owner;
 
 \connect uboss
