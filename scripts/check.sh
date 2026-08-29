@@ -20,7 +20,7 @@ echo "── tests ────────────────────�
 # Builds a throwaway database from the migrations and drops it afterwards. It never touches
 # the development database.
 set -a; source backend/.env; set +a
-backend/.venv/Scripts/python.exe -m pytest tests/ || uv run --directory backend python -m pytest ../tests
+uv run --directory backend python -m pytest ../tests
 
 echo
 echo "All checks passed."

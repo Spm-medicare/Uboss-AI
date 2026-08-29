@@ -1,0 +1,206 @@
+# Everything that has to be true before a change can merge.
+#
+# Ordered so the cheapest checks fail first: a lint error should not wait behind a database
+# starting up. The jobs after `static` run in parallel — they do not depend on each other, only
+# on the code being worth building.
+#
+# `scripts/check.sh` runs the same set locally. Two lists that can disagree is how a pull request
+# passes on a laptop and fails here.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  # A newer push supersedes an older one on the same branch. Nobody needs the results of a commit
+  # that has already been replaced, and the runner minutes are better spent on the current one.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Pinned. "Latest" is a version that changes without a commit, which makes a green build
+  # yesterday and a red one today with no change in between.
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "24"
+
+jobs:
+  static:
+    name: Lint and types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Backend dependencies
+        working-directory: backend
+        # `--frozen` fails if uv.lock does not match pyproject.toml, instead of quietly resolving
+        # something new. A lock file that CI ignores is not a lock file.
+        run: uv sync --all-groups --frozen --python ${{ env.PYTHON_VERSION }}
+
+      - name: Ruff
+        working-directory: backend
+        run: uv run ruff check .
+
+      - name: Mypy
+        working-directory: backend
+        run: uv run mypy src
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend dependencies
+        working-directory: frontend
+        # `npm ci` installs exactly the lock file, and fails if package.json disagrees with it.
+        run: npm ci
+
+      - name: ESLint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: TypeScript
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+  tests:
+    name: Tests
+    needs: static
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: uboss
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        # Names the database and the user: bare `pg_isready` reports healthy while
+        # initialisation is still running, and the job would start against a database that is
+        # not there yet.
+        options: >-
+          --health-cmd "pg_isready -U postgres -d uboss"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+    env:
+      UBOSS_ENVIRONMENT: test
+      UBOSS_DATABASE_URL: postgresql+psycopg://uboss_app:uboss_app@localhost:5432/uboss
+      UBOSS_MIGRATION_DATABASE_URL: postgresql+psycopg://uboss_owner:uboss_owner@localhost:5432/uboss
+      UBOSS_RELAY_DATABASE_URL: postgresql+psycopg://uboss_relay:uboss_relay@localhost:5432/uboss
+      UBOSS_REDIS_URL: redis://localhost:6379/0
+      # A throwaway value for a throwaway database. Never a real secret, and never one that
+      # resembles a real one closely enough to be copied by mistake.
+      UBOSS_AUTH_SIGNING_KEY: ci-only-signing-key-not-a-real-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - working-directory: backend
+        run: uv sync --all-groups --frozen --python ${{ env.PYTHON_VERSION }}
+
+      - name: Create the database roles
+        # The compose init script only runs on a fresh volume, so it never runs here. This is the
+        # version that can run against any database, and it is the same one an operator uses to
+        # repair a live one.
+        run: |
+          psql "postgresql://postgres:postgres@localhost:5432/uboss" \
+            -v ON_ERROR_STOP=1 -f infra/postgres/setup_roles.sql
+
+      - name: Migrations apply to an empty database
+        working-directory: backend
+        run: uv run alembic upgrade head
+
+      - name: Preflight agrees the database is at head
+        working-directory: backend
+        run: uv run python -m scripts.migration_preflight
+
+      - name: Tests
+        # Builds its own throwaway database from the migrations and drops it afterwards. It never
+        # touches the one migrated above — that one exists to prove the migrations run at all.
+        run: uv run --directory backend python -m pytest ../tests
+
+  build:
+    name: Build
+    needs: static
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - working-directory: frontend
+        run: npm ci
+
+      - name: Next build
+        working-directory: frontend
+        # A type error fails this too — next.config.ts sets ignoreBuildErrors: false. The
+        # separate tsc run above catches it sooner and with a clearer message.
+        run: npm run build
+
+  security:
+    name: Secrets and dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Gitleaks needs history to scan the commits in the pull request, not just the tip. A
+          # secret added and removed in the same branch is still a secret in the history.
+          fetch-depth: 0
+
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Python dependency audit
+        working-directory: backend
+        # Reports known vulnerabilities in the locked dependency graph. It does not fail the
+        # build yet: an advisory published overnight would then block every unrelated pull
+        # request until somebody upgraded. It is read, and acted on deliberately.
+        continue-on-error: true
+        run: uv run --with pip-audit pip-audit
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Node dependency audit
+        working-directory: frontend
+        continue-on-error: true
+        run: npm audit --audit-level=high

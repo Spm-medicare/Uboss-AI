@@ -241,7 +241,7 @@ one-hour ceiling was unreachable.
 | 1.6.1 | S3-compatible files — tenant-prefixed keys, hash, scan state, signed URLs | ⬜ |
 | 1.6.2 | OpenTelemetry traces and metrics on the existing correlation id | ⬜ |
 | 1.6.3 | **Automated test suite** | ✅ 55 tests |
-| 1.6.4 | CI — lint, types, migrations, secret scan, tests, both builds | ⬜ |
+| 1.6.4 | CI — lint, types, migrations, secret scan, tests, both builds | 🟡 written, unproven |
 | 1.6.5 | Environments, secret manager, rehearsed deploy and rollback | ⬜ |
 
 **1.6.3 — done. 55 tests, `pytest tests/`.**
@@ -277,7 +277,18 @@ reading zero rows for the wrong reason.
 key.
 **1.6.2 done when** one browser action can be followed end to end by its correlation id, and no
 span carries a secret.
-**1.6.4 done when** a pull request that breaks any check cannot be merged.
+**1.6.4 — written, and honestly incomplete.** `.github/workflows/ci.yml` runs four jobs: lint and
+types, then tests, build and the security scan in parallel. `scripts/check.sh` runs the same set
+locally, so a pull request cannot pass on a laptop and fail there.
+
+`infra/postgres/setup_roles.sql` creates the three roles and can run against any database — the
+compose init script only runs on a fresh volume, so it never runs in CI. Writing it found a real
+bug: its blanket `GRANT ON ALL TABLES` reopened `users` to the application role, and migration
+0006 does not re-run to take it back. The script now revokes it itself.
+
+**Not done, and it cannot be until there is a remote:** the exit condition is that a pull request
+which breaks a check *cannot be merged*, and that is branch protection (0A.3). The workflow has
+never run. It stays 🟡 until it has.
 
 ## 1.7 — Frontend foundation  ⬜
 
