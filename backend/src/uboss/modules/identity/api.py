@@ -23,7 +23,8 @@ from uboss.core.settings import Settings
 from uboss.modules.audit import service as audit
 from uboss.modules.identity import challenges, tokens
 from uboss.modules.identity import service as identity
-from uboss.modules.identity.models import Membership, Session, User
+from uboss.modules.identity.credentials import Credential
+from uboss.modules.identity.models import Membership, Session
 from uboss.modules.identity.schemas import (
     ChooseWorkspaceResponse,
     CurrentUser,
@@ -66,7 +67,7 @@ async def _create_session_response(
     request: Request,
     session: AsyncSession,
     settings: Settings,
-    user: User,
+    user: Credential,
     membership: Membership,
     tenant: Tenant,
 ) -> SignInResponse:
@@ -178,7 +179,7 @@ async def sign_in(
     membership, tenant = workspaces[0]
     await identity.record_completed_sign_in(
         session,
-        user=user,
+        account=user,
         now=datetime.now(UTC),
     )
     return await _create_session_response(
@@ -247,7 +248,7 @@ async def select_workspace(
     membership, tenant = chosen
     await identity.record_completed_sign_in(
         session,
-        user=user,
+        account=user,
         now=datetime.now(UTC),
     )
     return await _create_session_response(

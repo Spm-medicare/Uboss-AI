@@ -606,3 +606,68 @@ This makes the rest consistent rather than leaving one table quietly different.
 **Still required:** `db.base.tenant_scope()`, for any code running as `uboss_app` that writes
 rows for more than one tenant. ENABLE still binds it, so the flush-ordering trap in decision 20 is
 unchanged for API code. Only migrations and owner-run scripts got easier.
+
+---
+
+## 23. The credentials table is no longer reachable by the application role
+
+**Supersedes decision 11's security argument.** Decision 11 split credentials from profile and
+then argued that `users` therefore "holds nothing worth leaking". That was wrong. It holds every
+Argon2 hash in the system and every address — a staff roster with the hashes attached — and
+`uboss_app` could read all of it:
+
+```
+$ psql -U uboss_app -d uboss -c "SELECT count(*) FROM users;"
+ 4
+```
+
+The table split was still right. The conclusion drawn from it was not.
+
+**Decided.** Migration 0006 revokes every privilege on `users` from `uboss_app` and replaces them
+with five `SECURITY DEFINER` functions, one per operation the authentication code performs:
+
+| Function | Used by |
+|---|---|
+| `auth_find_by_email(text)` | sign-in, failed-attempt audit |
+| `auth_find_by_id(uuid)` | workspace challenge, step-up, session resolution |
+| `auth_record_failure(uuid, integer, interval)` | failed sign-in |
+| `auth_record_verified(uuid, text)` | password proved; optional rehash |
+| `auth_record_sign_in(uuid)` | session created |
+
+`src/uboss/modules/identity/credentials.py` is the only module that calls them, and each call is
+a thin wrapper. The moment one grows a filter or a second query, the narrow surface stops being
+narrow — new behaviour goes in a new database function, in a migration, where it is reviewed.
+
+**What this buys, precisely.** Enumeration is gone. No function returns more than one row; each
+takes an exact address or an exact id; there is no call that returns a list. An injection
+elsewhere in the application cannot dump the table, because the role has no rights on it to
+abuse.
+
+**What it does not buy, said plainly.** Argon2 verification happens in Python, so a hash for the
+one account being named still reaches the process. The protection is that you must already know
+the exact address to get it. Moving verification into the database would remove that too, and is
+not possible: PostgreSQL has no Argon2.
+
+**Two details that make `SECURITY DEFINER` safe here.** Every function pins
+`SET search_path = pg_catalog, public` — without it a caller can create a schema earlier in the
+path, shadow the table the function names, and have it run against their own object with the
+owner's rights. And `EXECUTE` is revoked from `PUBLIC` before being granted to `uboss_app`,
+because PostgreSQL grants it to `PUBLIC` by default and every future role would otherwise inherit
+a path to the credentials table.
+
+**Consequence in the code.** `resolve_session` used to read the account with a SQL join. The
+application role can no longer join `users`, so it is two queries: the membership and its
+organisation from tenant-owned tables, then the account by id through the function.
+
+**Verified after the change:**
+
+```
+uboss_app: SELECT password_hash FROM users  →  ERROR: permission denied for table users
+uboss_app: SELECT count(*) FROM users       →  ERROR: permission denied for table users
+
+sign-in 200 · /me 200 · step-up wrong 401 / right 200 · stepped_up true
+wrong password 401 · unknown account 401 (identical)
+multi-workspace challenge → select-workspace without a password → 200
+ten recorded failures → counter resets, account locks, correct password refused 401
+auth_record_verified → unlocked, counter zero
+```

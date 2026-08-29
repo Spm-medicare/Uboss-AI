@@ -28,7 +28,8 @@ from uboss.core.settings import Settings
 from uboss.db.base import bind_session_lookup, bind_tenant, bind_verified_user
 from uboss.modules.audit import service as audit
 from uboss.modules.audit.models import AuditOutcome
-from uboss.modules.identity import passwords, tokens
+from uboss.modules.identity import credentials, passwords, tokens
+from uboss.modules.identity.credentials import Credential
 from uboss.modules.identity.models import (
     Membership,
     MembershipRole,
@@ -36,8 +37,6 @@ from uboss.modules.identity.models import (
     Role,
     RolePermission,
     Session,
-    User,
-    UserStatus,
 )
 from uboss.modules.identity.schemas import CurrentUser, WorkspaceSummary
 from uboss.modules.tenancy.models import Tenant
@@ -78,97 +77,89 @@ class SignInRefused(NotAuthenticated):
 
 async def authenticate(
     session: AsyncSession, *, email: str, password: str
-) -> User:
-    """Check the credentials and return the user, or refuse.
+) -> Credential:
+    """Check the credentials and return the account, or refuse.
 
-    Works on an unbound session — `users` carries no tenant and holds only credentials.
+    Reaches `users` only through `credentials`, which calls the narrow database functions from
+    migration 0006. The application role has no privilege on the table itself, so there is no
+    query here that could be widened into a list.
     """
     now = datetime.now(UTC)
-    user = (
-        await session.execute(select(User).where(User.email == email.strip().lower()))
-    ).scalar_one_or_none()
+    account = await credentials.find_by_email(session, email)
 
     #  The verification runs whether or not the account exists, against a dummy hash when it does
     #  not. Returning early here would make "no such account" measurably faster than "wrong
     #  password", and that difference is enough to enumerate a company's staff list.
-    matched = passwords.verify_password(user.password_hash if user else None, password)
+    matched = passwords.verify_password(
+        account.password_hash if account else None, password
+    )
 
-    if user is None:
+    if account is None:
         raise SignInRefused()
 
-    if user.locked_until is not None and user.locked_until > now:
+    if account.is_locked(now):
         # Refused even with the right password. Saying so would confirm the password — turning a
         # lockout into a way to *test* passwords rather than a way to stop it.
         raise SignInRefused()
 
     if not matched:
-        await _record_failure(session, user, now)
+        await credentials.record_failure(
+            session,
+            account.id,
+            max_attempts=MAX_FAILED_ATTEMPTS,
+            lockout=LOCKOUT_DURATION,
+        )
         raise SignInRefused()
 
-    if user.status != UserStatus.ACTIVE:
+    if not account.is_active:
         raise SignInRefused()
 
-    return user
-
-
-async def _record_failure(session: AsyncSession, user: User, now: datetime) -> None:
-    """Count the failure and close the account if there have been too many.
-
-    A plain `UPDATE ... SET count = count + 1` rather than a read-modify-write, so ten parallel
-    attempts count as ten rather than as one.
-    """
-    attempts = user.failed_sign_in_count + 1
-    values: dict[str, object] = {"failed_sign_in_count": User.failed_sign_in_count + 1}
-    if attempts >= MAX_FAILED_ATTEMPTS:
-        values["locked_until"] = now + LOCKOUT_DURATION
-        values["failed_sign_in_count"] = 0
-    await session.execute(update(User).where(User.id == user.id).values(**values))
+    return account
 
 
 async def record_verified_password(
-    session: AsyncSession, user: User, password: str
+    session: AsyncSession, account: Credential, password: str
 ) -> None:
-    """Reset password failures and upgrade the hash after proof succeeds.
+    """Reset the failure counters and upgrade the hash after a proof succeeds.
 
-    This may happen before workspace selection. It deliberately does not update
-    ``last_sign_in_at``: proving a password is not a completed sign-in until a session exists.
+    This may happen before workspace selection. It deliberately does not touch
+    `last_sign_in_at`: proving a password is not a completed sign-in until a session exists.
+
+    Argon2's cost may have been raised since this hash was written. The plaintext is in hand for
+    exactly this moment and nowhere else, so re-hashing here upgrades people over time with no
+    reset email and nobody locked out. The strength rules are not re-applied: they may have
+    tightened since, and refusing a password that has just verified correctly would lock someone
+    out of their own account at the moment they signed in successfully.
     """
-    values: dict[str, object] = {
-        "failed_sign_in_count": 0,
-        "locked_until": None,
-    }
-    #  Argon2's cost may have been raised since this hash was written. The plaintext is in hand
-    #  for exactly this moment and nowhere else, so re-hashing here upgrades people over time
-    #  with no reset email and nobody locked out. The strength rules are not re-applied: they may
-    #  have tightened since, and refusing a password that has just verified correctly would lock
-    #  someone out of their own account at sign-in.
-    if user.password_hash and passwords.needs_rehash(user.password_hash):
-        values["password_hash"] = passwords.rehash(password)
-    await session.execute(update(User).where(User.id == user.id).values(**values))
+    fresher = (
+        passwords.rehash(password)
+        if account.password_hash and passwords.needs_rehash(account.password_hash)
+        else None
+    )
+    await credentials.record_verified(session, account.id, new_hash=fresher)
 
 
 async def record_completed_sign_in(
-    session: AsyncSession, *, user: User, now: datetime
+    session: AsyncSession, *, account: Credential, now: datetime
 ) -> None:
     """Record success only when a selected workspace is about to receive a session."""
-    await session.execute(
-        update(User).where(User.id == user.id).values(last_sign_in_at=now)
-    )
+    await credentials.record_sign_in(session, account.id)
 
 
 async def user_for_workspace_challenge(
     session: AsyncSession, *, user_id: uuid.UUID
-) -> User | None:
-    """Resolve the global identity named by an already-verified, random challenge."""
-    return (
-        await session.execute(
-            select(User).where(User.id == user_id, User.status == UserStatus.ACTIVE)
-        )
-    ).scalar_one_or_none()
+) -> Credential | None:
+    """Resolve the identity named by an already-verified, single-use challenge.
+
+    The status is re-checked here rather than trusted from the challenge: an account can be
+    deactivated in the seconds between proving a password and choosing a workspace.
+    """
+    account = await credentials.find_by_id(session, user_id)
+    return account if account and account.is_active else None
 
 
 async def workspaces_for(
-    session: AsyncSession, user: User
+    session: AsyncSession, account: Credential
 ) -> list[tuple[Membership, Tenant]]:
     """The organisations this person can actually sign in to.
 
@@ -180,12 +171,12 @@ async def workspaces_for(
     Removed memberships and suspended tenants are filtered here rather than later, so a person
     is never offered a workspace they will then be refused from.
     """
-    await bind_verified_user(session, user.id)
+    await bind_verified_user(session, account.id)
     rows = await session.execute(
         select(Membership, Tenant)
         .join(Tenant, Tenant.id == Membership.tenant_id)
         .where(
-            Membership.user_id == user.id,
+            Membership.user_id == account.id,
             Membership.status == MembershipStatus.ACTIVE,
             Tenant.status.in_(["active", "restricted"]),
         )
@@ -209,7 +200,7 @@ async def start_session(
     session: AsyncSession,
     settings: Settings,
     *,
-    user: User,
+    user: Credential,
     membership: Membership,
     tenant: Tenant,
     ip_address: str | None,
@@ -291,16 +282,14 @@ async def record_failed_attempt_by_email(
     do not match. The flush is what makes each row's binding the one it is actually inserted
     under. This applies to any multi-tenant write, not just this one.
     """
-    user = (
-        await session.execute(select(User).where(User.email == email.strip().lower()))
-    ).scalar_one_or_none()
-    if user is None:
+    account = await credentials.find_by_email(session, email)
+    if account is None:
         return
 
-    await bind_verified_user(session, user.id)
+    await bind_verified_user(session, account.id)
     rows = await session.execute(
         select(Membership.tenant_id, Membership.id, Membership.display_name).where(
-            Membership.user_id == user.id,
+            Membership.user_id == account.id,
             Membership.status == MembershipStatus.ACTIVE,
         )
     )
@@ -326,7 +315,7 @@ async def record_failed_attempt_by_email(
 async def record_authenticated_sign_in_denial(
     session: AsyncSession,
     *,
-    user: User,
+    user: Credential,
     ip_address: str | None,
     denial_reason: str,
 ) -> None:
@@ -433,11 +422,13 @@ async def resolve_session(
 
     await bind_tenant(session, row.tenant_id)
 
+    #  Two queries rather than one join: `users` is no longer joinable by the application role
+    #  (migration 0006), so the membership and its organisation are read from tenant-owned
+    #  tables and the account is fetched by id through the narrow function.
     loaded = (
         await session.execute(
-            select(Membership, Tenant, User)
+            select(Membership, Tenant)
             .join(Tenant, Tenant.id == Membership.tenant_id)
-            .join(User, User.id == Membership.user_id)
             .where(Membership.id == row.membership_id)
         )
     ).first()
@@ -445,14 +436,17 @@ async def resolve_session(
     if loaded is None:
         raise NotAuthenticated("Your session has ended. Sign in again.")
 
-    membership, tenant, user = loaded
+    membership, tenant = loaded
+    user = await credentials.find_by_id(session, membership.user_id)
+    if user is None:
+        raise NotAuthenticated("Your session has ended. Sign in again.")
 
     #  Re-checked on every request, not just at sign-in. Deactivating a person, removing them
     #  from an organisation or suspending a tenant has to take effect now — which is the reason
     #  sessions live in the database rather than in a self-contained token.
     if (
         membership.status != MembershipStatus.ACTIVE
-        or user.status != UserStatus.ACTIVE
+        or not user.is_active
         or not tenant.allows_sign_in
     ):
         raise NotAuthenticated("Your session has ended. Sign in again.")
@@ -528,10 +522,8 @@ async def prove_password_for_step_up(
     it before returning a refusal. A successful proof updates only the current session: another
     browser does not inherit it, and password proof never widens the caller's permissions.
     """
-    user = (
-        await session.execute(select(User).where(User.id == context.user_id))
-    ).scalar_one_or_none()
-    if user is None or not passwords.verify_password(user.password_hash, password):
+    account = await credentials.find_by_id(session, context.user_id)
+    if account is None or not passwords.verify_password(account.password_hash, password):
         await audit.record(
             session,
             tenant_id=context.tenant_id,
@@ -562,11 +554,9 @@ async def prove_password_for_step_up(
     if updated_session_id is None:
         raise NotAuthenticated("Your session has ended. Sign in again.")
 
-    if user.password_hash and passwords.needs_rehash(user.password_hash):
-        await session.execute(
-            update(User)
-            .where(User.id == user.id)
-            .values(password_hash=passwords.rehash(password))
+    if account.password_hash and passwords.needs_rehash(account.password_hash):
+        await credentials.record_verified(
+            session, account.id, new_hash=passwords.rehash(password)
         )
 
     expires_at = now + timedelta(minutes=settings.step_up_minutes)

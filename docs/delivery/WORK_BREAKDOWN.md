@@ -11,6 +11,8 @@ and "the page opens" are not evidence. A sub-step without a passing check is not
 
 **Status: 0 of 8 Gates passed. 0 of 28 steps complete. 9 in progress. 19 not started.**
 
+Within them: 1.1.1–1.1.3 and 1.2.1–1.2.5 are done and verified.
+
 Legend: ✅ done and verified · 🟡 partly done · ⬜ not started
 
 ---
@@ -42,10 +44,16 @@ Legend: ✅ done and verified · 🟡 partly done · ⬜ not started
 | 0.3 | Launch decisions — region, identity, integrations, privacy | 🟡 register open, nothing decided |
 | 0.4 | Clickable first-slice prototype | 🟡 acceptance contract written, no Figma |
 
-**One conflict to settle before Gate 1 finishes:** `0.2` names roles *Owner, Admin, Builder,
-Supervisor, Employee, Approver, Auditor, Guest*. The database constrains *viewer, contributor,
-builder, approver, manager, admin*. Two vocabularies. Today it is one migration; after Gate 3 it
-is every policy rewritten.
+**Role names are no longer blocked on this.** They used to be hard-coded in a Python dictionary
+and a CHECK constraint. Migration 0004 made roles a table (PLAN §17), so the eight names in `0.2`
+are seeded as data from `backend/seeds/access_model_draft.json`, every one marked
+`is_draft = true`. When the client approves the matrix it is a seed change — no migration, no
+code change, no redeploy.
+
+**Still open for `0.2`:** `ACCESS_MODEL.md` lists fifteen rows; PLAN §14 names thirteen actions.
+*Analyze with AI* and *Billing/plan management* have no action in the approved specification and
+are deliberately not seeded. Either PLAN §14 gains them, or the draft folds them into an existing
+action. A client decision, not one to invent a name for.
 
 **Gate 0 passes when** Product, Design and Engineering sign the same field, permission, lifecycle
 and first-slice contracts.
@@ -60,25 +68,21 @@ and first-slice contracts.
 |---|---|---|
 | 1.1.1 | Composite tenant foreign keys | ✅ |
 | 1.1.2 | Tenant RLS on every tenant-owned table | ✅ |
-| 1.1.3 | **Narrow the credentials table** | ⬜ ⟵ **next** |
-| 1.1.4 | Migration preflight, rollback and restore procedure | ⬜ |
+| 1.1.3 | **Narrow the credentials table** | ✅ |
+| 1.1.4 | Migration preflight, rollback and restore procedure | ⬜ ⟵ **next** |
 
-**1.1.3 — the problem, measured:**
+**1.1.3 — done.** Migration 0006 revoked every privilege on `users` from `uboss_app` and
+replaced them with five `SECURITY DEFINER` functions, one per operation authentication performs.
+`modules/identity/credentials.py` is the only caller. DECISIONS 23 records what this protects
+and what it does not.
+
+Checked:
 ```
-$ psql -U uboss_app -d uboss -c "SELECT count(*) FROM users;"
- 2
+uboss_app: SELECT password_hash FROM users  ->  ERROR: permission denied
+sign-in 200 - /me 200 - step-up wrong 401 / right 200 - stepped_up true
+ten failures -> account locks -> correct password refused 401 -> unlock works
+multi-workspace challenge -> select-workspace without a password -> 200
 ```
-The application role reads every email and every Argon2 hash, in every tenant. One injection or
-one leaked application password and the whole hash set is available for offline cracking, staff
-roster attached. `DECISIONS.md` #11 argued this table holds nothing worth stealing — that was
-wrong, and this supersedes it.
-
-Fix: remove the role's direct access; authentication reaches `users` only through narrow
-`SECURITY DEFINER` functions (`auth_find_by_email`, `auth_record_failure`, `auth_record_success`).
-An ADR settles this before code changes.
-
-**Done when** `SELECT password_hash FROM users` as `uboss_app` is refused, and sign-in, lockout,
-rehash-on-sign-in and step-up all still work.
 
 **1.1.4 done when** the procedure is in a runbook and one migration has been applied *and* rolled
 back against a copy of the database by following it exactly.
@@ -282,8 +286,7 @@ as a plan and behave as a guess.
 # Order
 
 ```
-NOW    1.1.3    narrow the credentials table
-       1.1.4    migration safety procedure
+NOW    1.1.4    migration safety procedure
 
 THEN   1.3.1 → 1.3.5    real permission ceiling
        1.4.1 → 1.4.3    idempotency and concurrency
