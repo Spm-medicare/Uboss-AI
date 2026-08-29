@@ -9,15 +9,17 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Annotated, cast
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from uboss.core import rate_limit
+from uboss.core import idempotency, rate_limit
 from uboss.core.dependencies import CurrentContext, RedisDep, SessionDep, SettingsDep
 from uboss.core.errors import NotAuthenticated, StepUpFailed, problem
+from uboss.core.idempotency import require_idempotency_key
 from uboss.core.logging import get_logger
 from uboss.core.settings import Settings
 from uboss.modules.audit import service as audit
@@ -409,33 +411,59 @@ async def list_sessions(
 
 @router.delete(
     "/sessions/{session_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
     summary="End another session",
+    responses={
+        409: {"description": "The same key was used for a different request, or one is running."},
+    },
 )
 async def revoke_session(
     session_id: uuid.UUID,
     context: CurrentContext,
     session: SessionDep,
-) -> None:
+    idempotency_key: Annotated[str, Depends(require_idempotency_key)],
+) -> dict[str, str]:
     """End one of this person's own sessions — the "sign out everywhere else" control.
 
     The update is filtered by `user_id` as well as tenant, so this cannot reach a colleague's
     session even with a valid id from the same workspace.
+
+    **Idempotent.** Revoking a session is naturally repeatable — the second revoke changes
+    nothing — but the *audit row* is not: without this, a retry after a dropped connection would
+    record the same revocation twice and an investigation would see two events where one
+    happened. The key is derived from the session being ended, so a retry reuses it and replays
+    the first answer.
+
+    Returns a small body rather than 204 so there is something to replay. A stored replay of "no
+    content" cannot be told apart from a request that never ran.
     """
-    await session.execute(
-        update(Session)
-        .where(
-            Session.id == session_id,
-            Session.tenant_id == context.tenant_id,
-            Session.user_id == context.user_id,
-        )
-        .values(revoked_at=datetime.now(UTC))
-    )
-    await audit.record(
+    payload = {"session_id": str(session_id)}
+    async with idempotency.execute(
         session,
         tenant_id=context.tenant_id,
-        action="identity.session.revoked",
-        resource_type="session",
-        resource_id=session_id,
-        actor=context,
-    )
+        key=idempotency_key,
+        operation="identity.session.revoke",
+        payload=payload,
+    ) as execution:
+        if execution.is_replay:
+            return cast(dict[str, str], execution.replay_body)
+
+        await session.execute(
+            update(Session)
+            .where(
+                Session.id == session_id,
+                Session.tenant_id == context.tenant_id,
+                Session.user_id == context.user_id,
+            )
+            .values(revoked_at=datetime.now(UTC))
+        )
+        await audit.record(
+            session,
+            tenant_id=context.tenant_id,
+            action="identity.session.revoked",
+            resource_type="session",
+            resource_id=session_id,
+            actor=context,
+        )
+        body = {"status": "revoked", "session_id": str(session_id)}
+        execution.complete_json(status_code=200, body=body)
+        return body

@@ -788,3 +788,79 @@ access.approve.denied      separation of duty: the author of a change cannot app
 
 No product route calls the guard yet — the routes that will are Gate 2 and later. That is stated
 rather than hidden: the mechanism is built and proven, and it is not yet load-bearing.
+
+---
+
+## 27. Idempotency is wired, on the one command that has it
+
+**`core/idempotency.py` had zero callers.** It was a well-built 10 KB module — advisory locks,
+canonical fingerprinting, a refusal to replay credential-shaped responses — that nothing used.
+Dead code rots into something nobody trusts, so it is either wired or deleted.
+
+**Wired, on `DELETE /auth/sessions/{id}`.** That is the only genuinely retryable business command
+Gate 1 has; the rest of the mutating routes are sign-in, workspace selection and step-up, all
+deliberately excluded because they carry credentials and have their own replay design.
+
+**Why an idempotent route for a naturally-repeatable action.** Revoking a session twice changes
+nothing — the second revoke is a no-op. The *audit row* is not repeatable: without this, a retry
+after a dropped connection records two revocations where one happened, and an investigation reads
+two events. The command is idempotent; the evidence would not have been.
+
+**The route now returns a body instead of 204.** A stored replay of "no content" cannot be told
+apart from a request that never ran, so there would be nothing to replay.
+
+**Measured:**
+
+```
+first call                     200 {"status":"revoked","session_id":"..."}
+same key, same request         200 identical body — replayed
+same key, different request    409 idempotency_key_reused
+no Idempotency-Key             422
+audit rows after the retry     1
+```
+
+**Cleanup is a cron script, and that is stated rather than assumed.**
+`scripts/cleanup_idempotency.py` runs per tenant inside the tenant boundary. Temporal takes it
+over in Gate 7 when there is a scheduler; until then it is cron, or a person. A table written to
+by every mutating command grows without bound if nobody says who prunes it.
+
+---
+
+## 28. Optimistic concurrency, and why the client may not retry it
+
+PLAN §28: "Optimistic concurrency prevents silent overwrite." PLAN §30: "A Draft is mutable with
+optimistic concurrency."
+
+The failure has no error message of its own, which is what makes it dangerous. Two people open
+the same draft, both save, and the second write lands on top. No exception, no warning, nothing
+in a log. The first person finds out days later, if at all.
+
+**Decided.** `core/concurrency.py`. The update carries the version the caller read:
+
+```sql
+UPDATE ... SET ... WHERE id = :id AND tenant_id = :tenant AND version = :expected
+```
+
+Zero rows changed means someone else got there first, and the caller gets a 409 telling them to
+re-read. The version is incremented by the helper, not by the caller — a caller that had to
+remember would eventually forget, and a row whose version stops moving is a row that has quietly
+stopped being protected.
+
+**The client must not retry a 409 automatically.** Re-sending a stale write with a fresh version
+is the silent overwrite, performed by hand. The frontend's TanStack Query configuration already
+refuses to retry a non-retryable `ApiError` (DECISIONS 7), and `Conflict` is not retryable.
+
+**Zero rows means two things and reports one.** The row moved on, or it never existed for this
+tenant. The caller is told the first, because distinguishing them would confirm that a record
+they cannot see exists.
+
+**Verified** against `memberships`, which carries the column. No product route edits a versioned
+draft yet; those arrive in Gate 3.
+
+```
+first save succeeds                     version 1 -> 2
+second save from the same stale read    409, refused
+the first edit survived                 version 2
+a re-read then succeeds                 version 3
+cross-tenant update refused             same 409, nothing about the row
+```

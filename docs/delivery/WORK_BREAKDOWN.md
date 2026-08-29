@@ -11,7 +11,7 @@ and "the page opens" are not evidence. A sub-step without a passing check is not
 
 **Status: 0 of 8 Gates passed. 0 of 28 steps complete. 9 in progress. 19 not started.**
 
-Within them: **1.1 and 1.3 are complete**, and 1.2.1–1.2.5 are done and verified.
+Within them: **1.1, 1.3 and 1.4 are complete**, and 1.2.1–1.2.5 are done and verified.
 
 Legend: ✅ done and verified · 🟡 partly done · ⬜ not started
 
@@ -150,23 +150,46 @@ the last 15 minutes is refused.
 **1.3.5 done when** the refusal is in `audit_events` with a reason, while the HTTP response still
 says only "You do not have permission to do this."
 
-## 1.4 — Server idempotency and optimistic concurrency  ⬜
+## 1.4 — Server idempotency and optimistic concurrency  ✅
 
-`core/idempotency.py` is 10 KB with **zero callers**. Dead code. Wire it or delete it.
+`core/idempotency.py` was 10 KB with zero callers. It is wired now.
 
 | | | |
 |---|---|---|
-| 1.4.1 | Apply idempotency to every mutating `/api/v1` route | ⬜ |
-| 1.4.2 | Expiry and cleanup | ⬜ |
-| 1.4.3 | Optimistic concurrency — `expected_version` on every draft write | ⬜ |
+| 1.4.1 | Apply idempotency to every mutating `/api/v1` route | ✅ |
+| 1.4.2 | Expiry and cleanup | ✅ |
+| 1.4.3 | Optimistic concurrency — `expected_version` on every draft write | ✅ |
 
 Sign-in is deliberately excluded: it uses rate limits and the challenge, and an email address
 must never become an idempotency key.
 
-**1.4.1 done when** the same POST sent twice creates one row and returns the same body twice; with
-a changed body it returns 409.
-**1.4.3 done when** two saves from two stale reads produce one success and one 409 — never two
-successes.
+**1.4.1 — done**, on `DELETE /auth/sessions/{id}`, the one genuinely retryable business command
+Gate 1 has. Revoking a session is naturally repeatable; the *audit row* is not, so without this a
+retry after a dropped connection would record two revocations where one happened.
+
+```
+first call                     200 {"status":"revoked","session_id":"0a8aac13-..."}
+same key, same request         200 identical body — replayed
+same key, different request    409 idempotency_key_reused
+no Idempotency-Key             422
+audit rows after the retry     1
+```
+
+**1.4.2 — done.** `scripts/cleanup_idempotency.py`, per tenant, inside the tenant boundary. Run
+hourly by cron; Temporal takes it over in Gate 7, when there is a scheduler.
+
+**1.4.3 — done.** `core/concurrency.py` — the update carries `WHERE version = :expected` and
+raises 409 when it matches nothing. Verified against `memberships`; no product route edits a
+versioned draft yet, those arrive in Gate 3.
+
+```
+two people open the same record, both see version 1
+first save succeeds                     version 1 -> 2
+second save from the same stale read    409, refused
+the first edit survived                 version 2, first person's text
+a re-read then succeeds                 version 3
+cross-tenant update refused             same 409, nothing about the row
+```
 
 ## 1.5 — Audit and minimum outbox  🟡
 
@@ -306,9 +329,7 @@ as a plan and behave as a guess.
 # Order
 
 ```
-NOW    1.4.1 → 1.4.3    idempotency and concurrency
-
-THEN   1.6.3            first automated test suite
+NOW    1.6.3            first automated test suite
 
 THEN   1.5.2, 1.5.3     outbox relay
        1.2.6            invite and reset  (needs the relay)
