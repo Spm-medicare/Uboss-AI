@@ -1,4 +1,8 @@
+import createNextIntlPlugin from "next-intl/plugin";
 import type { NextConfig } from "next";
+
+//  Points next-intl at src/i18n/request.ts, which resolves the locale and loads its messages.
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const config: NextConfig = {
   //  Fail the build on a type error. Shipping a known-broken build because a flag suppressed
@@ -36,4 +40,4 @@ const config: NextConfig = {
   },
 };
 
-export default config;
+export default withNextIntl(config);

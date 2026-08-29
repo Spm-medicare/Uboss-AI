@@ -1,0 +1,118 @@
+{
+  "_": {
+    "note": "Every user-visible string in the product. A literal in a component is a string that cannot be translated, and one nobody notices is untranslatable until a second language exists.",
+    "keys": "Named by where they are used and what they say, not by their English text: renaming the copy must not mean renaming the key.",
+    "review": "This file is what a translator receives. Anything unclear out of context is unclear to them too."
+  },
+  "product": {
+    "name": "UBOSS",
+    "tagline": "Governed human and AI work"
+  },
+  "common": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "signingIn": "Signing in",
+    "signingOut": "Signing out",
+    "cancel": "Cancel",
+    "save": "Save",
+    "retry": "Try again",
+    "checking": "Checking",
+    "loading": "Loading…",
+    "none": "None"
+  },
+  "signIn": {
+    "title": "Sign in",
+    "subtitle": "Use the address your organisation set you up with.",
+    "email": "Email",
+    "password": "Password",
+    "emailRequired": "Enter your email address.",
+    "passwordRequired": "Enter your password.",
+    "unreachableTitle": "UBOSS could not be reached",
+    "failedTitle": "That did not work",
+    "unexpected": "Something went wrong. Nothing was changed."
+  },
+  "workspaceChooser": {
+    "title": "Choose a workspace",
+    "subtitle": "Your account belongs to more than one organisation.",
+    "signingInAs": "Signing in as {name}",
+    "useAnotherAccount": "Use a different account"
+  },
+  "dashboard": {
+    "welcome": "Welcome, {name}",
+    "nothingYet": "Your objectives, jobs and approvals will appear here. Nothing is shown yet because nothing has been built yet — this screen will fill in as each part lands, and it will only ever show what the workspace actually contains.",
+    "accessHeading": "Your access in this workspace",
+    "accessSubtitle": "Resolved by the server from the roles this organisation gave you.",
+    "roles": "Roles",
+    "youCan": "You can",
+    "nothingYouCan": "Nothing yet",
+    "timeZone": "Time zone",
+    "hierarchyPosition": "Position in the hierarchy",
+    "placed": "Placed",
+    "notPlaced": "Not placed yet — reporting scope is limited to your own work"
+  },
+  "root": {
+    "takingYouToSignIn": "Taking you to sign in…",
+    "loadingWorkspace": "Loading your workspace…",
+    "notRespondingTitle": "UBOSS is not responding"
+  },
+  "environment": {
+    "title": "Development environment",
+    "eyebrow": "Environment",
+    "intro": "The product is being built in the order set out in the plan. This page reports what is running right now; it does not report anything that has not been measured.",
+    "apiHeading": "API connection",
+    "checkAgain": "Check again",
+    "asking": "Asking the API whether it can serve traffic…",
+    "unreachableTitle": "The API could not be reached",
+    "erroredTitle": "The API answered with an error",
+    "startItWith": "Start it with",
+    "orBringUpStack": "from the backend folder, or bring up the whole stack with",
+    "ready": "Ready to serve traffic",
+    "degraded": "Running, but not ready",
+    "answering": "Answering",
+    "notAnswering": "Not answering",
+    "builtHeading": "What is wired up",
+    "builtSubtitle": "A row appears here only once the thing behind it works end to end.",
+    "built": {
+      "apiSkeleton": {
+        "name": "API skeleton",
+        "detail": "FastAPI with the shared error envelope, correlation ids, security headers and a readiness probe that runs a real query."
+      },
+      "tenantBoundary": {
+        "name": "Tenant boundary",
+        "detail": "Sessions bind the caller's tenant to the transaction, so row-level security is in force for every statement. The credentials table is reachable only through five narrow functions."
+      },
+      "permissionCeiling": {
+        "name": "Permission ceiling",
+        "detail": "Company → department → resource → action, resolved by intersection so a lower scope can never widen a higher one. Refusals are audited with the layer that caused them."
+      },
+      "designTokens": {
+        "name": "Design tokens",
+        "detail": "Semantic colour, spacing, radius and motion tokens in light and dark, with an explicit choice overriding the operating system."
+      },
+      "files": {
+        "name": "Files",
+        "detail": "S3-compatible storage with tenant-prefixed keys, a hash of what was actually written, and no download until a file has been scanned clean."
+      },
+      "outboxRelay": {
+        "name": "Outbox relay",
+        "detail": "Events are written with the change that caused them and delivered at least once, with a lease, backoff and a dead-letter view. No publisher is registered yet, so nothing is delivered — and that is said rather than hidden."
+      },
+      "tests": {
+        "name": "Automated tests",
+        "detail": "Cross-tenant isolation, sessions, the permission ceiling, idempotency, the relay and the migrations — run against a database built from the migrations themselves."
+      }
+    }
+  },
+  "a11y": {
+    "skipToContent": "Skip to main content",
+    "toLight": "Switch to the light theme",
+    "toDark": "Switch to the dark theme",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "errors": {
+    "network": "Could not reach UBOSS. Check your connection and try again.",
+    "unexpectedResponse": "The server returned something we could not read. Nothing was changed.",
+    "sessionEnded": "Your session has ended. Sign in again."
+  }
+}

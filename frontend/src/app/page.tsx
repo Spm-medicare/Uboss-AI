@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -14,6 +15,7 @@ import { useSession } from "@/lib/auth/use-session";
  * out of a valid session or showing an empty workspace to someone who is not in one.
  */
 export default function RootPage() {
+  const t = useTranslations("root");
   const router = useRouter();
   const { user, isLoading, isSignedOut, error } = useSession();
 
@@ -28,7 +30,7 @@ export default function RootPage() {
     return (
       <main id="main" className="grid min-h-dvh place-items-center px-6">
         <div className="max-w-sm text-center">
-          <h1 className="text-lg font-semibold">UBOSS is not responding</h1>
+          <h1 className="text-lg font-semibold">{t("notRespondingTitle")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
         </div>
       </main>
@@ -43,7 +45,7 @@ export default function RootPage() {
     >
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 aria-hidden className="size-4 animate-spin" />
-        {isSignedOut ? "Taking you to sign in…" : "Loading your workspace…"}
+        {isSignedOut ? t("takingYouToSignIn") : t("loadingWorkspace")}
       </p>
     </main>
   );

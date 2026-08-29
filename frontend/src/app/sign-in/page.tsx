@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle, ArrowRight, Loader2, WifiOff } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -20,14 +21,19 @@ import { cn } from "@/lib/cn";
  * account — and because a "that is not a valid address" message tells an attacker which
  * addresses are worth trying, which is the one thing this screen must never do.
  */
+//  The message keys, not the messages. `zodResolver` resolves them against the catalogue at
+//  render time, so a validation message is translated like every other string.
 const schema = z.object({
-  email: z.string().trim().min(1, "Enter your email address."),
-  password: z.string().min(1, "Enter your password."),
+  email: z.string().trim().min(1, "signIn.emailRequired"),
+  password: z.string().min(1, "signIn.passwordRequired"),
 });
 
 type FormValues = z.infer<typeof schema>;
 
 export default function SignInPage() {
+  const t = useTranslations("signIn");
+  const tCommon = useTranslations("common");
+  const tProduct = useTranslations("product");
   const router = useRouter();
   const signIn = useSignIn();
   const selectWorkspace = useSelectWorkspace();
@@ -77,10 +83,8 @@ export default function SignInPage() {
             U
           </span>
           <div className="leading-tight">
-            <p className="text-base font-semibold tracking-tight">UBOSS</p>
-            <p className="text-xs text-muted-foreground">
-              Governed human and AI work
-            </p>
+            <p className="text-base font-semibold tracking-tight">{tProduct("name")}</p>
+            <p className="text-xs text-muted-foreground">{tProduct("tagline")}</p>
           </div>
         </div>
 
@@ -98,10 +102,8 @@ export default function SignInPage() {
           />
         ) : (
           <>
-            <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Use the address your organisation set you up with.
-            </p>
+            <h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
 
             <SignInError error={signIn.error} />
 
@@ -111,7 +113,7 @@ export default function SignInPage() {
               noValidate
             >
               <Field
-                label="Email"
+                label={t("email")}
                 error={form.formState.errors.email?.message}
                 htmlFor="email"
               >
@@ -126,7 +128,7 @@ export default function SignInPage() {
               </Field>
 
               <Field
-                label="Password"
+                label={t("password")}
                 error={form.formState.errors.password?.message}
                 htmlFor="password"
               >
@@ -152,10 +154,10 @@ export default function SignInPage() {
                 {signIn.isPending ? (
                   <>
                     <Loader2 aria-hidden className="size-4 animate-spin" />
-                    Signing in
+                    {tCommon("signingIn")}
                   </>
                 ) : (
-                  "Sign in"
+                  tCommon("signIn")
                 )}
               </button>
             </form>
@@ -179,12 +181,12 @@ function WorkspaceChooser({
   onPick: (slug: string) => void;
   onBack: () => void;
 }) {
+  const t = useTranslations("workspaceChooser");
+
   return (
     <>
-      <h1 className="text-xl font-semibold tracking-tight">Choose a workspace</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Your account belongs to more than one organisation.
-      </p>
+      <h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
 
       <SignInError error={error} />
 
@@ -204,7 +206,7 @@ function WorkspaceChooser({
               <span>
                 <span className="block text-sm font-medium">{workspace.name}</span>
                 <span className="block text-xs text-muted-foreground">
-                  Signing in as {workspace.display_name}
+                  {t("signingInAs", { name: workspace.display_name })}
                 </span>
               </span>
               <ArrowRight aria-hidden className="size-4 text-muted-foreground" />
@@ -218,7 +220,7 @@ function WorkspaceChooser({
         onClick={onBack}
         className="mt-6 text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
       >
-        Use a different account
+        {t("useAnotherAccount")}
       </button>
     </>
   );
@@ -232,13 +234,15 @@ function WorkspaceChooser({
  * say, on purpose.
  */
 function SignInError({ error }: { error: Error | null }) {
+  const t = useTranslations("signIn");
+
   if (!error) return null;
 
   const unreachable = error instanceof NetworkError;
   const message =
     error instanceof ApiError || unreachable
       ? error.message
-      : "Something went wrong. Nothing was changed.";
+      : t("unexpected");
 
   return (
     <div
@@ -255,6 +259,12 @@ function SignInError({ error }: { error: Error | null }) {
   );
 }
 
+/**
+ * A labelled input and, when there is one, the message that belongs to it.
+ *
+ * `error` is a *key*, not a sentence — the schema names the message and this resolves it, so a
+ * validation string is translated like every other string in the product.
+ */
 function Field({
   label,
   error,
@@ -269,6 +279,9 @@ function Field({
   htmlFor: string;
   children: React.ReactNode;
 }) {
+  //  Rooted at the catalogue, because the key the schema produced is fully qualified.
+  const tRoot = useTranslations();
+
   return (
     <div>
       <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium">
@@ -277,7 +290,7 @@ function Field({
       {children}
       {error ? (
         <p className="mt-1.5 text-sm text-danger" role="alert">
-          {error}
+          {tRoot(error)}
         </p>
       ) : null}
     </div>

@@ -11,6 +11,8 @@ import {
   WifiOff,
 } from "lucide-react";
 
+import { useTranslations } from "next-intl";
+
 import { fetchReadiness } from "@/lib/api/health";
 import { NetworkError } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
@@ -24,6 +26,9 @@ import { applyThemeChoice, useTheme } from "@/lib/theme";
  * now or labelled as not yet built. Nothing is invented.
  */
 export default function EnvironmentPage() {
+  const t = useTranslations("environment");
+  const tProduct = useTranslations("product");
+  const tCommon = useTranslations("common");
   const readiness = useQuery({
     queryKey: ["readiness"],
     queryFn: ({ signal }) => fetchReadiness(signal),
@@ -40,8 +45,8 @@ export default function EnvironmentPage() {
               U
             </span>
             <div className="leading-tight">
-              <p className="text-sm font-semibold">UBOSS</p>
-              <p className="text-xs text-muted-foreground">Environment</p>
+              <p className="text-sm font-semibold">{tProduct("name")}</p>
+              <p className="text-xs text-muted-foreground">{t("eyebrow")}</p>
             </div>
           </div>
           <ThemeToggle />
@@ -50,17 +55,16 @@ export default function EnvironmentPage() {
 
       <main id="main" className="mx-auto max-w-4xl px-6 py-10">
         <h1 className="text-2xl font-semibold tracking-tight">
-          Development environment
+          {t("title")}
         </h1>
         <p className="mt-2 max-w-prose text-sm text-muted-foreground">
-          The product is being built in the order set out in the plan. This page reports what is
-          running right now; it does not report anything that has not been measured.
+          {t("intro")}
         </p>
 
         <section className="mt-8" aria-labelledby="api-heading">
           <div className="flex items-center justify-between">
             <h2 id="api-heading" className="text-sm font-semibold">
-              API connection
+              {t("apiHeading")}
             </h2>
             <button
               type="button"
@@ -76,7 +80,7 @@ export default function EnvironmentPage() {
                 aria-hidden
                 className={cn("size-3.5", readiness.isFetching && "animate-spin")}
               />
-              {readiness.isFetching ? "Checking" : "Check again"}
+              {readiness.isFetching ? tCommon("checking") : t("checkAgain")}
             </button>
           </div>
 
@@ -91,18 +95,18 @@ export default function EnvironmentPage() {
 
         <section className="mt-10" aria-labelledby="built-heading">
           <h2 id="built-heading" className="text-sm font-semibold">
-            What is wired up
+            {t("builtHeading")}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            A row appears here only once the thing behind it works end to end.
+            {t("builtSubtitle")}
           </p>
           <ul className="mt-3 divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-            {FOUNDATIONS.map((item) => (
-              <li key={item.name} className="flex items-start gap-3 px-5 py-3.5">
+            {FOUNDATION_KEYS.map((key) => (
+              <li key={key} className="flex items-start gap-3 px-5 py-3.5">
                 <CheckCircle2 aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />
                 <div>
-                  <p className="text-sm font-medium">{item.name}</p>
-                  <p className="text-sm text-muted-foreground">{item.detail}</p>
+                  <p className="text-sm font-medium">{t(`built.${key}.name`)}</p>
+                  <p className="text-sm text-muted-foreground">{t(`built.${key}.detail`)}</p>
                 </div>
               </li>
             ))}
@@ -122,11 +126,13 @@ function ReadinessBody({
   error: Error | null;
   data: Awaited<ReturnType<typeof fetchReadiness>> | undefined;
 }) {
+  const t = useTranslations("environment");
+
   if (isPending) {
     return (
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 aria-hidden className="size-4 animate-spin" />
-        Asking the API whether it can serve traffic…
+        {t("asking")}
       </p>
     );
   }
@@ -145,17 +151,16 @@ function ReadinessBody({
         )}
         <div>
           <p className="text-sm font-medium text-danger">
-            {unreachable ? "The API could not be reached" : "The API answered with an error"}
+            {unreachable ? t("unreachableTitle") : t("erroredTitle")}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">{error.message}</p>
           {unreachable ? (
             <p className="mt-2 text-sm text-muted-foreground">
-              Start it with{" "}
+              {t("startItWith")}{" "}
               <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
                 uvicorn uboss.main:app --reload
               </code>{" "}
-              from the <span className="font-medium">backend</span> folder, or bring up the whole
-              stack with{" "}
+              {t("orBringUpStack")}{" "}
               <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
                 docker compose -f infra/compose.yaml up
               </code>
@@ -181,7 +186,7 @@ function ReadinessBody({
         )}
         {/* Icon and words together, never colour alone — PLAN section 29. */}
         <p className="text-sm font-medium">
-          {ready ? "Ready to serve traffic" : "Running, but not ready"}
+          {ready ? t("ready") : t("degraded")}
         </p>
       </div>
 
@@ -198,7 +203,7 @@ function ReadinessBody({
                 dependency.ok ? "text-success" : "text-danger",
               )}
             >
-              {dependency.ok ? "Answering" : dependency.detail || "Not answering"}
+              {dependency.ok ? t("answering") : dependency.detail || t("notAnswering")}
             </dd>
           </div>
         ))}
@@ -208,6 +213,7 @@ function ReadinessBody({
 }
 
 function ThemeToggle() {
+  const t = useTranslations("a11y");
   // Read from the document rather than from component state: the bootstrap script set the theme
   // before React existed, and another tab or the operating system can change it later.
   const { resolved } = useTheme();
@@ -217,6 +223,7 @@ function ThemeToggle() {
     <button
       type="button"
       onClick={() => applyThemeChoice(isDark ? "light" : "dark")}
+      aria-label={isDark ? t("toLight") : t("toDark")}
       className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 hover:bg-accent"
     >
       {isDark ? (
@@ -224,31 +231,23 @@ function ThemeToggle() {
       ) : (
         <Moon aria-hidden className="size-3.5" />
       )}
-      {isDark ? "Light" : "Dark"}
+      {isDark ? t("light") : t("dark")}
     </button>
   );
 }
 
-/** Only things that are actually finished appear here. */
-const FOUNDATIONS: { name: string; detail: string }[] = [
-  {
-    name: "API skeleton",
-    detail:
-      "FastAPI with the shared error envelope, correlation ids, security headers and a real readiness probe.",
-  },
-  {
-    name: "Tenant boundary",
-    detail:
-      "Sessions bind the caller's tenant to the transaction, so row-level security is in force for every statement.",
-  },
-  {
-    name: "Permission ceiling",
-    detail:
-      "Company → department → resource → action, resolved by intersection so a lower scope can never widen a higher one.",
-  },
-  {
-    name: "Design tokens",
-    detail:
-      "Semantic colour, spacing, radius and motion tokens in light and dark, with an explicit choice overriding the operating system.",
-  },
-];
+/**
+ * The keys of the things that are actually finished. The text is in the catalogue.
+ *
+ * A key is added here only once the thing behind it works end to end — a row on this page is a
+ * claim, and this page exists to be believable.
+ */
+const FOUNDATION_KEYS = [
+  "apiSkeleton",
+  "tenantBoundary",
+  "permissionCeiling",
+  "designTokens",
+  "files",
+  "outboxRelay",
+  "tests",
+] as const;

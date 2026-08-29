@@ -1,7 +1,11 @@
 import type { Metadata, Viewport } from "next";
 
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
+
 import { Providers } from "./providers";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme-script";
+import { SkipLink } from "@/ui/skip-link";
 
 import "./globals.css";
 
@@ -22,11 +26,16 @@ export const viewport: Viewport = {
   // document, which is what the browser actually uses to paint form controls and scrollbars.
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  //  Resolved on the server and handed to the client provider, so a component reads its strings
+  //  without every page fetching a catalogue.
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         {/*
           Runs during parsing, before the first paint, so a person who chose dark never sees a
@@ -38,10 +47,12 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <a className="ub-skip-link" href="#main">
-          Skip to main content
-        </a>
-        <Providers>{children}</Providers>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          {/*  Inside the provider: it reads its label from the catalogue like everything else,
+              and a component above the provider has no messages to read. */}
+          <SkipLink />
+          <Providers>{children}</Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

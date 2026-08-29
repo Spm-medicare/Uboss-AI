@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOut } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -15,6 +16,9 @@ import { cn } from "@/lib/cn";
  * signed-in session and nothing on it is invented.
  */
 export default function DashboardPage() {
+  const t = useTranslations("dashboard");
+  const tCommon = useTranslations("common");
+  const tRoot = useTranslations("root");
   const router = useRouter();
   const { user, isLoading, isSignedOut, error } = useSession();
   const signOut = useSignOut();
@@ -27,7 +31,7 @@ export default function DashboardPage() {
     return (
       <main id="main" className="grid min-h-dvh place-items-center px-6">
         <div className="max-w-sm text-center">
-          <h1 className="text-lg font-semibold">UBOSS is not responding</h1>
+          <h1 className="text-lg font-semibold">{tRoot("notRespondingTitle")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
         </div>
       </main>
@@ -37,7 +41,7 @@ export default function DashboardPage() {
   if (isLoading || !user) {
     return (
       <main id="main" className="grid min-h-dvh place-items-center px-6" aria-busy>
-        <p className="text-sm text-muted-foreground">Loading your workspace…</p>
+        <p className="text-sm text-muted-foreground">{tRoot("loadingWorkspace")}</p>
       </main>
     );
   }
@@ -67,43 +71,37 @@ export default function DashboardPage() {
             )}
           >
             <LogOut aria-hidden className="size-3.5" />
-            {signOut.isPending ? "Signing out" : "Sign out"}
+            {signOut.isPending ? tCommon("signingOut") : tCommon("signOut")}
           </button>
         </div>
       </header>
 
       <main id="main" className="mx-auto max-w-4xl px-6 py-10">
         <h1 className="text-2xl font-semibold tracking-tight">
-          Welcome, {user.display_name.split(" ")[0]}
+          {t("welcome", { name: user.display_name.split(" ")[0] ?? user.display_name })}
         </h1>
         <p className="mt-2 max-w-prose text-sm text-muted-foreground">
-          Your objectives, jobs and approvals will appear here. Nothing is shown yet because
-          nothing has been built yet — this screen will fill in as each part lands, and it will
-          only ever show what the workspace actually contains.
+          {t("nothingYet")}
         </p>
 
         <section className="mt-8" aria-labelledby="access-heading">
           <h2 id="access-heading" className="text-sm font-semibold">
-            Your access in this workspace
+            {t("accessHeading")}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Resolved by the server from the roles this organisation gave you.
+            {t("accessSubtitle")}
           </p>
 
           <dl className="mt-3 divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-            <Row label="Roles" value={user.roles.join(", ") || "None"} />
+            <Row label={t("roles")} value={user.roles.join(", ") || tCommon("none")} />
             <Row
-              label="You can"
-              value={user.actions.map(readable).join(" · ") || "Nothing yet"}
+              label={t("youCan")}
+              value={user.actions.map(readable).join(" · ") || t("nothingYouCan")}
             />
-            <Row label="Time zone" value={user.timezone} />
+            <Row label={t("timeZone")} value={user.timezone} />
             <Row
-              label="Position in the hierarchy"
-              value={
-                user.org_node_id
-                  ? "Placed"
-                  : "Not placed yet — reporting scope is limited to your own work"
-              }
+              label={t("hierarchyPosition")}
+              value={user.org_node_id ? t("placed") : t("notPlaced")}
             />
           </dl>
         </section>
