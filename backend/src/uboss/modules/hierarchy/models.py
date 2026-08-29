@@ -30,6 +30,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    FetchedValue,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
@@ -234,7 +235,7 @@ class ReportingEdge(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion
     )
 
 
-class OrgRevision(Base, PrimaryKey, TenantOwned, Timestamps):
+class OrgRevision(Base, PrimaryKey, TenantOwned):
     """One recorded change to the tree — PLAN §5's "Revision history, undo/redo".
 
     Every mutation writes one, in the same transaction as the change itself, holding both the
@@ -246,9 +247,20 @@ class OrgRevision(Base, PrimaryKey, TenantOwned, Timestamps):
 
     __tablename__ = "org_revisions"
 
-    #: Per tenant, gapless, assigned by the database. Gaps would be indistinguishable from
-    #: deletions, which is the one thing this table exists to make impossible.
-    revision_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    #: No `updated_at`. The row is append-only — the trigger refuses UPDATE outright — so a
+    #: column recording when it last changed would be a column that can only ever be wrong.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    #: Per tenant, gapless, assigned by a BEFORE INSERT trigger. Gaps would be indistinguishable
+    #: from deletions, which is the one thing this table exists to make impossible.
+    #:
+    #: `FetchedValue` tells SQLAlchemy the database produces this, so the number is read back
+    #: after the insert rather than left as the `None` that was sent.
+    revision_no: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=FetchedValue()
+    )
 
     #: What changed: `unit.created`, `position.moved`, `assignment.ended`, and so on.
     change_type: Mapped[str] = mapped_column(String(60), nullable=False)
