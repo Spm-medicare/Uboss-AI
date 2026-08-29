@@ -152,57 +152,54 @@ def decide(action: Action, grants: list[Grant]) -> Decision:
 
 
 # --------------------------------------------------------------------------------------------
-# The built-in role matrix.
+# Roles are data, not code.
 #
-# These are the defaults a tenant starts with. A tenant may narrow them; nothing may widen a role
-# beyond what company policy allows, because `effective()` intersects rather than unions.
-# --------------------------------------------------------------------------------------------
-
-VIEWER: frozenset[Action] = frozenset({Action.VIEW})
-
-CONTRIBUTOR: frozenset[Action] = VIEWER | {Action.COMMENT, Action.RUN}
-
-BUILDER: frozenset[Action] = CONTRIBUTOR | {
-    Action.EDIT_DRAFT,
-    Action.ASSIGN,
-    Action.SCHEDULE,
-    Action.EXPORT,
-}
-#  A Builder designs but does not release. Publishing is a separate verb held by an approver, so
-#  that no single person can both write a version and put it into operation.
-
-APPROVER: frozenset[Action] = CONTRIBUTOR | {Action.APPROVE, Action.PUBLISH}
-
-MANAGER: frozenset[Action] = BUILDER | APPROVER | {Action.MANAGE_ACCESS}
-
-ADMIN: frozenset[Action] = MANAGER | {
-    Action.ADMINISTER,
-    Action.INTEGRATE,
-    Action.AUDIT,
-}
-
-ROLE_MATRIX: dict[str, frozenset[Action]] = {
-    "viewer": VIEWER,
-    "contributor": CONTRIBUTOR,
-    "builder": BUILDER,
-    "approver": APPROVER,
-    "manager": MANAGER,
-    "admin": ADMIN,
-}
+# PLAN §17 lists the Identity domain as "tenants, users, memberships, teams, **roles**,
+# **permissions**, resource grants, sessions, guests and service accounts". Roles are a table.
+#
+# An earlier version of this file held a `ROLE_MATRIX` dictionary naming six roles — viewer,
+# contributor, builder, approver, manager, admin — that appear nowhere in PLAN. They were invented
+# while implementing, and a role name invented in code becomes a role name in a CHECK constraint,
+# then in an API response, then in a screen, and by then changing it is a migration nobody wants
+# to run.
+#
+# The approved matrix is PLAN §25 first implementation deliverable #2 and does not exist yet.
+# When it is approved it is seeded as rows, which is a data change. Nothing below needs editing.
+#
+# The thirteen actions above stay in code, because unlike the role names they *are* in the
+# approved specification (PLAN §14). An action the code does not know is a permission bug; a role
+# the code does not know is simply a tenant's own configuration.
 
 
-def actions_for_roles(role_names: list[str]) -> frozenset[Action]:
-    """Union across the roles one person holds — a person may hold several.
+def actions_from_rows(rows: list[tuple[str, bool]]) -> frozenset[Action]:
+    """Resolve one person's permitted actions from their role rows.
 
-    Union is correct here and intersection is correct in `effective()`, and the difference
-    matters: holding both `builder` and `approver` should give you both sets, while the company
-    → department → resource chain must only ever narrow. An unknown role name contributes
-    nothing rather than everything.
+    `rows` is `(action, is_conditional)` for every permission on every role the person holds,
+    read from `role_permissions`.
+
+    Union across the rows, because one person may hold several roles and holding both a builder
+    role and an approver role should give both sets. Union here and intersection in
+    `effective()` are deliberately different operations: a person's own roles add up, while the
+    company → department → resource chain may only narrow.
+
+    A **conditional** permission is skipped. `ACCESS_MODEL.md` marks these `C`: allowed only
+    with an explicit resource or scope grant, which the resource layer supplies through
+    `decide()`. Treating one as an unconditional grant here would hand out tenant-wide access
+    that the matrix says is scope-limited — the escalation the ceiling exists to prevent.
+
+    An action name the enum does not recognise is ignored rather than guessed at. The database
+    constrains the column to the thirteen, so this only fires if the two ever disagree, and
+    ignoring is the fail-closed answer.
     """
-    result: frozenset[Action] = frozenset()
-    for name in role_names:
-        result |= ROLE_MATRIX.get(name, frozenset())
-    return result
+    permitted: set[Action] = set()
+    for action_name, is_conditional in rows:
+        if is_conditional:
+            continue
+        try:
+            permitted.add(Action(action_name))
+        except ValueError:
+            continue
+    return frozenset(permitted)
 
 
 @dataclass(frozen=True, slots=True)

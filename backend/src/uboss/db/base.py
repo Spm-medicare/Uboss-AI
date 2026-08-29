@@ -13,6 +13,7 @@ request picked the connection up next from the pool.
 """
 
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 from uuid import UUID
 
@@ -109,6 +110,35 @@ async def bind_verified_user(session: AsyncSession, user_id: UUID) -> None:
         text("SELECT set_config('app.user_id', :user_id, true)"),
         {"user_id": str(user_id)},
     )
+
+
+@asynccontextmanager
+async def tenant_scope(
+    session: AsyncSession, tenant_id: UUID
+) -> AsyncIterator[None]:
+    """Bind a tenant, do some work, and make sure it is actually written under that tenant.
+
+    Use this for **any** loop that writes rows for more than one tenant in one transaction.
+
+    The bug it prevents has now appeared twice, and it is invisible at the call site.
+    `session.add()` only stages a row; the INSERT happens at the next flush, under whichever
+    tenant is bound *then*. Staging rows for tenant A, moving on to tenant B, and letting both
+    insert at commit means A's rows are written while B is bound — and row-level security
+    correctly refuses them. The failure surfaces on an unrelated row, in an unrelated tenant,
+    with a message about a policy violation that looks like a permissions bug.
+
+    Flushing on the way out, while the tenant is still bound, is the whole fix:
+
+        for tenant_id in tenants:
+            async with tenant_scope(session, tenant_id):
+                session.add(SomeRow(tenant_id=tenant_id, ...))
+
+    This is for operator scripts and the few genuinely cross-tenant paths. An ordinary request
+    binds one tenant for its whole transaction and never needs it.
+    """
+    await bind_tenant(session, tenant_id)
+    yield
+    await session.flush()
 
 
 async def session_scope(

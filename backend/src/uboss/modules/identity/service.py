@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from uboss.core.context import SecurityContext
 from uboss.core.errors import NotAuthenticated
+from uboss.core.permissions import Action, actions_from_rows
 from uboss.core.settings import Settings
 from uboss.db.base import bind_session_lookup, bind_tenant, bind_verified_user
 from uboss.modules.audit import service as audit
@@ -32,6 +33,8 @@ from uboss.modules.identity.models import (
     Membership,
     MembershipRole,
     MembershipStatus,
+    Role,
+    RolePermission,
     Session,
     User,
     UserStatus,
@@ -247,13 +250,7 @@ async def start_session(
     #  committed — the caller commits, and the audit row goes with it.
     await session.flush()
 
-    roles = (
-        await session.execute(
-            select(MembershipRole.role).where(
-                MembershipRole.membership_id == membership.id
-            )
-        )
-    ).scalars().all()
+    roles, granted = await access_for(session, membership.id)
 
     context = SecurityContext(
         tenant_id=tenant.id,
@@ -262,7 +259,8 @@ async def start_session(
         session_id=row.id,
         email=user.email,
         display_name=membership.display_name,
-        roles=tuple(sorted(roles)),
+        roles=roles,
+        granted_actions=granted,
         org_node_id=membership.org_node_id,
         step_up_at=row.step_up_at,
         step_up_expires_at=(
@@ -362,6 +360,38 @@ async def record_authenticated_sign_in_denial(
         await session.flush()
 
 
+async def access_for(
+    session: AsyncSession, membership_id: uuid.UUID
+) -> tuple[tuple[str, ...], frozenset[Action]]:
+    """The role keys a membership holds, and what those roles actually permit.
+
+    One query joining `membership_roles` → `roles` → `role_permissions`, because roles are a
+    table (PLAN §17) and their permissions are rows, not a dictionary in code.
+
+    A role with no permission rows contributes nothing. That is the correct answer while the
+    Gate 0 §0.2 matrix is unapproved: a carried-over role grants nothing, visibly, instead of
+    falling back to a set somebody invented.
+
+    An outer join, so a role with no permissions still appears in the names — a person's roles
+    should be shown even when they currently grant nothing.
+    """
+    rows = (
+        await session.execute(
+            select(Role.key, RolePermission.action, RolePermission.is_conditional)
+            .select_from(MembershipRole)
+            .join(Role, Role.id == MembershipRole.role_id)
+            .outerjoin(RolePermission, RolePermission.role_id == Role.id)
+            .where(MembershipRole.membership_id == membership_id)
+        )
+    ).all()
+
+    keys = {key for key, _action, _conditional in rows}
+    permissions = [
+        (action, conditional) for _key, action, conditional in rows if action is not None
+    ]
+    return tuple(sorted(keys)), actions_from_rows(permissions)
+
+
 # ---------------------------------------------------------------------------------------------
 # Staying signed in
 # ---------------------------------------------------------------------------------------------
@@ -457,13 +487,7 @@ async def resolve_session(
             locked.token_rotated_at = now
             row = locked
 
-    roles = (
-        await session.execute(
-            select(MembershipRole.role).where(
-                MembershipRole.membership_id == membership.id
-            )
-        )
-    ).scalars().all()
+    roles, granted = await access_for(session, membership.id)
 
     if row.last_seen_at < now - LAST_SEEN_THROTTLE:
         await session.execute(
@@ -477,7 +501,8 @@ async def resolve_session(
         session_id=row.id,
         email=user.email,
         display_name=membership.display_name,
-        roles=tuple(sorted(roles)),
+        roles=roles,
+        granted_actions=granted,
         org_node_id=membership.org_node_id,
         step_up_at=row.step_up_at,
         step_up_expires_at=(

@@ -473,3 +473,92 @@ corrupt or wrong-purpose action token is rejected and cannot be replayed.
 `backend/src/uboss/modules/identity/api.py`,
 `backend/src/uboss/modules/identity/service.py`,
 `backend/src/uboss/core/dependencies.py`.
+
+---
+
+## 19. Roles are rows, not code — and the six names in the code were invented
+
+**Superseded:** the role handling described in decisions 4 and 11's neighbourhood.
+
+**What was wrong.** `core/permissions.py` held a `ROLE_MATRIX` dictionary naming six roles —
+`viewer, contributor, builder, approver, manager, admin` — and migration 0001 wrote the same six
+into a `CHECK` constraint. **Those names appear nowhere in `PLAN.md`.** They were invented while
+implementing Step 2. The client caught it.
+
+**What PLAN actually says.**
+
+- §17: "Identity: tenants, users, memberships, teams, **roles**, **permissions**, resource
+  grants, sessions, guests and service accounts." Roles are a table.
+- §14: thirteen actions — view, comment, edit Draft, Publish, run, approve, assign, schedule,
+  manage access, export, integrate, administer, audit. These *are* specified, and the `Action`
+  enum already matched them.
+- §25, first implementation deliverable #2: "Final role, sharing, Supervisor-handler and
+  entitlement matrix." The matrix is a deliverable that has not been produced.
+
+So PLAN specifies the actions and does not specify the role names. Putting role names in code
+was the invention; putting actions in code was correct.
+
+**Decided.** Migration 0004 creates `roles` and `role_permissions`, both tenant-owned and
+RLS-forced. `membership_roles.role` (a string) becomes `role_id` (a foreign key). The `CHECK`
+constraint listing the invented names is dropped. `ROLE_MATRIX` is deleted; `actions_from_rows`
+resolves a caller's permissions from their role rows instead.
+
+The thirteen actions stay constrained in the database, because unlike role names they are in the
+approved specification.
+
+**What this buys.** When the client approves the matrix it is a **seed change** — replace
+`backend/seeds/access_model_draft.json`, run `scripts/seed_roles.py`. No migration, no code
+change, no redeploy. Under the old shape it was all three.
+
+**Seeded, and honest about it.** The rows loaded today are transcribed from
+`docs/product/contracts/ACCESS_MODEL.md`, which is marked "Working Draft — not approved". Every
+seeded role carries `is_draft = true` so no screen can present a draft as settled. `is_conditional`
+preserves the draft's `C` cells — permitted only with an explicit resource grant — rather than
+flattening them to allow or deny.
+
+**Two rows were not seeded.** ACCESS_MODEL.md lists fifteen; PLAN §14 names thirteen actions.
+"Analyze with AI" and "Billing/plan management" have no action in the approved specification.
+They are recorded in the seed file as a Gate 0 question. Inventing action names for them would
+have repeated the exact mistake this decision exists to undo.
+
+---
+
+## 20. `FORCE ROW LEVEL SECURITY` makes tenant data invisible to migrations
+
+**Found while writing 0004, twice in two hours in different forms.**
+
+`FORCE ROW LEVEL SECURITY` binds a table's owner to its own policies. That is why it is set — it
+stops a maintenance script run as the owner from quietly reading every tenant.
+
+It also means **a migration sees nothing.** A migration has no bound tenant, so every
+tenant-owned table looks empty to it. 0004's first attempt read zero rows from
+`membership_roles`, created zero roles, and then failed two steps later on a `NOT NULL` — a
+silent no-op that surfaced as an unrelated error.
+
+**The pattern for a data migration:** lift FORCE, rewrite, restore FORCE, all in one transaction
+so there is never a committed moment where the table is unforced. `SET row_security = off` is
+*not* an alternative — under FORCE it raises an error rather than granting a bypass. Iterating
+tenant by tenant also works and is the right shape when a migration must respect per-tenant
+policy.
+
+**And the related trap, which has now appeared three times:** `session.add()` only stages a row.
+The INSERT happens at the next flush, under whichever tenant is bound *then*. A loop that stages
+rows for several tenants writes them all under the last tenant bound, and RLS correctly refuses
+them — with an error naming a row and a tenant that look unrelated to the bug.
+
+`db.base.tenant_scope()` exists to end this: it binds on entry and flushes on exit, so each
+tenant's rows are written while that tenant is bound. Any loop writing across tenants uses it.
+
+---
+
+## 21. `op.drop_constraint` re-applies the naming convention
+
+**Small, and it cost a failed migration.**
+
+The metadata naming convention turns a constraint named `role_known` into
+`ck_membership_roles_role_known` at creation. `op.drop_constraint("ck_membership_roles_role_known",
+...)` then applies the convention *again*, asking PostgreSQL to drop
+`ck_membership_roles_ck_membership_roles_role_known` — which does not exist.
+
+Create with the convention; drop with raw SQL using the name PostgreSQL actually holds. Check it
+with `\d <table>` rather than deriving it.

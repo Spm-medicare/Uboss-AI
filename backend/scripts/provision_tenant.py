@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from scripts.seed_roles import load_seed, seed_tenant
 from uboss.core.runtime import run as run_async
 from uboss.db.base import build_sessionmaker
 from uboss.modules.identity import passwords
@@ -28,14 +29,18 @@ from uboss.modules.identity.models import (
     Membership,
     MembershipRole,
     MembershipStatus,
+    Role,
     User,
 )
 from uboss.modules.tenancy.models import Tenant
 
-#: The first person in an organisation is an administrator. Everyone after them is invited with
-#: whatever roles the administrator chooses — this is the only account the system creates on its
-#: own, and it exists so that somebody can let the others in.
-FIRST_ADMIN_ROLES = ("admin",)
+#: The key of the role given to the first person in an organisation. It has to be one the seed
+#: file defines, and it is looked up in `roles` rather than written as a string — role names are
+#: data now (PLAN §17), not constants.
+#:
+#: Everyone after them is invited with whatever roles the administrator chooses. This is the only
+#: account the system creates on its own, and it exists so somebody can let the others in.
+FIRST_ADMIN_ROLE_KEY = "admin"
 
 
 def _owner_url() -> str:
@@ -102,16 +107,37 @@ async def provision(slug: str, name: str, email: str, display_name: str, passwor
             session.add(membership)
             await session.flush()
 
-            for role in FIRST_ADMIN_ROLES:
-                session.add(
-                    MembershipRole(
-                        tenant_id=tenant.id, membership_id=membership.id, role=role
+            #  Roles are seeded from the Gate 0 access-model draft before anyone is given one,
+            #  so the first administrator's role is a row that already exists rather than a
+            #  string this script decides on.
+            await seed_tenant(session, tenant, load_seed())
+            await session.flush()
+
+            admin_role = (
+                await session.execute(
+                    select(Role).where(
+                        Role.tenant_id == tenant.id, Role.key == FIRST_ADMIN_ROLE_KEY
                     )
                 )
+            ).scalar_one_or_none()
+            if admin_role is None:
+                raise SystemExit(
+                    f"The seed file defines no role with the key '{FIRST_ADMIN_ROLE_KEY}', so "
+                    "this organisation would have no administrator. Nothing was created."
+                )
+
+            session.add(
+                MembershipRole(
+                    tenant_id=tenant.id,
+                    membership_id=membership.id,
+                    role_id=admin_role.id,
+                )
+            )
 
             await session.commit()
 
         print(f"Workspace '{name}' created with the slug '{slug}'.")
+        print("Roles seeded from the Gate 0 access-model draft (not approved).")
         print(f"Administrator: {display_name} <{email}>")
         if not created_account:
             print(

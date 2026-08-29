@@ -23,6 +23,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -165,13 +166,85 @@ class Membership(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion):
         return self.status == MembershipStatus.ACTIVE
 
 
+class Role(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion):
+    """A named set of permissions, defined per organisation.
+
+    PLAN §17 lists roles as a table in the Identity domain, and this is that table. Role names
+    are **not** defined in code: the approved matrix is PLAN §25 first implementation deliverable
+    #2 and does not exist yet, so seeding it later is a data change rather than a migration.
+
+    An earlier implementation hard-coded six role names that appear nowhere in PLAN. Migration
+    0004 removed them.
+    """
+
+    __tablename__ = "roles"
+
+    #: Stable and machine-readable; referenced by grants, so it does not change. `name` is what a
+    #: person sees and may be renamed or translated freely.
+    key: Mapped[str] = mapped_column(String(40), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+
+    #: Seeded with the tenant and undeletable. Removing the only role holding `administer` would
+    #: leave an organisation nobody can administer. A tenant may still narrow what it grants.
+    is_system: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    #: True until the Gate 0 §0.2 matrix is approved. Read by the interface so a screen can say
+    #: the access model is provisional rather than presenting a draft as settled.
+    is_draft: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "key", name="uq_roles_tenant_id_key"),
+        UniqueConstraint("tenant_id", "id", name="uq_roles_tenant_id_id"),
+        CheckConstraint(r"key ~ '^[a-z][a-z0-9_]*$'", name="key_shape"),
+    )
+
+
+class RolePermission(Base, PrimaryKey, TenantOwned):
+    """One action a role permits.
+
+    The action names are constrained to the thirteen in PLAN §14 — those *are* in the approved
+    specification, unlike the role names, so the database enforces them.
+    """
+
+    __tablename__ = "role_permissions"
+
+    role_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=False, index=True
+    )
+    action: Mapped[str] = mapped_column(String(40), nullable=False)
+
+    #: `ACCESS_MODEL.md` marks some cells `C`: permitted only with an explicit resource or scope
+    #: grant. A conditional row grants nothing on its own — the resource layer decides. Kept
+    #: distinct so the approved matrix can be seeded faithfully instead of flattened to yes/no.
+    is_conditional: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "role_id"],
+            ["roles.tenant_id", "roles.id"],
+            name="fk_role_permissions_tenant_role",
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("role_id", "action", name="uq_role_permissions_role_id_action"),
+    )
+
+
 class MembershipRole(Base, PrimaryKey, TenantOwned, Timestamps):
     """A role held by a membership.
 
-    A separate row per role, because one person may hold several — a manager who also builds is
-    both `builder` and `approver`. The permission layer unions across a person's roles and
-    intersects down the company → department → resource chain; the two are not the same
-    operation and conflating them is how a ceiling gets breached.
+    A separate row per role, because one person may hold several. The permission layer unions
+    across a person's roles and intersects down the company → department → resource chain; the
+    two are not the same operation, and conflating them is how a ceiling gets breached.
     """
 
     __tablename__ = "membership_roles"
@@ -183,10 +256,11 @@ class MembershipRole(Base, PrimaryKey, TenantOwned, Timestamps):
         index=True,
     )
 
-    #: One of the names in `core.permissions.ROLE_MATRIX`. Constrained in the database so a typo
-    #: cannot create a role that silently grants nothing — an unknown role contributes no
-    #: actions, which would look like a permission bug rather than a data error.
-    role: Mapped[str] = mapped_column(String(40), nullable=False)
+    #: Points at a row in `roles`, not at a name. What the role permits is a join away, so
+    #: changing an organisation's access model never touches this table.
+    role_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=False, index=True
+    )
 
     #: Who granted it. Null for the roles created when a tenant is first set up.
     granted_by_membership_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -208,12 +282,16 @@ class MembershipRole(Base, PrimaryKey, TenantOwned, Timestamps):
             name="fk_membership_roles_tenant_grantor",
             ondelete="SET NULL",
         ),
-        UniqueConstraint(
-            "membership_id", "role", name="uq_membership_roles_membership_id_role"
+        #  RESTRICT: deleting a role people still hold would silently remove their access. It has
+        #  to be taken off every membership first, deliberately.
+        ForeignKeyConstraint(
+            ["tenant_id", "role_id"],
+            ["roles.tenant_id", "roles.id"],
+            name="fk_membership_roles_tenant_role",
+            ondelete="RESTRICT",
         ),
-        CheckConstraint(
-            "role IN ('viewer', 'contributor', 'builder', 'approver', 'manager', 'admin')",
-            name="role_known",
+        UniqueConstraint(
+            "membership_id", "role_id", name="uq_membership_roles_membership_id_role_id"
         ),
     )
 

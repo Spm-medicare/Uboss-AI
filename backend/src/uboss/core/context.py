@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from uboss.core.errors import PermissionDenied
-from uboss.core.permissions import Action, Grant, Scope, actions_for_roles, decide
+from uboss.core.permissions import Action, Grant, Scope, decide
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,7 +35,14 @@ class SecurityContext:
     session_id: UUID
     email: str
     display_name: str
+    #: The role keys this membership holds, for display and for the audit trail. Names only —
+    #: what they *permit* is resolved from `role_permissions` into `granted_actions` below,
+    #: because PLAN §17 makes roles a table and no role name is defined in code.
     roles: tuple[str, ...]
+    #: Resolved once, when the session is verified, from the permissions attached to those roles.
+    #: Carried on the context rather than recomputed, so one request cannot answer "may they?"
+    #: two different ways.
+    granted_actions: frozenset[Action] = frozenset()
     #: The hierarchy node this person sits at. Reporting scope is derived from it, so a person
     #: sees their own subtree and no more.
     org_node_id: UUID | None = None
@@ -53,8 +60,14 @@ class SecurityContext:
 
     @property
     def actions(self) -> frozenset[Action]:
-        """What this caller may do anywhere in the tenant, before resource-level checks."""
-        return actions_for_roles(list(self.roles))
+        """What this caller may do anywhere in the tenant, before resource-level checks.
+
+        Empty when their roles grant nothing, or when they hold no role at all. That is the
+        fail-closed answer and it is also the honest one while the Gate 0 §0.2 role matrix is
+        unapproved: a carried-over role with no permission rows grants nothing, visibly, rather
+        than falling back to a set someone invented.
+        """
+        return self.granted_actions
 
     def grants_for(self, resource_grant: Grant | None = None) -> list[Grant]:
         """Assemble the ceiling chain for one decision.

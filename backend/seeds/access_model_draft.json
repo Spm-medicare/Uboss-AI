@@ -1,0 +1,114 @@
+{
+  "_source": {
+    "document": "docs/product/contracts/ACCESS_MODEL.md",
+    "section": "2. Draft role/action matrix",
+    "status": "Working Draft — not approved",
+    "gate": "Gate 0 step 0.2",
+    "plan_reference": "PLAN §25 first implementation deliverable 2 — final role, sharing, Supervisor-handler and entitlement matrix",
+    "note": "A transcription, not a decision. Every role seeded from this file carries is_draft = true so that no screen can present it as settled. When the client approves the matrix, this file is replaced and re-seeded — no migration, no code change."
+  },
+
+  "_unmapped_rows": {
+    "note": "ACCESS_MODEL.md lists fifteen rows. PLAN §14 names thirteen actions. These two rows have no action in the approved specification, so they are NOT seeded. Inventing an action name for them would repeat exactly the mistake this whole change exists to undo. They are a Gate 0 question: either PLAN §14's list gains them, or ACCESS_MODEL.md folds them into an existing action.",
+    "rows": [
+      "Analyze with AI",
+      "Billing/plan management"
+    ]
+  },
+
+  "_legend": {
+    "A": "allowed by the role",
+    "C": "conditional — permitted only with an explicit resource or scope grant, and where applicable a step-up or approval. Seeded with is_conditional = true, which grants nothing on its own.",
+    "-": "not granted; no row is written"
+  },
+
+  "_action_mapping": {
+    "View assigned/shared resources": "view",
+    "Comment": "comment",
+    "Create/edit Drafts": "edit_draft",
+    "Publish resource version": "publish",
+    "Run allowed Agent": "run",
+    "Approve assigned action": "approve",
+    "Assign people/Agents": "assign",
+    "Schedule": "schedule",
+    "Manage resource access": "manage_access",
+    "Export tenant data": "export",
+    "Manage integrations": "integrate",
+    "Tenant administration": "administer",
+    "View audit/compliance evidence": "audit"
+  },
+
+  "roles": [
+    {
+      "key": "owner",
+      "name": "Owner",
+      "description": "Accountable for the organisation. Draft role from ACCESS_MODEL.md; not approved.",
+      "permissions": {
+        "view": "A", "comment": "A", "edit_draft": "A", "publish": "A", "run": "A",
+        "approve": "C", "assign": "A", "schedule": "A", "manage_access": "A",
+        "export": "A", "integrate": "A", "administer": "A", "audit": "A"
+      }
+    },
+    {
+      "key": "admin",
+      "name": "Admin",
+      "description": "Administers the workspace. Draft role from ACCESS_MODEL.md; not approved.",
+      "permissions": {
+        "view": "A", "comment": "A", "edit_draft": "A", "publish": "A", "run": "A",
+        "approve": "C", "assign": "A", "schedule": "A", "manage_access": "A",
+        "export": "C", "integrate": "A", "administer": "A", "audit": "C"
+      }
+    },
+    {
+      "key": "builder",
+      "name": "Builder",
+      "description": "Designs objectives, jobs and agents. Draft role from ACCESS_MODEL.md; not approved.",
+      "permissions": {
+        "view": "A", "comment": "A", "edit_draft": "A", "publish": "C", "run": "C",
+        "approve": "C", "assign": "C", "schedule": "C", "manage_access": "C",
+        "integrate": "C"
+      }
+    },
+    {
+      "key": "supervisor",
+      "name": "Supervisor",
+      "description": "Supervises people and agents within a scope. Draft role from ACCESS_MODEL.md; not approved.",
+      "permissions": {
+        "view": "A", "comment": "A", "edit_draft": "C", "run": "C", "approve": "C",
+        "assign": "C", "schedule": "C", "manage_access": "C", "audit": "C"
+      }
+    },
+    {
+      "key": "employee",
+      "name": "Employee",
+      "description": "Does assigned work. Draft role from ACCESS_MODEL.md; not approved.",
+      "permissions": {
+        "view": "A", "comment": "C", "edit_draft": "C", "run": "C", "schedule": "C"
+      }
+    },
+    {
+      "key": "approver",
+      "name": "Approver",
+      "description": "Approves assigned actions. Draft role from ACCESS_MODEL.md; not approved.",
+      "permissions": {
+        "view": "A", "comment": "C", "approve": "A"
+      }
+    },
+    {
+      "key": "auditor",
+      "name": "Auditor",
+      "description": "Reads compliance evidence. Draft role from ACCESS_MODEL.md; not approved.",
+      "permissions": {
+        "view": "A", "comment": "C", "export": "C", "audit": "A"
+      }
+    },
+    {
+      "key": "guest",
+      "name": "Guest",
+      "description": "Limited external access. Draft role from ACCESS_MODEL.md; not approved.",
+      "permissions": {
+        "view": "C", "comment": "C"
+      }
+    }
+  ]
+}
