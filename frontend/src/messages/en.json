@@ -19,7 +19,8 @@
     "checking": "Checking",
     "loading": "Loading…",
     "none": "None",
-    "optional": "(optional)"
+    "optional": "(optional)",
+    "close": "Close"
   },
   "signIn": {
     "title": "Sign in",
@@ -49,7 +50,8 @@
     "timeZone": "Time zone",
     "hierarchyPosition": "Position in the hierarchy",
     "placed": "Placed",
-    "notPlaced": "Not placed yet — reporting scope is limited to your own work"
+    "notPlaced": "Not placed yet — reporting scope is limited to your own work",
+    "title": "Dashboard"
   },
   "root": {
     "takingYouToSignIn": "Taking you to sign in…",
@@ -125,5 +127,46 @@
     "deniedTitle": "You do not have access to this",
     "deniedBody": "Ask an administrator at your organisation if you need it.",
     "reference": "Reference {id}"
+  },
+  "nav": {
+    "primary": "Main navigation",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "soon": "Soon",
+    "notBuiltYet": "Not built yet — {gate}",
+    "groups": {
+      "workspace": "Workspace",
+      "agents": "Agents",
+      "governedWork": "Governed work"
+    },
+    "items": {
+      "dashboard": "Dashboard",
+      "hierarchy": "Hierarchy",
+      "objectiveBuilder": "Objective Agent Builder",
+      "jobBuilder": "Job Builder",
+      "agentBuilder": "Agent Builder",
+      "supervisor": "Supervisor Agent",
+      "todo": "To-do list",
+      "settings": "Settings"
+    }
+  },
+  "shell": {
+    "navigation": "Navigation",
+    "openNavigation": "Open navigation",
+    "breadcrumb": "Breadcrumb",
+    "loadingWorkspace": "Loading your workspace…",
+    "search": "Search UBOSS",
+    "searchUnavailable": "Search is not connected yet",
+    "searchUnavailableWhy": "Global search arrives with the To-do list. Nothing is indexed yet, so this box would return nothing rather than nothing found.",
+    "notifications": "Notifications",
+    "notificationsEmptyTitle": "No notifications",
+    "notificationsEmptyBody": "Approvals, inputs and run failures will appear here once there is work running in this workspace.",
+    "copilot": "UBOSS Copilot",
+    "copilotUnavailableTitle": "Copilot is not connected yet",
+    "copilotUnavailableBody": "It answers from what you can actually see in this workspace, so it stays switched off until the governed work it reads from exists."
+  },
+  "account": {
+    "switchWorkspace": "Switch workspace",
+    "switchWorkspaceHint": "Signs you out of this workspace and takes you back to the workspace chooser."
   }
 }

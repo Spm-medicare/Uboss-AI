@@ -1,0 +1,105 @@
+import { render, screen } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import { describe, expect, it, vi } from "vitest";
+
+import type { CurrentUser } from "@/lib/api/auth";
+import messages from "@/messages/en.json";
+import { Sidebar } from "@/ui/shell/sidebar";
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/dashboard",
+}));
+
+/**
+ * AS.3 — role-based menu visibility.
+ *
+ * These test the *courtesy*, and it is worth writing down which is which. PLAN line 94: *"Menu
+ * visibility is role-based; backend permission enforcement remains mandatory."* A hidden item
+ * spares somebody a refusal they could do nothing about. What stops them is
+ * `backend/src/uboss/core/permissions.py`, which is tested separately and does not trust this.
+ *
+ * So a failure here is a usability bug, never a security one — and a passing suite here is not
+ * evidence of a boundary.
+ */
+const BASE: CurrentUser = {
+  membership_id: "00000000-0000-0000-0000-000000000001",
+  display_name: "Asha Menon",
+  email: "asha@example.test",
+  job_title: "Operations lead",
+  roles: ["viewer"],
+  actions: ["view"],
+  workspace_slug: "acme",
+  workspace_name: "Acme Industries",
+  timezone: "Asia/Kolkata",
+  org_node_id: null,
+  stepped_up: false,
+  session_expires_at: "2026-09-30T00:00:00Z",
+};
+
+function show(user: CurrentUser, collapsed = false) {
+  return render(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      <Sidebar
+        user={user}
+        collapsed={collapsed}
+        onToggle={() => {}}
+        ready
+        footer={null}
+      />
+    </NextIntlClientProvider>,
+  );
+}
+
+describe("Sidebar", () => {
+  it("hides the Builders from somebody who cannot edit a draft", () => {
+    show(BASE);
+
+    expect(screen.getByText(messages.nav.items.dashboard)).toBeInTheDocument();
+    expect(
+      screen.queryByText(messages.nav.items.objectiveBuilder),
+    ).not.toBeInTheDocument();
+    //  And with them the heading. An "Agents" label above nothing promises something that is
+    //  not there.
+    expect(screen.queryByText(messages.nav.groups.agents)).not.toBeInTheDocument();
+  });
+
+  it("shows the Builders to somebody who can edit a draft", () => {
+    show({ ...BASE, actions: ["view", "edit_draft"] });
+
+    expect(screen.getByText(messages.nav.items.objectiveBuilder)).toBeInTheDocument();
+    expect(screen.getByText(messages.nav.items.jobBuilder)).toBeInTheDocument();
+    //  Supervisor needs `run`, which this person does not have.
+    expect(screen.queryByText(messages.nav.items.supervisor)).not.toBeInTheDocument();
+  });
+
+  it("does not link a screen that has not been built", () => {
+    show({ ...BASE, actions: ["view"] });
+
+    const hierarchy = screen
+      .getByText(messages.nav.items.hierarchy)
+      .closest("[aria-disabled]");
+    expect(hierarchy).not.toBeNull();
+    //  And it says which gate builds it, rather than leaving a dead row with no explanation.
+    expect(hierarchy).toHaveAttribute("title", "Not built yet — Gate 2");
+    //  Not a link: a control that navigates to a 404 does not do what it says.
+    expect(screen.queryByRole("link", { name: /Hierarchy/ })).not.toBeInTheDocument();
+  });
+
+  it("marks the current screen for assistive technology, not only in colour", () => {
+    show(BASE);
+
+    expect(
+      screen.getByRole("link", { name: messages.nav.items.dashboard }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("keeps every label readable when collapsed to icons", () => {
+    show(BASE, true);
+
+    //  The text is hidden visually and kept in the accessible name. An icon-only control with no
+    //  name is unusable with a screen reader — `ui/README.md` forbids it outright.
+    expect(
+      screen.getByRole("link", { name: messages.nav.items.dashboard }),
+    ).toBeInTheDocument();
+  });
+});

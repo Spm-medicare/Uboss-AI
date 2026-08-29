@@ -328,18 +328,18 @@ evidence all pass in CI from a clean clone.
 
 ---
 
-# App Shell — sidebar, topbar, navigation  ⬜
+# App Shell — sidebar, topbar, navigation  ✅
 
 Only after Gate 1. Navigation is fixed by `PLAN.md` §3; nothing may be added to it.
 
 | | |
 |---|---|
-| AS.1 | Dark sidebar — expanded and collapsed, remembered, Agents 01–04 |
-| AS.2 | Top bar — breadcrumb, search, context action, notifications, Copilot |
-| AS.3 | Role-based menu visibility; the server stays authoritative on every route |
-| AS.4 | Shell states — loading, empty, denied, offline, error |
-| AS.5 | Keyboard, focus order, reduced motion, mobile drawer |
-| AS.6 | Profile, workspace switcher, sign-out |
+| AS.1 | ✅ Dark sidebar — expanded and collapsed, remembered, Agents 01–04 |
+| AS.2 | ✅ Top bar — breadcrumb, search, context action, notifications, Copilot |
+| AS.3 | ✅ Role-based menu visibility; the server stays authoritative on every route |
+| AS.4 | ✅ Shell states — loading, empty, denied, offline, error |
+| AS.5 | ✅ Keyboard, focus order, reduced motion, mobile drawer |
+| AS.6 | ✅ Profile, workspace switcher, sign-out |
 
 Search shows an honest unavailable state until Gate 7. Notifications and Copilot show governed
 empty states. **No fake activity, no invented counts, no disconnected dashboard cards.**
