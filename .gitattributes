@@ -1,0 +1,27 @@
+# One line ending in the repository, whatever machine the work is done on.
+#
+# Without this, a file written on Windows and a file written on Linux differ in every line, and
+# a review shows a hundred changed lines where one word changed. `text=auto` normalises to LF in
+# the repository and checks out whatever the local platform expects.
+* text=auto eol=lf
+
+# Shell scripts must keep LF even on Windows — a CRLF in a shebang line makes the script
+# unrunnable inside a Linux container.
+*.sh text eol=lf
+*.sql text eol=lf
+
+# Binary: never touched, never diffed as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.xlsx binary
+*.docx binary
+
+# Generated. Reviewed for what changed, but not line-by-line.
+package-lock.json linguist-generated=true
+uv.lock linguist-generated=true

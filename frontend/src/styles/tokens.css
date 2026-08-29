@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+
+  --ub-font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+  --ub-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --ub-bg: #f7f8fa;
+  --ub-surface: #ffffff;
+  --ub-surface-subtle: #f1f3f6;
+  --ub-surface-hover: #e9edf2;
+  --ub-text: #111827;
+  --ub-text-muted: #5f6b7a;
+  --ub-border: #dfe4ea;
+  --ub-focus: #2563eb;
+
+  --ub-brand: #2563eb;
+  --ub-brand-hover: #1d4ed8;
+  --ub-brand-foreground: #ffffff;
+
+  --ub-sidebar: #0f1012;
+  --ub-sidebar-surface: #202226;
+  --ub-sidebar-active: #303238;
+  --ub-sidebar-text: #f5f7fa;
+  --ub-sidebar-muted: #a9afb9;
+  --ub-sidebar-border: #292b30;
+
+  --ub-human: #0284c7;
+  --ub-ai: #7c3aed;
+  --ub-hybrid: #0f8f83;
+  --ub-approval: #c96b08;
+  --ub-success: #16803b;
+  --ub-danger: #cf2e2e;
+  --ub-info: #2563eb;
+
+  --ub-human-soft: #e0f2fe;
+  --ub-ai-soft: #ede9fe;
+  --ub-hybrid-soft: #ccfbf1;
+  --ub-approval-soft: #fef3c7;
+  --ub-success-soft: #dcfce7;
+  --ub-danger-soft: #fee2e2;
+
+  --ub-radius-control: 0.5rem;
+  --ub-radius-card: 0.75rem;
+  --ub-radius-dialog: 0.75rem;
+
+  --ub-shadow-popover: 0 12px 32px rgb(15 23 42 / 0.14);
+  --ub-shadow-dialog: 0 24px 64px rgb(15 23 42 / 0.2);
+
+  --ub-sidebar-expanded: 17.5rem;
+  --ub-sidebar-collapsed: 4.5rem;
+  --ub-topbar-height: 4rem;
+  --ub-drawer-width: 24rem;
+
+  --ub-motion-fast: 150ms;
+  --ub-motion-standard: 200ms;
+  --ub-motion-slow: 250ms;
+  --ub-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --ub-bg: #0d0f12;
+  --ub-surface: #15181d;
+  --ub-surface-subtle: #1d2128;
+  --ub-surface-hover: #282d35;
+  --ub-text: #f2f4f7;
+  --ub-text-muted: #aeb6c2;
+  --ub-border: #303641;
+  --ub-focus: #60a5fa;
+
+  --ub-brand: #3b82f6;
+  --ub-brand-hover: #60a5fa;
+  --ub-brand-foreground: #08111f;
+
+  --ub-sidebar: #090a0c;
+  --ub-sidebar-surface: #181a1e;
+  --ub-sidebar-active: #2c2f35;
+  --ub-sidebar-text: #f7f8fa;
+  --ub-sidebar-muted: #aab0ba;
+  --ub-sidebar-border: #25272c;
+
+  --ub-human-soft: #082f49;
+  --ub-ai-soft: #2e1065;
+  --ub-hybrid-soft: #042f2e;
+  --ub-approval-soft: #451a03;
+  --ub-success-soft: #052e16;
+  --ub-danger-soft: #450a0a;
+}
+
+@theme inline {
+  --font-sans: var(--ub-font-sans);
+  --font-mono: var(--ub-font-mono);
+
+  --color-background: var(--ub-bg);
+  --color-foreground: var(--ub-text);
+  --color-card: var(--ub-surface);
+  --color-card-foreground: var(--ub-text);
+  --color-popover: var(--ub-surface);
+  --color-popover-foreground: var(--ub-text);
+  --color-primary: var(--ub-brand);
+  --color-primary-foreground: var(--ub-brand-foreground);
+  --color-secondary: var(--ub-surface-subtle);
+  --color-secondary-foreground: var(--ub-text);
+  --color-muted: var(--ub-surface-subtle);
+  --color-muted-foreground: var(--ub-text-muted);
+  --color-accent: var(--ub-surface-hover);
+  --color-accent-foreground: var(--ub-text);
+  --color-destructive: var(--ub-danger);
+  --color-border: var(--ub-border);
+  --color-input: var(--ub-border);
+  --color-ring: var(--ub-focus);
+
+  --color-sidebar: var(--ub-sidebar);
+  --color-sidebar-surface: var(--ub-sidebar-surface);
+  --color-sidebar-active: var(--ub-sidebar-active);
+  --color-sidebar-foreground: var(--ub-sidebar-text);
+  --color-sidebar-muted: var(--ub-sidebar-muted);
+  --color-sidebar-border: var(--ub-sidebar-border);
+
+  /* Work-mode and status colours. Named by what they mean, never by the hue: a component that
+     asks for `bg-ai` keeps meaning the same thing when the palette is retuned, and a component
+     that asked for `bg-violet-600` does not. */
+  --color-human: var(--ub-human);
+  --color-ai: var(--ub-ai);
+  --color-hybrid: var(--ub-hybrid);
+  --color-approval: var(--ub-approval);
+  --color-success: var(--ub-success);
+  --color-danger: var(--ub-danger);
+  --color-info: var(--ub-info);
+
+  --color-human-soft: var(--ub-human-soft);
+  --color-ai-soft: var(--ub-ai-soft);
+  --color-hybrid-soft: var(--ub-hybrid-soft);
+  --color-approval-soft: var(--ub-approval-soft);
+  --color-success-soft: var(--ub-success-soft);
+  --color-danger-soft: var(--ub-danger-soft);
+
+  --radius-sm: 0.375rem;
+  --radius-md: var(--ub-radius-control);
+  --radius-lg: var(--ub-radius-card);
+  --radius-xl: var(--ub-radius-dialog);
+
+  --shadow-popover: var(--ub-shadow-popover);
+  --shadow-dialog: var(--ub-shadow-dialog);
+
+  /* PLAN section 29: motion is 150–250 ms with a single standard easing. Exposed as tokens so a
+     component cannot quietly invent a slower one. */
+  --ease-standard: var(--ub-ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

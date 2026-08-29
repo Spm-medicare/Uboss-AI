@@ -1,0 +1,52 @@
+# What must never reach version control.
+#
+# The rule for secrets is deny-by-pattern, then allow the examples back explicitly. A `.env` that
+# gets committed is not fixed by deleting it in the next commit — it stays in the history, and
+# every credential in it has to be rotated.
+
+# ── secrets ──────────────────────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+credentials.json
+service-account*.json
+secrets/
+
+# ── dependencies ─────────────────────────────────────────────────────────────────────────
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# ── build output ─────────────────────────────────────────────────────────────────────────
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# ── tool caches ──────────────────────────────────────────────────────────────────────────
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.turbo/
+coverage/
+htmlcov/
+.coverage
+
+# ── local noise ──────────────────────────────────────────────────────────────────────────
+*.log
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,72 @@
+[project]
+name = "uboss-api"
+version = "0.1.0"
+description = "UBOSS AI — governed human + AI work operating system, API"
+requires-python = ">=3.12"
+
+#  Lower bounds record the oldest release the product was designed against; `uv.lock` records
+#  the exact resolved graph and is what CI and production install from. Pinning both places
+#  would mean every routine security patch is a two-file change, which is how patches get
+#  skipped.
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "pydantic[email]>=2.9",
+    "pydantic-settings>=2.6",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "alembic>=1.14",
+    "psycopg[binary,pool]>=3.2",
+    "argon2-cffi>=23.1",
+    "pyjwt>=2.9",
+    "python-multipart>=0.0.20",
+    "httpx>=0.28",
+    "structlog>=24.4",
+    "redis>=5.2",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "anyio>=4.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/uboss"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF", "ASYNC", "S"]
+ignore = [
+    # Assert is how pytest expresses an expectation.
+    "S101",
+]
+
+[tool.ruff.lint.per-file-ignores]
+#  A migration's docstring explains a schema change to a future reader; wrapping SQL to fit a
+#  column makes it harder to compare against the database.
+"migrations/*" = ["E501"]
+#  The exception names read as sentences at the raise site — `raise PermissionDenied(...)` —
+#  which is where they are read most. N818's `...Error` suffix would make every one of them
+#  noisier without telling the reader anything new.
+"src/uboss/core/errors.py" = ["N818"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src"]
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["../tests"]

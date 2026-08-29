@@ -1,0 +1,74 @@
+/* The one stylesheet the application loads.
+ *
+ * Tokens first — the `@import "tailwindcss"` that Tailwind v4 needs lives at the top of
+ * tokens.css, together with the `@theme inline` block that turns the UBOSS semantic tokens into
+ * Tailwind colour names. Everything below is a base rule that applies to the whole document;
+ * component styling belongs in components. */
+
+@import "../styles/tokens.css";
+
+/* Tailwind v4 switches dark mode on a media query by default. UBOSS needs an explicit choice to
+ * win over the operating system — a person who picked light must get light on a dark machine —
+ * so the variant is redefined to follow the `.dark` class the theme script puts on <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  html {
+    /* An anchor jump should not land the heading under the sticky top bar. */
+    scroll-padding-top: calc(var(--ub-topbar-height) + 1rem);
+  }
+
+  body {
+    background-color: var(--ub-bg);
+    color: var(--ub-text);
+    font-family: var(--ub-font-sans);
+    /* Long enterprise sessions (PLAN section 29): a slightly open line height across body text
+       is the difference between a readable table at 4 p.m. and an unreadable one. */
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* One focus treatment for the whole product. Visible, high contrast, and never removed —
+     a keyboard user who cannot see where they are cannot use the product at all. */
+  :focus-visible {
+    outline: 2px solid var(--ub-focus);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Removing the outline is only safe where the component paints its own focus ring. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Digits that sit in a column line up. Applies to tables and any explicitly numeric cell. */
+  table,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--ub-brand) 24%, transparent);
+  }
+}
+
+@layer components {
+  /* Skip link: the first thing a keyboard reaches on every page. Off-screen until focused. */
+  .ub-skip-link {
+    position: absolute;
+    left: 0.75rem;
+    top: -4rem;
+    z-index: 100;
+    border-radius: var(--ub-radius-control);
+    background-color: var(--ub-brand);
+    color: var(--ub-brand-foreground);
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: top var(--ub-motion-fast) var(--ub-ease-standard);
+  }
+
+  .ub-skip-link:focus {
+    top: 0.75rem;
+  }
+}

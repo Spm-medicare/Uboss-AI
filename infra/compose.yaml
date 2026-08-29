@@ -1,0 +1,61 @@
+# The local development stack.
+#
+# Data services only. The API and the web application run from the terminal with hot reload,
+# because rebuilding an image on every edit is the fastest way to stop making edits.
+#
+# Nothing here is a production topology: passwords are fixed, ports are published to the host,
+# and there is no TLS. `deploy/` holds the deployed configuration.
+
+name: uboss
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: uboss
+      # The bootstrap superuser. The application never connects as this role — see
+      # postgres/init/01-roles.sql for the owner/application split that makes row-level security
+      # an actual boundary.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      # Deterministic collation, so an ORDER BY sorts the same way on every machine and in CI.
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=en-US --encoding=UTF8"
+    ports:
+      # 5433 on the host: the previous UBOSS stack still holds 5432, and taking it away from a
+      # running system to save one digit is not a trade worth making. Inside the network the
+      # port is still 5432.
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Runs once, on an empty data volume. Editing these files does nothing to a database that
+      # already exists — remove the volume to re-run them.
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # Names the database and the user: `pg_isready` with no arguments reports healthy while
+      # initialisation is still running, which lets dependents start too early.
+      test: ["CMD-SHELL", "pg_isready -U postgres -d uboss"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Append-only on: rate-limit counters and idempotency records must survive a restart, or a
+    # restart becomes a way to replay a command.
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  postgres-data:
+  redis-data:
