@@ -16,10 +16,9 @@ from pathlib import Path
 
 from alembic.config import Config
 from alembic.script import ScriptDirectory
+from scripts.migration_preflight import reversible
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from scripts.migration_preflight import reversible
 
 BACKEND = Path(__file__).resolve().parents[2] / "backend"
 
@@ -60,9 +59,9 @@ async def test_the_models_have_not_drifted_from_the_migrations(
     things the ORM does not map — the `alembic_version` table, and columns a later step will
     use — and failing on those would make the check noise.
     """
-    import uboss.modules.audit.models  # noqa: F401
-    import uboss.modules.identity.models  # noqa: F401
-    import uboss.modules.identity.policies  # noqa: F401
+    import uboss.modules.audit.models
+    import uboss.modules.identity.models
+    import uboss.modules.identity.policies
     import uboss.modules.tenancy.models  # noqa: F401
     from uboss.db.base import Base
 

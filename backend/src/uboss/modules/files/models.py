@@ -97,7 +97,9 @@ class File(Base, PrimaryKey, TenantOwned, Timestamps):
             ["tenant_id", "uploaded_by_membership_id"],
             ["memberships.tenant_id", "memberships.id"],
             name="fk_files_tenant_uploader",
-            ondelete="SET NULL",
+            #  Column-specific: plain SET NULL clears every column in the key, `tenant_id`
+            #  included, and that column is NOT NULL. Migration 0010 has the whole story.
+            ondelete="SET NULL (uploaded_by_membership_id)",
         ),
         UniqueConstraint("storage_key", name="uq_files_storage_key"),
         CheckConstraint(

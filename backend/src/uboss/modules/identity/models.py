@@ -280,7 +280,8 @@ class MembershipRole(Base, PrimaryKey, TenantOwned, Timestamps):
             ["tenant_id", "granted_by_membership_id"],
             ["memberships.tenant_id", "memberships.id"],
             name="fk_membership_roles_tenant_grantor",
-            ondelete="SET NULL",
+            #  Column-specific — see migration 0010.
+            ondelete="SET NULL (granted_by_membership_id)",
         ),
         #  RESTRICT: deleting a role people still hold would silently remove their access. It has
         #  to be taken off every membership first, deliberately.

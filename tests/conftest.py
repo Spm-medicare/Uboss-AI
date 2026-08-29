@@ -80,12 +80,8 @@ async def database() -> AsyncIterator[None]:
 
     admin = create_async_engine(_admin_url(), isolation_level="AUTOCOMMIT")
     async with admin.connect() as connection:
-        await connection.execute(
-            text(f"DROP DATABASE IF EXISTS {TEST_DATABASE} WITH (FORCE)")
-        )
-        await connection.execute(
-            text(f"CREATE DATABASE {TEST_DATABASE} OWNER uboss_owner")
-        )
+        await connection.execute(text(f"DROP DATABASE IF EXISTS {TEST_DATABASE} WITH (FORCE)"))
+        await connection.execute(text(f"CREATE DATABASE {TEST_DATABASE} OWNER uboss_owner"))
     await admin.dispose()
 
     #  The grants the application role needs. These live in the compose init script for the
@@ -129,9 +125,7 @@ async def database() -> AsyncIterator[None]:
 
     admin = create_async_engine(_admin_url(), isolation_level="AUTOCOMMIT")
     async with admin.connect() as connection:
-        await connection.execute(
-            text(f"DROP DATABASE IF EXISTS {TEST_DATABASE} WITH (FORCE)")
-        )
+        await connection.execute(text(f"DROP DATABASE IF EXISTS {TEST_DATABASE} WITH (FORCE)"))
     await admin.dispose()
 
 
@@ -186,9 +180,7 @@ class Workspace:
     role_id: uuid.UUID
 
 
-async def _make_workspace(
-    session: AsyncSession, slug: str, *, actions: list[str]
-) -> Workspace:
+async def _make_workspace(session: AsyncSession, slug: str, *, actions: list[str]) -> Workspace:
     """Create a tenant, a person, and a role granting `actions`.
 
     Written with the owner connection because provisioning is an operator action — the
@@ -196,9 +188,7 @@ async def _make_workspace(
     """
     tenant_id = (
         await session.execute(
-            text(
-                "INSERT INTO tenants (slug, name) VALUES (:slug, :name) RETURNING id"
-            ),
+            text("INSERT INTO tenants (slug, name) VALUES (:slug, :name) RETURNING id"),
             {"slug": slug, "name": slug.title()},
         )
     ).scalar_one()
@@ -239,17 +229,13 @@ async def _make_workspace(
 
     for action in actions:
         await session.execute(
-            text(
-                "INSERT INTO role_permissions (tenant_id, role_id, action) "
-                "VALUES (:t, :r, :a)"
-            ),
+            text("INSERT INTO role_permissions (tenant_id, role_id, action) VALUES (:t, :r, :a)"),
             {"t": tenant_id, "r": role_id, "a": action},
         )
 
     await session.execute(
         text(
-            "INSERT INTO membership_roles (tenant_id, membership_id, role_id) "
-            "VALUES (:t, :m, :r)"
+            "INSERT INTO membership_roles (tenant_id, membership_id, role_id) VALUES (:t, :m, :r)"
         ),
         {"t": tenant_id, "m": membership_id, "r": role_id},
     )
@@ -294,6 +280,9 @@ async def two_workspaces(
         await session.execute(
             text("ALTER TABLE audit_events DISABLE TRIGGER audit_events_append_only")
         )
+        await session.execute(
+            text("ALTER TABLE org_revisions DISABLE TRIGGER org_revisions_append_only")
+        )
         for workspace in (left, right):
             await session.execute(
                 text("SELECT set_config('app.tenant_id', :t, true)"),
@@ -303,6 +292,12 @@ async def two_workspaces(
             #  forgotten here shows up immediately as a foreign-key violation on the tenant
             #  delete — noisy, and better than a suite that leaks an organisation per run.
             for table in (
+                #  The hierarchy, deepest first. `org_revisions` is append-only like
+                #  `audit_events`, so its trigger is lifted alongside that one below.
+                "org_revisions",
+                "reporting_edges",
+                "position_assignments",
+                "positions",
                 "files",
                 "audit_events",
                 "outbox_events",
@@ -320,13 +315,29 @@ async def two_workspaces(
                     text(f"DELETE FROM {table} WHERE tenant_id = :t"),
                     {"t": workspace.tenant_id},
                 )
-            await session.execute(
-                text("DELETE FROM users WHERE id = :u"), {"u": workspace.user_id}
-            )
+            #  `org_units` is a tree whose parent key is RESTRICT, so it empties from the
+            #  leaves upward — one statement per level. A test tree is never deep, and the
+            #  alternative (CASCADE) would mean deleting a division silently took its
+            #  departments in production too.
+            while True:
+                removed = await session.execute(
+                    text(
+                        "DELETE FROM org_units u WHERE u.tenant_id = :t AND NOT EXISTS "
+                        "(SELECT 1 FROM org_units c WHERE c.parent_id = u.id)"
+                    ),
+                    {"t": workspace.tenant_id},
+                )
+                if removed.rowcount == 0:
+                    break
+
+            await session.execute(text("DELETE FROM users WHERE id = :u"), {"u": workspace.user_id})
             await session.execute(
                 text("DELETE FROM tenants WHERE id = :t"), {"t": workspace.tenant_id}
             )
         await session.execute(
             text("ALTER TABLE audit_events ENABLE TRIGGER audit_events_append_only")
+        )
+        await session.execute(
+            text("ALTER TABLE org_revisions ENABLE TRIGGER org_revisions_append_only")
         )
         await session.commit()

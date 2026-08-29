@@ -26,7 +26,7 @@ from uboss.core.errors import NotFound, ValidationFailed
 from uboss.core.settings import Settings, get_settings
 from uboss.db.base import build_sessionmaker
 from uboss.modules.files import service as files
-from uboss.modules.files.models import File, ScanState
+from uboss.modules.files.models import ScanState
 from uboss.modules.files.storage import Storage, key_for, owns
 
 

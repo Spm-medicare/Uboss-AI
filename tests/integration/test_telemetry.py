@@ -39,11 +39,11 @@ def spans() -> Iterator[InMemorySpanExporter]:
     provider.add_span_processor(SimpleSpanProcessor(exporter))
 
     original = trace.get_tracer_provider()
-    trace._TRACER_PROVIDER = provider  # noqa: SLF001 — the only way to replace it in a test
+    trace._TRACER_PROVIDER = provider
     try:
         yield exporter
     finally:
-        trace._TRACER_PROVIDER = original  # noqa: SLF001
+        trace._TRACER_PROVIDER = original
 
 
 def test_a_span_carries_the_correlation_id(spans: InMemorySpanExporter) -> None:
