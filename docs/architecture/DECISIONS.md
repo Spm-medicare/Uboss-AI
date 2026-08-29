@@ -562,3 +562,47 @@ The metadata naming convention turns a constraint named `role_known` into
 
 Create with the convention; drop with raw SQL using the name PostgreSQL actually holds. Check it
 with `\d <table>` rather than deriving it.
+
+---
+
+## 22. `FORCE` dropped, `ENABLE` kept — two switches, not one
+
+**Supersedes the FORCE half of decisions 2 and 20.**
+
+`ENABLE ROW LEVEL SECURITY` and `FORCE ROW LEVEL SECURITY` are separate, and conflating them cost
+real time:
+
+- **ENABLE** binds every role that is not the table's owner. `uboss_app` — the role every API
+  request runs as — is not the owner. **This stays on every tenant-owned table.**
+- **FORCE** additionally binds the owner. `uboss_owner` runs migrations and operator scripts and
+  nothing else. **This is dropped** by migration 0005.
+
+**Why.** FORCE made tenant data invisible to migrations, because a migration has no bound tenant.
+Migration 0004 read zero rows, created zero roles, and failed two steps later on a `NOT NULL`.
+The seed script failed the same way. Each needed a lift-and-restore dance around its own writes —
+easy to forget, hard to notice forgetting, and the failure always surfaced somewhere unrelated.
+
+**What is lost.** An operator script run as `uboss_owner` that omits a `WHERE tenant_id = …` sees
+every tenant. Bounded: the owner credential is not in the API, not in the workers, not in any
+process that serves a request. It is used deliberately, by a person.
+
+**What is kept — measured after the change:**
+
+```
+uboss_app, no tenant bound      memberships 0 · roles 0 · audit_events 0
+uboss_app, bound to acme        only acme's rows
+uboss_app, write into globex    ERROR: violates row-level security policy
+uboss_app, UPDATE audit_events  ERROR: append-only
+
+uboss_owner, no tenant bound    4 memberships   ← intended; this is the change
+```
+
+That is the boundary PLAN §18 and §19 ask for, and Gate 1's cross-tenant exit tests still have
+something real to test.
+
+`tenants` was already ENABLE-without-FORCE so that provisioning could create an organisation.
+This makes the rest consistent rather than leaving one table quietly different.
+
+**Still required:** `db.base.tenant_scope()`, for any code running as `uboss_app` that writes
+rows for more than one tenant. ENABLE still binds it, so the flush-ordering trap in decision 20 is
+unchanged for API code. Only migrations and owner-run scripts got easier.
