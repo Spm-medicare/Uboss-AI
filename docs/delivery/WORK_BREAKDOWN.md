@@ -11,7 +11,7 @@ and "the page opens" are not evidence. A sub-step without a passing check is not
 
 **Status: 0 of 8 Gates passed. 0 of 28 steps complete. 9 in progress. 19 not started.**
 
-Within them: **1.1 is complete** (1.1.1–1.1.4) and 1.2.1–1.2.5 are done and verified.
+Within them: **1.1 and 1.3 are complete**, and 1.2.1–1.2.5 are done and verified.
 
 Legend: ✅ done and verified · 🟡 partly done · ⬜ not started
 
@@ -111,18 +111,33 @@ delivery.
 **Blocked because** without a working outbox and a real mail provider the only honest build is
 one that tells the person delivery is unavailable — which is not a usable invite flow.
 
-## 1.3 — Real permission ceiling  ⬜
+## 1.3 — Real permission ceiling  ✅
 
-The algorithm exists and is correct. Nothing above the role layer is ever loaded, so today a role
-is the entire answer.
+All four links of PLAN §14 now exist and are enforced by one path — `modules/identity/guard.py`.
+Verified by direct exercise (no product route uses it yet; those arrive in Gate 2):
+
+```
+permitted action allowed                      view
+high-risk needs step-up                       publish refused, step_up_required
+high-risk allowed after step-up               publish
+ungranted action refused                      approve
+unshared object leaves the layer absent       None, not empty
+a grant narrows to what it names              [view]
+resource layer refuses what it did not grant  edit_draft on a view-only grant
+widening grant refused at write time          approve
+unresolvable principal refused                team
+self-approval refused                         author cannot approve
+someone else's work may be approved           not refused
+refusals written to the audit trail           4 denied rows, each with a reason
+```
 
 | | | |
 |---|---|---|
-| 1.3.1 | Persist company and department policies | ⬜ |
-| 1.3.2 | Resolve them into the request context | ⬜ |
-| 1.3.3 | Resource-level grants, narrowing only | ⬜ |
-| 1.3.4 | One guard API; separation of duty; step-up on high-risk | ⬜ |
-| 1.3.5 | Audit denials with the scope that withheld the action | ⬜ |
+| 1.3.1 | Persist company and department policies | ✅ |
+| 1.3.2 | Resolve them into the request context | ✅ |
+| 1.3.3 | Resource-level grants, narrowing only | ✅ |
+| 1.3.4 | One guard API; separation of duty; step-up on high-risk | ✅ |
+| 1.3.5 | Audit denials with the scope that withheld the action | ✅ |
 
 A policy is a **restriction** — it lists actions withheld from every role beneath it. It cannot
 grant.
@@ -291,10 +306,9 @@ as a plan and behave as a guess.
 # Order
 
 ```
-NOW    1.3.1 → 1.3.5    real permission ceiling
+NOW    1.4.1 → 1.4.3    idempotency and concurrency
 
-THEN   1.4.1 → 1.4.3    idempotency and concurrency
-       1.6.3            first automated test suite
+THEN   1.6.3            first automated test suite
 
 THEN   1.5.2, 1.5.3     outbox relay
        1.2.6            invite and reset  (needs the relay)

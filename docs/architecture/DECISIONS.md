@@ -739,3 +739,52 @@ gap.
 **Two decisions deferred to the client, not invented:** `resource_grants.principal_kind` accepts
 all five principals from PLAN §14, but only `user` can be resolved today. Teams, guests and
 service accounts have no tables yet; the application refuses the others rather than guessing.
+
+---
+
+## 26. One guard, and what it does in what order
+
+**Decided.** Every permission question goes through `modules/identity/guard.authorise`. A check
+written separately into a screen, a service and a workflow is three checks that will eventually
+disagree, and the one that disagrees quietly is the one that lets something through.
+
+Four things happen, and the order is the design:
+
+1. **Resolve the resource layer**, if the action names an object.
+2. **The chain decides** — roles narrowed by company, department and resource.
+3. **High-risk actions need a live step-up.** Checked *after* the permission, so someone who does
+   not hold the action is refused outright rather than invited to re-enter their password for
+   nothing.
+4. **The refusal is recorded before it is raised**, naming the layer that caused it. The caller
+   gets none of that.
+
+`StepUpRequired` subclasses `PermissionDenied` so a route that forgets to handle it still fails
+closed, but carries its own code so the interface can offer the password prompt instead of a
+dead end.
+
+**One refusal deliberately explains itself.** Self-approval says *"You submitted this, so someone
+else has to approve it."* The person already knows the record exists — they wrote it — so there
+is nothing left to protect, and silence would leave them pressing a button that never works.
+
+**None and an empty resource grant mean opposite things.** `grant_for_resource` returns None when
+nothing was granted, and the chain skips the layer — so a person with `view` from their role can
+still see an object nobody explicitly shared. An empty grant would mean "this layer permits
+nothing", refusing everything on every object, which is not what a sharing model means.
+
+**A widening grant is refused at write time as well as being inert at read time.** Intersection
+already makes it powerless, but a row that looks like access and behaves like nothing is worse
+than an error: someone believes access was given. `check_grant_is_narrowing` refuses it where the
+mistake is made.
+
+**Verified by direct exercise**, twelve checks, all passing — including that a denial reason
+reaches the audit trail and never the response:
+
+```
+access.publish.denied      permitted, but no password proof within the step-up window
+access.approve.denied      no role held by this principal grants approve
+access.edit_draft.denied   edit_draft is withheld by resource policy (resource grant)
+access.approve.denied      separation of duty: the author of a change cannot approve it
+```
+
+No product route calls the guard yet — the routes that will are Gate 2 and later. That is stated
+rather than hidden: the mechanism is built and proven, and it is not yet load-bearing.

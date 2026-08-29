@@ -20,8 +20,8 @@ from uboss.core.logging import actor_id, tenant_id
 from uboss.core.permissions import Action
 from uboss.core.settings import Settings, get_settings
 from uboss.db.session import db_session
+from uboss.modules.identity import guard, tokens
 from uboss.modules.identity import service as identity
-from uboss.modules.identity import tokens
 
 
 def settings_dep() -> Settings:
@@ -94,13 +94,23 @@ def requires(action: Action):  # type: ignore[no-untyped-def]
 
         @router.post("/objectives", dependencies=[Depends(requires(Action.EDIT_DRAFT))])
 
-    This is the tenant-wide check. A route that acts on one object still re-checks against that
-    object's own grants — this catches the caller who has no business on the endpoint at all,
-    before any work is done.
+    This is the tenant-wide gate: it catches the caller who has no business on the endpoint at
+    all, before any work is done, and it writes the refusal to the audit trail.
+
+    **A route that acts on one object still calls `guard.authorise` with that object.** This
+    cannot check a resource it has not loaded yet, so it is the first half of the check and never
+    the whole of it.
     """
 
-    async def check(context: CurrentContext) -> None:
-        context.require(action)
+    async def check(
+        context: CurrentContext, session: SessionDep, request: Request
+    ) -> None:
+        await guard.authorise(
+            session,
+            context,
+            action,
+            ip_address=request.client.host if request.client else None,
+        )
 
     return check
 
