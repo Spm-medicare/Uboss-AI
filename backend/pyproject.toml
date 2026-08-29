@@ -67,6 +67,6 @@ strict = true
 files = ["src"]
 plugins = ["pydantic.mypy"]
 
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["../tests"]
+#  Pytest is configured in the repository root pytest.ini, because the suite exercises the
+#  schema as much as the Python and has to build a database from the migrations. Configuring it
+#  in two places is how the two configurations drift.

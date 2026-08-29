@@ -864,3 +864,48 @@ the first edit survived                 version 2
 a re-read then succeeds                 version 3
 cross-tenant update refused             same 409, nothing about the row
 ```
+
+---
+
+## 29. The test suite builds its database from the migrations, and runs as the application role
+
+**Two choices that decide whether the suite proves anything.**
+
+**Built by alembic, not `create_all`.** `create_all` produces the tables the models declare and
+**none of the row-level security policies, the triggers, or the grants**. Those are exactly what
+the security suite exists to test. A schema built a different way from production is a schema
+that proves nothing about production.
+
+**Run as `uboss_app`, not the owner.** FORCE is off since DECISIONS 22, so `uboss_owner` sees
+every tenant by design. A cross-tenant test connected as the owner would pass whatever the
+policies said — and would keep passing after somebody dropped one.
+
+`conftest` therefore exposes two engines and names the difference, so no test can pick the wrong
+one by accident.
+
+**The table list comes from the catalogue.** `test_nothing_is_visible_without_a_bound_tenant`
+queries `pg_attribute` for every table carrying a `tenant_id`. A hand-written list stops
+mentioning the table somebody added last week, and the first anyone hears about it is a breach.
+`test_every_tenant_owned_table_has_row_level_security` closes the same gap from the other side.
+
+**The suite proves it has teeth.** `test_the_isolation_checks_would_actually_catch_a_broken_policy`
+disables row-level security on one table, asserts the isolation check then *fails*, and restores
+it in a `finally`. Without it every isolation assertion would still pass if a policy were
+dropped — they would all be reading zero rows for the wrong reason. This is the second half of
+1.6.3's exit condition, written as a test rather than left as a ritual somebody performs once.
+
+**One test found a real gap the moment it ran.** `test_every_migration_explains_itself` failed on
+`0003`, whose docstring said what it did and not why. The grace window it introduces exists to
+stop concurrent in-flight requests being signed out mid-rotation — which is not obvious from
+three `add_column` calls. It is written down now.
+
+**Two behaviours the suite pins that are easy to break silently:**
+
+- `test_the_preflight_agrees_with_the_database` is the regression test for `runtime.run`
+  discarding its coroutine's return value. That bug reported an empty database that was in fact
+  at head, with no error at all.
+- `test_every_migration_is_honest_about_reversing` refuses the third state: a `downgrade()` with
+  an empty `pass`, which claims to reverse and does nothing. `alembic downgrade` reports success
+  and the schema has not moved.
+
+**39 tests.** `scripts/check.sh` runs them with everything else CI will.

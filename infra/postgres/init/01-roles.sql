@@ -14,6 +14,15 @@
 \set ON_ERROR_STOP on
 
 CREATE ROLE uboss_owner LOGIN PASSWORD 'uboss_owner';
+
+-- The owner may create databases. The test suite builds a throwaway one from the migrations on
+-- every run, and needing a superuser for that would mean putting superuser credentials in a
+-- developer's environment — a much larger privilege than CREATEDB, held permanently, to avoid
+-- granting a smaller one.
+--
+-- It changes nothing about the tenant boundary: uboss_app, which serves every request, has
+-- neither this nor any other role attribute.
+ALTER ROLE uboss_owner CREATEDB;
 CREATE ROLE uboss_app LOGIN PASSWORD 'uboss_app';
 
 ALTER DATABASE uboss OWNER TO uboss_owner;

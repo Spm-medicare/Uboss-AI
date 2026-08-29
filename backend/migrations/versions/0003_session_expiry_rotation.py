@@ -1,5 +1,29 @@
 """Add idle-aware, race-safe session token rotation.
 
+A session token that never changes is a token that stays useful for as long as the session
+lasts. Rotating it periodically shrinks the window in which a copied token is worth anything,
+and it is the difference between a leak that ends and a leak that lasts a fortnight.
+
+Three columns, and the reason for each:
+
+* **`token_rotated_at`** — when the current token was minted, so the API knows when the next
+  rotation is due without guessing from `created_at`.
+* **`previous_token_hash`** and **`previous_valid_until`** — the grace window, and the reason
+  this is not a two-line change.
+
+Rotation has a race that only appears under real use. A browser fires several requests at once;
+one of them rotates the token and sets a new cookie; the others are already in flight carrying
+the old one. Without a grace window every one of those is refused, and the person is signed out
+for doing nothing but loading a page with three panels on it.
+
+So the previous hash stays valid for a short, explicit period. The session policy in
+`sessions_access` matches on it only inside that window, which is why the window has to be a
+column and not a constant — a policy cannot read the application's configuration.
+
+Rotation never extends the session. `expires_at` is untouched here: absolute and idle expiry are
+decided by the session's own age and use, and a rotation is neither. A token that renewed the
+session every time it rotated would be a session that never ends.
+
 Revision ID: 0003
 Revises: 0002
 Created: 2026-08-29

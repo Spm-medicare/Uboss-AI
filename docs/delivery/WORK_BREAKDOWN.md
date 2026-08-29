@@ -11,7 +11,8 @@ and "the page opens" are not evidence. A sub-step without a passing check is not
 
 **Status: 0 of 8 Gates passed. 0 of 28 steps complete. 9 in progress. 19 not started.**
 
-Within them: **1.1, 1.3 and 1.4 are complete**, and 1.2.1–1.2.5 are done and verified.
+Within them: **1.1, 1.3 and 1.4 are complete**, 1.2.1–1.2.5 are done, and **1.6.3 — the
+automated suite that was blocking every Gate — now runs 39 tests.**
 
 Legend: ✅ done and verified · 🟡 partly done · ⬜ not started
 
@@ -211,27 +212,38 @@ time, and a permanently failing event lands in the dead-letter view instead of d
 |---|---|---|
 | 1.6.1 | S3-compatible files — tenant-prefixed keys, hash, scan state, signed URLs | ⬜ |
 | 1.6.2 | OpenTelemetry traces and metrics on the existing correlation id | ⬜ |
-| 1.6.3 | **Automated test suite** | ⬜ ⟵ **unblocks every Gate** |
+| 1.6.3 | **Automated test suite** | ✅ 39 tests |
 | 1.6.4 | CI — lint, types, migrations, secret scan, tests, both builds | ⬜ |
 | 1.6.5 | Environments, secret manager, rehearsed deploy and rollback | ⬜ |
 
-**1.6.3 — there is no `tests/` directory. Not one automated test exists.** The implementation plan
-is explicit: without automated evidence a Gate stays open however good the code is. This is why
-nine steps read *in progress* rather than *done*.
+**1.6.3 — done. 39 tests, `pytest tests/`.**
 
-First suite, in this order:
+Every run builds a throwaway database by running the migrations, and drops it afterwards. Built
+by alembic rather than `create_all`, because `create_all` produces the tables the models
+describe and **none of the row-level security policies, triggers or grants** — which are exactly
+what the security suite exists to test.
 
-1. **Cross-tenant** — every tenant-owned table: unbound reads nothing, bound reads only its own, a
-   write aimed at another tenant is refused. This one must never be allowed to fail.
-2. **Session and security** — refusals indistinguishable, rate limits engage, Origin enforced,
-   rotation grace works then stops, idle and absolute expiry both end a session.
-3. **Permission** — role matrix, ceiling narrowing, self-approval refused, step-up required.
-4. **Idempotency** — replay, conflict, concurrent duplicate.
-5. **Migration** — every migration applies to an empty database; schema matches the models.
+| Suite | Tests | |
+|---|---:|---|
+| `security/test_cross_tenant.py` | 10 | isolation, provisioning, credentials, append-only audit |
+| `security/test_permission.py` | 12 | role matrix, ceiling, step-up, separation of duty, denials |
+| `integration/test_idempotency.py` | 9 | replay, conflict, concurrent duplicate, concurrency |
+| `integration/test_migrations.py` | 8 | head, drift, honest downgrades, role privileges |
 
-**Done when** `uv run pytest` passes from a clean clone against a throwaway database, and
-deliberately breaking one RLS policy makes the cross-tenant suite fail.
+**The security suite runs as `uboss_app`**, the role every API request uses. Running it as the
+owner would prove nothing: FORCE is off (DECISIONS 22), so the owner sees everything by design.
 
+**The table list is read from the catalogue, not hand-written.** A hand-written list stops
+mentioning the table somebody added last week, and the first anyone knows is a breach.
+
+**Both halves of the exit check pass.** The second one — "deliberately breaking one RLS policy
+makes the suite fail" — is itself a test rather than a manual ritual:
+`test_the_isolation_checks_would_actually_catch_a_broken_policy` disables row-level security on
+one table, asserts the isolation check then *fails*, and restores it in a `finally`. Without it,
+every isolation assertion would still pass if someone dropped a policy — they would all be
+reading zero rows for the wrong reason.
+
+`scripts/check.sh` runs everything CI will (1.6.4), in the order that fails fastest.
 **1.6.1 done when** a file uploaded in one tenant is unreachable from another, including by direct
 key.
 **1.6.2 done when** one browser action can be followed end to end by its correlation id, and no
@@ -329,10 +341,9 @@ as a plan and behave as a guess.
 # Order
 
 ```
-NOW    1.6.3            first automated test suite
+NOW    1.5.2, 1.5.3     outbox relay
 
-THEN   1.5.2, 1.5.3     outbox relay
-       1.2.6            invite and reset  (needs the relay)
+THEN   1.2.6            invite and reset  (needs the relay)
        1.6.4, 1.6.5     CI and deployment
        1.7.1 → 1.7.4    frontend foundation
 
