@@ -3,60 +3,44 @@
  *
  * There is no token here, anywhere. The session is an http-only cookie the browser sends on its
  * own — this module never reads it, stores it, or puts it anywhere JavaScript can reach.
+ *
+ * **Every type comes from the generated contract.** They used to be written by hand here, which
+ * meant the compiler was checking against whatever the frontend believed rather than what the
+ * server publishes. A renamed field would have type-checked cleanly and failed at runtime.
  */
 
+import type {
+  ChooseWorkspaceResponse,
+  CurrentUser,
+  PasswordStepUpRequest,
+  SignInRequest,
+  SignInResponse,
+  StepUpResponse,
+  WorkspaceSelectionRequest,
+  WorkspaceSummary,
+} from "./contract";
 import { request } from "./client";
 
-export interface WorkspaceSummary {
-  slug: string;
-  name: string;
-  display_name: string;
-}
+export type {
+  ChooseWorkspaceResponse,
+  CurrentUser,
+  SignInResponse,
+  StepUpResponse,
+  WorkspaceSummary,
+};
 
-export interface CurrentUser {
-  membership_id: string;
-  display_name: string;
-  email: string;
-  job_title: string | null;
-  roles: string[];
-  /**
-   * What this person may do. Menus use it to hide what is unusable.
-   *
-   * Never a permission check. The server re-resolves permissions on every route, because a list
-   * sent to a browser is a list the browser can edit.
-   */
-  actions: string[];
-  workspace_slug: string;
-  workspace_name: string;
-  timezone: string;
-  org_node_id: string | null;
-  stepped_up: boolean;
-  session_expires_at: string;
-}
+/**
+ * Sign-in has two successful outcomes, and neither is an error.
+ *
+ * The server answers 200 with one or the other, so a caller has to handle both — a union rather
+ * than an optional field, so the compiler makes sure it does.
+ */
+export type SignInResult = SignInResponse | ChooseWorkspaceResponse;
 
-export type SignInResult =
-  | { status: "signed_in"; user: CurrentUser }
-  | {
-      status: "choose_workspace";
-      challenge: string;
-      workspaces: WorkspaceSummary[];
-    };
-
-export interface SignInInput {
-  email: string;
-  password: string;
-}
-
-export interface WorkspaceSelectionInput {
-  challenge: string;
-  workspace: string;
-}
-
-export interface StepUpResult {
-  status: "stepped_up";
-  method: "password";
-  expires_at: string;
-}
+export type SignInInput = SignInRequest;
+export type WorkspaceSelectionInput = WorkspaceSelectionRequest;
+export type StepUpInput = PasswordStepUpRequest;
+export type StepUpResult = StepUpResponse;
 
 /**
  * Exchange an email and password for a session cookie.

@@ -4,20 +4,40 @@ Every module hangs one router here. Mounting is explicit — a module is reachab
 file says so, not because a directory scan found it. A scan would eventually mount something
 half-finished.
 
-The prefix comes from settings (`/api/v1`, PLAN section 28), so a future `/api/v2` is a second
-mount rather than a rewrite.
+The prefix comes from settings (`/api/v1`, PLAN §28), so a future `/api/v2` is a second mount
+rather than a rewrite.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
-from uboss.core.origin import require_trusted_origin
+from uboss.core.errors import ErrorEnvelope
 from uboss.modules.identity.api import router as identity_router
+
+#: Every failure any route can produce, declared once.
+#
+#  PLAN §28 makes the error envelope part of the contract, so it belongs in the published schema
+#  and in the generated client — not only in the exception handlers that happen to produce it.
+#  Without this the frontend keeps a hand-written copy, and a hand-written copy of a contract is
+#  a copy that drifts.
+#
+#  Declared on the router rather than per route because any of these can arrive on any route: a
+#  session can expire, a policy can refuse, a dependency can be down.
+ERROR_RESPONSES: dict[int | str, dict[str, object]] = {
+    401: {"model": ErrorEnvelope, "description": "Not signed in, or the session ended."},
+    403: {"model": ErrorEnvelope, "description": "Refused. The reason is in the audit trail."},
+    404: {"model": ErrorEnvelope, "description": "No such record, for this caller."},
+    409: {"model": ErrorEnvelope, "description": "The record moved, or the key was reused."},
+    422: {"model": ErrorEnvelope, "description": "Some field was not accepted."},
+    429: {"model": ErrorEnvelope, "description": "Too many attempts. See Retry-After."},
+    500: {"model": ErrorEnvelope, "description": "A fault on our side. Nothing was changed."},
+    503: {"model": ErrorEnvelope, "description": "A dependency did not answer. Retryable."},
+}
 
 
 def build_v1_router() -> APIRouter:
-    router = APIRouter(dependencies=[Depends(require_trusted_origin)])
+    router = APIRouter(responses=ERROR_RESPONSES)
 
     #  Modules are added here as each step of the build completes. Nothing is listed before it
     #  works end to end: a route that returns a placeholder is a route that lies to the frontend.
