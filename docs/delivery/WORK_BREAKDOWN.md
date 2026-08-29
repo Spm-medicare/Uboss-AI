@@ -238,13 +238,13 @@ one-hour ceiling was unreachable.
 
 | | | |
 |---|---|---|
-| 1.6.1 | S3-compatible files — tenant-prefixed keys, hash, scan state, signed URLs | ⬜ |
+| 1.6.1 | S3-compatible files — tenant-prefixed keys, hash, scan state, signed URLs | ✅ |
 | 1.6.2 | OpenTelemetry traces and metrics on the existing correlation id | ⬜ |
-| 1.6.3 | **Automated test suite** | ✅ 55 tests |
+| 1.6.3 | **Automated test suite** | ✅ 67 tests |
 | 1.6.4 | CI — lint, types, migrations, secret scan, tests, both builds | 🟡 written, unproven |
 | 1.6.5 | Environments, secret manager, rehearsed deploy and rollback | ⬜ |
 
-**1.6.3 — done. 55 tests, `pytest tests/`.**
+**1.6.3 — done. 67 tests, `pytest tests/`.**
 
 Every run builds a throwaway database by running the migrations, and drops it afterwards. Built
 by alembic rather than `create_all`, because `create_all` produces the tables the models
@@ -273,8 +273,16 @@ every isolation assertion would still pass if someone dropped a policy — they 
 reading zero rows for the wrong reason.
 
 `scripts/check.sh` runs everything CI will (1.6.4), in the order that fails fastest.
-**1.6.1 done when** a file uploaded in one tenant is unreachable from another, including by direct
-key.
+**1.6.1 — done.** MinIO locally, the same S3 API a deployment uses — no local branch in the code.
+Keys are `t/<tenant>/<uuid>`, and the database CHECKs the shape, because row-level security
+cannot look inside a string and object storage has no idea what a tenant is.
+
+A file is not served until it has been scanned clean. No scanner is configured, so every upload
+stays `pending` and stays undownloadable — visible, rather than a silent allow.
+
+12 tests. Two found real bugs: a composite `SET NULL` foreign key was nulling `tenant_id` too, so
+removing a person who had uploaded anything would have failed; and the relay compared a Python
+clock against database timestamps, which fails whenever the two disagree.
 **1.6.2 done when** one browser action can be followed end to end by its correlation id, and no
 span carries a secret.
 **1.6.4 — written, and honestly incomplete.** `.github/workflows/ci.yml` runs four jobs: lint and

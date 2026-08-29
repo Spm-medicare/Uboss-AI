@@ -71,6 +71,23 @@ class Settings(BaseSettings):
     ai_timeout_seconds: int = Field(default=60, ge=5, le=600)
     ai_max_output_tokens: int = Field(default=8000, ge=256, le=64000)
 
+    # ── object storage ───────────────────────────────────────────────────────────────────
+    #: S3-compatible (PLAN §26). MinIO locally, whatever the deployment provides in production —
+    #: the same API either way, so there is no branch in the code for "local".
+    s3_endpoint_url: str = "http://localhost:9002"
+    s3_bucket: str = "uboss-files"
+    s3_region: str = "us-east-1"
+    s3_access_key: SecretStr = SecretStr("")
+    s3_secret_key: SecretStr = SecretStr("")
+
+    #: How long a download link lives. Short, because a link is forwardable — an email, a chat
+    #: message, a screenshot — and this is what limits how far a leaked one travels.
+    s3_signed_url_seconds: int = Field(default=300, ge=30, le=3600)
+
+    #: The largest upload accepted. Enforced before anything is read, so a large body cannot be
+    #: streamed into memory first and rejected afterwards.
+    max_upload_bytes: int = Field(default=25 * 1024 * 1024, ge=1024, le=1024 * 1024 * 1024)
+
     # ── the durable runtime ──────────────────────────────────────────────────────────────
     temporal_address: str = "localhost:7233"
     temporal_namespace: str = "default"
@@ -81,6 +98,19 @@ class Settings(BaseSettings):
     #: because the Host header is attacker-controlled and must never select a tenant.
     trusted_hosts: str = "localhost,127.0.0.1"
     cors_origins: str = "http://localhost:3000"
+
+    @property
+    def storage_is_configured(self) -> bool:
+        """True when object storage can actually be reached.
+
+        Read by the readiness probe and by the upload route. An unconfigured store is a
+        supported state — the product says files are unavailable rather than accepting an upload
+        it cannot keep.
+        """
+        return bool(
+            self.s3_access_key.get_secret_value().strip()
+            and self.s3_secret_key.get_secret_value().strip()
+        )
 
     @property
     def ai_is_configured(self) -> bool:

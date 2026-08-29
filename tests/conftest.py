@@ -284,12 +284,26 @@ async def two_workspaces(
     yield left, right
 
     async with build_sessionmaker(owner_engine)() as session:
+        #  `audit_events` refuses DELETE — the append-only trigger, which is exactly what
+        #  test_the_audit_trail_cannot_be_rewritten proves. Cleaning up after a test therefore
+        #  has to lift it, and the lift is the narrowest possible: this session, this throwaway
+        #  database, restored immediately afterwards.
+        #
+        #  The alternative — leaving the rows — does not work: the tenant foreign key is
+        #  RESTRICT, so the organisation could never be deleted and every run would leak two.
+        await session.execute(
+            text("ALTER TABLE audit_events DISABLE TRIGGER audit_events_append_only")
+        )
         for workspace in (left, right):
             await session.execute(
                 text("SELECT set_config('app.tenant_id', :t, true)"),
                 {"t": str(workspace.tenant_id)},
             )
+            #  Ordered so a child is removed before its parent. Anything added to the schema and
+            #  forgotten here shows up immediately as a foreign-key violation on the tenant
+            #  delete — noisy, and better than a suite that leaks an organisation per run.
             for table in (
+                "files",
                 "audit_events",
                 "outbox_events",
                 "idempotency_records",
@@ -312,4 +326,7 @@ async def two_workspaces(
             await session.execute(
                 text("DELETE FROM tenants WHERE id = :t"), {"t": workspace.tenant_id}
             )
+        await session.execute(
+            text("ALTER TABLE audit_events ENABLE TRIGGER audit_events_append_only")
+        )
         await session.commit()

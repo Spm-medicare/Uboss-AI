@@ -23,7 +23,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import text
@@ -132,21 +132,27 @@ async def claim(
     `attempts` is incremented **here, when the event is claimed**, not after a failure. A worker
     that dies mid-publish never reaches the failure path, so counting there would let a poisonous
     event be retried for ever by a series of workers it kept killing.
+
+    **Every time is the database's.** `next_attempt_at` and `leased_until` are written by
+    `now()` in SQL, so they are compared against `now()` in SQL too. Passing a Python timestamp
+    means the answer depends on the clock of whichever machine happens to run the worker — and
+    when that clock is a moment behind the database's, a freshly queued event is "not due yet"
+    and sits there. It cost an afternoon to find, because it only appears when the two clocks
+    disagree.
     """
-    now = datetime.now(UTC)
     rows = (
         await session.execute(
             text(
                 """
                 UPDATE outbox_events
-                SET leased_until = :until,
+                SET leased_until = now() + make_interval(secs => :lease_seconds),
                     leased_by = :worker,
                     attempts = attempts + 1
                 WHERE id IN (
                     SELECT id FROM outbox_events
                     WHERE status = 'pending'
-                      AND next_attempt_at <= :now
-                      AND (leased_until IS NULL OR leased_until < :now)
+                      AND next_attempt_at <= now()
+                      AND (leased_until IS NULL OR leased_until < now())
                     ORDER BY next_attempt_at
                     LIMIT :batch
                     FOR UPDATE SKIP LOCKED
@@ -156,9 +162,8 @@ async def claim(
                 """
             ),
             {
-                "until": now + lease,
+                "lease_seconds": lease.total_seconds(),
                 "worker": worker[:100],
-                "now": now,
                 "batch": batch,
             },
         )
@@ -210,7 +215,7 @@ async def mark_failed(
             """
             UPDATE outbox_events
             SET status = :status,
-                next_attempt_at = :next_attempt,
+                next_attempt_at = now() + make_interval(secs => :backoff_seconds),
                 leased_until = NULL,
                 leased_by = NULL,
                 last_error = :error
@@ -220,7 +225,7 @@ async def mark_failed(
         {
             "id": event.id,
             "status": "dead" if exhausted else "pending",
-            "next_attempt": datetime.now(UTC) + backoff_for(event.attempts),
+            "backoff_seconds": backoff_for(event.attempts).total_seconds(),
             #  Truncated: a provider that returns an HTML error page would otherwise put a
             #  kilobyte of markup in a column an operator has to read.
             "error": error[:2000],

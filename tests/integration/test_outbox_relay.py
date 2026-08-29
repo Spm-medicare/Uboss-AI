@@ -14,10 +14,12 @@ from __future__ import annotations
 
 import os
 import uuid
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
@@ -53,11 +55,39 @@ async def _queue(
     ).scalar_one()
 
 
+@pytest_asyncio.fixture(loop_scope="session")
+async def drained(owner_engine: AsyncEngine) -> AsyncIterator[None]:
+    """Start from an empty queue, and leave one behind.
+
+    The relay reads across every tenant — that is its whole purpose — so a test asserting "one
+    event was handled" is really asserting "one event was *due*", and any row another test left
+    behind breaks it. The isolation these tests need is the queue, not the tenant.
+
+    Draining by marking published rather than deleting: `outbox_events` grants the relay no
+    DELETE, and a test that needs a privilege the product withholds is a test that stops
+    resembling the product.
+    """
+    async def empty() -> None:
+        async with build_sessionmaker(owner_engine)() as session:
+            await session.execute(
+                text(
+                    "UPDATE outbox_events SET status = 'published', published_at = now(), "
+                    "leased_until = NULL WHERE status = 'pending'"
+                )
+            )
+            await session.commit()
+
+    await empty()
+    yield
+    await empty()
+
+
 # ── 1.5.2 — the role ─────────────────────────────────────────────────────────────────────
 
 
 async def test_the_relay_role_can_read_due_events(
-    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace]
+    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace],
+    drained: None,
 ) -> None:
     """Delivery cannot be tenant-scoped: one worker drains the queue for everybody."""
     left, right = two_workspaces
@@ -117,7 +147,8 @@ async def test_the_relay_role_is_refused_everywhere_else(
 
 
 async def test_the_relay_role_cannot_create_or_delete_events(
-    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace]
+    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace],
+    drained: None,
 ) -> None:
     """It delivers events; it does not invent them, and it does not erase the evidence.
 
@@ -144,7 +175,8 @@ async def test_the_relay_role_cannot_create_or_delete_events(
 
 
 async def test_an_event_is_delivered_and_marked(
-    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace]
+    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace],
+    drained: None,
 ) -> None:
     left, _right = two_workspaces
     delivered: list[relay.Event] = []
@@ -189,7 +221,8 @@ async def test_an_event_is_delivered_and_marked(
 
 
 async def test_an_event_with_no_publisher_is_dead_lettered_not_dropped(
-    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace]
+    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace],
+    drained: None,
 ) -> None:
     """A silently discarded notification is one nobody knows was never sent.
 
@@ -228,7 +261,8 @@ async def test_an_event_with_no_publisher_is_dead_lettered_not_dropped(
 
 
 async def test_a_failing_event_is_retried_then_given_up_on(
-    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace]
+    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace],
+    drained: None,
 ) -> None:
     """Backoff, then the dead-letter view. It never disappears."""
     left, _right = two_workspaces
@@ -284,7 +318,8 @@ async def test_a_failing_event_is_retried_then_given_up_on(
 
 
 async def test_an_event_survives_a_worker_killed_mid_publish(
-    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace]
+    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace],
+    drained: None,
 ) -> None:
     """1.5.3's exit check, and the reason this is at-least-once.
 
@@ -347,7 +382,8 @@ async def test_an_event_survives_a_worker_killed_mid_publish(
 
 
 async def test_a_leased_event_is_not_claimed_twice(
-    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace]
+    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace],
+    drained: None,
 ) -> None:
     """Two workers running at once must not both deliver the same event.
 
@@ -389,7 +425,8 @@ async def test_backoff_grows_and_is_capped() -> None:
 
 
 async def test_an_event_that_is_not_due_yet_is_left_alone(
-    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace]
+    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace],
+    drained: None,
 ) -> None:
     left, _right = two_workspaces
 

@@ -22,6 +22,9 @@ dependencies = [
     "httpx>=0.28",
     "structlog>=24.4",
     "redis>=5.2",
+    # S3-compatible object storage (PLAN §26). The async client, because uploads and downloads
+    # sit on the request path and a blocking one would stall the event loop.
+    "aioboto3>=13.0",
 ]
 
 [dependency-groups]
@@ -62,12 +65,21 @@ ignore = [
 "src/uboss/core/errors.py" = ["N818"]
 #  Same reason: `raise PublisherMissing(...)` reads as a sentence where it is raised.
 "src/uboss/modules/audit/relay.py" = ["N818"]
+#  `raise FileNotReady(...)` likewise.
+"src/uboss/modules/files/service.py" = ["N818"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
 files = ["src"]
 plugins = ["pydantic.mypy"]
+
+#  aioboto3 and botocore ship no type information. Ignoring their missing stubs is narrower than
+#  loosening `strict` — everything this project writes stays fully typed, and modules/files wraps
+#  the untyped client behind an interface that is.
+[[tool.mypy.overrides]]
+module = ["aioboto3.*", "botocore.*", "aiobotocore.*", "boto3.*"]
+ignore_missing_imports = true
 
 #  Pytest is configured in the repository root pytest.ini, because the suite exercises the
 #  schema as much as the Python and has to build a database from the migrations. Configuring it
