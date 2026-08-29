@@ -316,7 +316,7 @@ Both of these get harder with every screen. They come before the App Shell for t
 | 1.7.1 | Generated OpenAPI types — `schema.d.ts` does not exist | ⬜ |
 | 1.7.2 | Translation keys | ✅ |
 | 1.7.3 | Locale, timezone, date and number formatting | ✅ 10 tests |
-| 1.7.4 | Shared primitives and the five universal route states | ⬜ |
+| 1.7.4 | Shared primitives and the five universal route states | ✅ |
 
 **1.7.1 done when** changing a response model without regenerating breaks the build.
 **1.7.2 done when** no user-visible literal remains outside the message catalogue. Retrofitting

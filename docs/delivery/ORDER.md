@@ -62,7 +62,7 @@ committed. Not before.
 | 🟡 | **1.6.5** Environments, secrets, deploy and rollback | Images, config and runbook written. **Exit check unmet: there is no staging** — DR-003 is open |
 | ✅ | **1.7.2** Translation keys | done |
 | ✅ | **1.7.3** Locale, timezone, date and number formatting | done — 10 tests |
-| **6** | **1.7.4** Shared primitives and the five universal route states | No page component declares its own button styling or a literal colour |
+| ✅ | **1.7.4** Shared primitives and the five universal route states | done — 4 tests; `grep '<button' src/app` returns nothing |
 | ⛔ | **1.2.6** Invite, password set, reset | **Blocked: a mail provider.** The outbox delivers; nothing is registered to send |
 | ⛔ | **0A.2** Private remote | **Blocked: the client.** 14 commits exist on one laptop |
 | ⛔ | **0A.3** Protected `main` | Needs 0A.2 |

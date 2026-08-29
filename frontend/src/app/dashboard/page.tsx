@@ -6,7 +6,14 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { useSession, useSignOut } from "@/lib/auth/use-session";
-import { cn } from "@/lib/cn";
+import {
+  Button,
+  Card,
+  DescriptionList,
+  DescriptionRow,
+  ErrorState,
+  LoadingState,
+} from "@/ui";
 
 /**
  * The first screen inside a workspace.
@@ -30,10 +37,7 @@ export default function DashboardPage() {
   if (error) {
     return (
       <main id="main" className="grid min-h-dvh place-items-center px-6">
-        <div className="max-w-sm text-center">
-          <h1 className="text-lg font-semibold">{tRoot("notRespondingTitle")}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
-        </div>
+        <ErrorState error={error} onRetry={() => router.refresh()} />
       </main>
     );
   }
@@ -41,7 +45,7 @@ export default function DashboardPage() {
   if (isLoading || !user) {
     return (
       <main id="main" className="grid min-h-dvh place-items-center px-6" aria-busy>
-        <p className="text-sm text-muted-foreground">{tRoot("loadingWorkspace")}</p>
+        <LoadingState label={tRoot("loadingWorkspace")} />
       </main>
     );
   }
@@ -57,22 +61,18 @@ export default function DashboardPage() {
               {user.job_title ? ` · ${user.job_title}` : ""}
             </p>
           </div>
-          <button
-            type="button"
+          <Button
+            size="sm"
+            className="shrink-0"
+            icon={<LogOut className="size-3.5" />}
+            busy={signOut.isPending}
             onClick={async () => {
               await signOut.mutateAsync();
               router.replace("/sign-in");
             }}
-            disabled={signOut.isPending}
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border",
-              "px-2.5 py-1.5 text-xs font-medium transition-colors duration-150",
-              "hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60",
-            )}
           >
-            <LogOut aria-hidden className="size-3.5" />
             {signOut.isPending ? tCommon("signingOut") : tCommon("signOut")}
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -88,33 +88,24 @@ export default function DashboardPage() {
           <h2 id="access-heading" className="text-sm font-semibold">
             {t("accessHeading")}
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("accessSubtitle")}
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("accessSubtitle")}</p>
 
-          <dl className="mt-3 divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-            <Row label={t("roles")} value={user.roles.join(", ") || tCommon("none")} />
-            <Row
-              label={t("youCan")}
-              value={user.actions.map(readable).join(" · ") || t("nothingYouCan")}
-            />
-            <Row label={t("timeZone")} value={user.timezone} />
-            <Row
-              label={t("hierarchyPosition")}
-              value={user.org_node_id ? t("placed") : t("notPlaced")}
-            />
-          </dl>
+          <Card className="mt-3 overflow-hidden">
+            <DescriptionList>
+              <DescriptionRow label={t("roles")}>
+                {user.roles.join(", ") || tCommon("none")}
+              </DescriptionRow>
+              <DescriptionRow label={t("youCan")}>
+                {user.actions.map(readable).join(" · ") || t("nothingYouCan")}
+              </DescriptionRow>
+              <DescriptionRow label={t("timeZone")}>{user.timezone}</DescriptionRow>
+              <DescriptionRow label={t("hierarchyPosition")}>
+                {user.org_node_id ? t("placed") : t("notPlaced")}
+              </DescriptionRow>
+            </DescriptionList>
+          </Card>
         </section>
       </main>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-1 px-5 py-3.5 sm:flex-row sm:items-baseline sm:gap-6">
-      <dt className="w-44 shrink-0 text-sm text-muted-foreground">{label}</dt>
-      <dd className="text-sm">{value}</dd>
     </div>
   );
 }

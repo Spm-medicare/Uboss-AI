@@ -15,8 +15,8 @@ import { useTranslations } from "next-intl";
 
 import { fetchReadiness } from "@/lib/api/health";
 import { NetworkError } from "@/lib/api/errors";
-import { cn } from "@/lib/cn";
 import { applyThemeChoice, useTheme } from "@/lib/theme";
+import { Badge, Button, Card } from "@/ui";
 
 /**
  * The environment page.
@@ -66,31 +66,23 @@ export default function EnvironmentPage() {
             <h2 id="api-heading" className="text-sm font-semibold">
               {t("apiHeading")}
             </h2>
-            <button
-              type="button"
+            <Button
+              size="sm"
               onClick={() => void readiness.refetch()}
-              disabled={readiness.isFetching}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5",
-                "text-xs font-medium transition-colors duration-150",
-                "hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60",
-              )}
+              busy={readiness.isFetching}
+              icon={<RefreshCw className="size-3.5" />}
             >
-              <RefreshCw
-                aria-hidden
-                className={cn("size-3.5", readiness.isFetching && "animate-spin")}
-              />
               {readiness.isFetching ? tCommon("checking") : t("checkAgain")}
-            </button>
+            </Button>
           </div>
 
-          <div className="mt-3 rounded-lg border border-border bg-card p-5">
+          <Card className="mt-3 p-5">
             <ReadinessBody
               isPending={readiness.isPending}
               error={readiness.error}
               data={readiness.data}
             />
-          </div>
+          </Card>
         </section>
 
         <section className="mt-10" aria-labelledby="built-heading">
@@ -100,7 +92,8 @@ export default function EnvironmentPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             {t("builtSubtitle")}
           </p>
-          <ul className="mt-3 divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
+          <Card as="div" className="mt-3 overflow-hidden">
+            <ul className="divide-y divide-border">
             {FOUNDATION_KEYS.map((key) => (
               <li key={key} className="flex items-start gap-3 px-5 py-3.5">
                 <CheckCircle2 aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />
@@ -109,8 +102,9 @@ export default function EnvironmentPage() {
                   <p className="text-sm text-muted-foreground">{t(`built.${key}.detail`)}</p>
                 </div>
               </li>
-            ))}
-          </ul>
+              ))}
+            </ul>
+          </Card>
         </section>
       </main>
     </div>
@@ -197,13 +191,10 @@ function ReadinessBody({
             className="flex items-center justify-between gap-4 rounded-md bg-muted/60 px-3 py-2"
           >
             <dt className="text-sm capitalize">{dependency.name}</dt>
-            <dd
-              className={cn(
-                "text-sm font-medium",
-                dependency.ok ? "text-success" : "text-danger",
-              )}
-            >
-              {dependency.ok ? t("answering") : dependency.detail || t("notAnswering")}
+            <dd>
+              <Badge tone={dependency.ok ? "success" : "danger"}>
+                {dependency.ok ? t("answering") : dependency.detail || t("notAnswering")}
+              </Badge>
             </dd>
           </div>
         ))}
@@ -220,19 +211,14 @@ function ThemeToggle() {
   const isDark = resolved === "dark";
 
   return (
-    <button
-      type="button"
+    <Button
+      size="sm"
       onClick={() => applyThemeChoice(isDark ? "light" : "dark")}
       aria-label={isDark ? t("toLight") : t("toDark")}
-      className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 hover:bg-accent"
+      icon={isDark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
     >
-      {isDark ? (
-        <Sun aria-hidden className="size-3.5" />
-      ) : (
-        <Moon aria-hidden className="size-3.5" />
-      )}
       {isDark ? t("light") : t("dark")}
-    </button>
+    </Button>
   );
 }
 

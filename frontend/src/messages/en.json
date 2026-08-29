@@ -18,7 +18,8 @@
     "retry": "Try again",
     "checking": "Checking",
     "loading": "Loading…",
-    "none": "None"
+    "none": "None",
+    "optional": "(optional)"
   },
   "signIn": {
     "title": "Sign in",
@@ -114,5 +115,15 @@
     "network": "Could not reach UBOSS. Check your connection and try again.",
     "unexpectedResponse": "The server returned something we could not read. Nothing was changed.",
     "sessionEnded": "Your session has ended. Sign in again."
+  },
+  "states": {
+    "loading": "Loading…",
+    "retry": "Try again",
+    "errorTitle": "That did not work",
+    "offlineTitle": "No connection",
+    "offlineBody": "Check your connection. Nothing was lost — this page will work again once you are back online.",
+    "deniedTitle": "You do not have access to this",
+    "deniedBody": "Ask an administrator at your organisation if you need it.",
+    "reference": "Reference {id}"
   }
 }

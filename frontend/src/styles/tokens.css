@@ -32,6 +32,9 @@
   --ub-approval: #c96b08;
   --ub-success: #16803b;
   --ub-danger: #cf2e2e;
+  /* Text laid on a solid danger fill. Named, so a destructive button never has to say
+     `text-white` — which is only correct until the fill changes. */
+  --ub-danger-foreground: #ffffff;
   --ub-info: #2563eb;
 
   --ub-human-soft: #e0f2fe;
@@ -129,6 +132,7 @@
   --color-approval: var(--ub-approval);
   --color-success: var(--ub-success);
   --color-danger: var(--ub-danger);
+  --color-danger-foreground: var(--ub-danger-foreground);
   --color-info: var(--ub-info);
 
   --color-human-soft: var(--ub-human-soft);

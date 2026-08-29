@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangle, ArrowRight, Loader2, WifiOff } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -11,7 +11,7 @@ import { z } from "zod";
 import type { WorkspaceSummary } from "@/lib/api/auth";
 import { ApiError, NetworkError } from "@/lib/api/errors";
 import { useSelectWorkspace, useSignIn } from "@/lib/auth/use-session";
-import { cn } from "@/lib/cn";
+import { Alert, Button, Field, Input } from "@/ui";
 
 /**
  * The form's own rules, kept deliberately loose.
@@ -116,50 +116,44 @@ export default function SignInPage() {
                 label={t("email")}
                 error={form.formState.errors.email?.message}
                 htmlFor="email"
+                required
               >
-                <input
-                  {...form.register("email")}
-                  id="email"
-                  type="email"
-                  autoComplete="username"
-                  autoFocus
-                  className={inputClass(!!form.formState.errors.email)}
-                />
+                {(field) => (
+                  <Input
+                    {...form.register("email")}
+                    {...field}
+                    type="email"
+                    autoComplete="username"
+                    autoFocus
+                  />
+                )}
               </Field>
 
               <Field
                 label={t("password")}
                 error={form.formState.errors.password?.message}
                 htmlFor="password"
+                required
               >
-                <input
-                  {...form.register("password")}
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  className={inputClass(!!form.formState.errors.password)}
-                />
+                {(field) => (
+                  <Input
+                    {...form.register("password")}
+                    {...field}
+                    type="password"
+                    autoComplete="current-password"
+                  />
+                )}
               </Field>
 
-              <button
+              <Button
                 type="submit"
-                disabled={signIn.isPending}
-                className={cn(
-                  "flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5",
-                  "text-sm font-medium text-primary-foreground",
-                  "transition-colors duration-150 hover:bg-[var(--ub-brand-hover)]",
-                  "disabled:cursor-not-allowed disabled:opacity-70",
-                )}
+                variant="primary"
+                size="lg"
+                block
+                busy={signIn.isPending}
               >
-                {signIn.isPending ? (
-                  <>
-                    <Loader2 aria-hidden className="size-4 animate-spin" />
-                    {tCommon("signingIn")}
-                  </>
-                ) : (
-                  tCommon("signIn")
-                )}
-              </button>
+                {signIn.isPending ? tCommon("signingIn") : tCommon("signIn")}
+              </Button>
             </form>
           </>
         )}
@@ -193,35 +187,36 @@ function WorkspaceChooser({
       <ul className="mt-6 space-y-2">
         {workspaces.map((workspace) => (
           <li key={workspace.slug}>
-            <button
-              type="button"
+            {/*  The whole card is one choice, so the target is the card and not a link inside it.
+                `Button` carries the focus ring and the disabled behaviour; the layout is the only
+                thing this screen adds. */}
+            <Button
+              variant="secondary"
+              block
               disabled={busy}
               onClick={() => onPick(workspace.slug)}
-              className={cn(
-                "flex w-full items-center justify-between gap-3 rounded-lg border border-border",
-                "bg-card px-4 py-3 text-left transition-colors duration-150",
-                "hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60",
-              )}
+              className="h-auto justify-between rounded-lg px-4 py-3 text-left"
             >
               <span>
                 <span className="block text-sm font-medium">{workspace.name}</span>
-                <span className="block text-xs text-muted-foreground">
+                <span className="block text-xs font-normal text-muted-foreground">
                   {t("signingInAs", { name: workspace.display_name })}
                 </span>
               </span>
-              <ArrowRight aria-hidden className="size-4 text-muted-foreground" />
-            </button>
+              <ArrowRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+            </Button>
           </li>
         ))}
       </ul>
 
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={onBack}
-        className="mt-6 text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+        className="mt-6 px-0 text-muted-foreground underline underline-offset-4 hover:bg-transparent hover:text-foreground"
       >
         {t("useAnotherAccount")}
-      </button>
+      </Button>
     </>
   );
 }
@@ -240,67 +235,11 @@ function SignInError({ error }: { error: Error | null }) {
 
   const unreachable = error instanceof NetworkError;
   const message =
-    error instanceof ApiError || unreachable
-      ? error.message
-      : t("unexpected");
+    error instanceof ApiError || unreachable ? error.message : t("unexpected");
 
   return (
-    <div
-      role="alert"
-      className="mt-6 flex items-start gap-2.5 rounded-md border border-[var(--ub-danger)] bg-danger-soft px-3.5 py-3"
-    >
-      {unreachable ? (
-        <WifiOff aria-hidden className="mt-0.5 size-4 shrink-0 text-danger" />
-      ) : (
-        <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0 text-danger" />
-      )}
-      <p className="text-sm text-foreground">{message}</p>
-    </div>
-  );
-}
-
-/**
- * A labelled input and, when there is one, the message that belongs to it.
- *
- * `error` is a *key*, not a sentence — the schema names the message and this resolves it, so a
- * validation string is translated like every other string in the product.
- */
-function Field({
-  label,
-  error,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  //  Explicitly  rather than just optional:  makes
-  //  "may be absent" and "may be undefined" different types, and react-hook-form hands us the
-  //  second one.
-  error?: string | undefined;
-  htmlFor: string;
-  children: React.ReactNode;
-}) {
-  //  Rooted at the catalogue, because the key the schema produced is fully qualified.
-  const tRoot = useTranslations();
-
-  return (
-    <div>
-      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium">
-        {label}
-      </label>
-      {children}
-      {error ? (
-        <p className="mt-1.5 text-sm text-danger" role="alert">
-          {tRoot(error)}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function inputClass(invalid: boolean): string {
-  return cn(
-    "w-full rounded-md border bg-card px-3 py-2 text-sm",
-    "transition-colors duration-150 placeholder:text-muted-foreground",
-    invalid ? "border-[var(--ub-danger)]" : "border-border",
+    <Alert tone={unreachable ? "offline" : "danger"} className="mt-6">
+      {message}
+    </Alert>
   );
 }

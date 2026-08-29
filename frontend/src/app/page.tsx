@@ -1,11 +1,11 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { useSession } from "@/lib/auth/use-session";
+import { ErrorState, LoadingState } from "@/ui";
 
 /**
  * The front door.
@@ -28,11 +28,8 @@ export default function RootPage() {
   //  not send someone to a sign-in form that cannot work either.
   if (error) {
     return (
-      <main id="main" className="grid min-h-dvh place-items-center px-6">
-        <div className="max-w-sm text-center">
-          <h1 className="text-lg font-semibold">{t("notRespondingTitle")}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
-        </div>
+      <main id="main" className="grid min-h-dvh place-items-center bg-background px-6">
+        <ErrorState error={error} onRetry={() => router.refresh()} />
       </main>
     );
   }
@@ -43,10 +40,9 @@ export default function RootPage() {
       className="grid min-h-dvh place-items-center bg-background px-6"
       aria-busy={isLoading}
     >
-      <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 aria-hidden className="size-4 animate-spin" />
-        {isSignedOut ? t("takingYouToSignIn") : t("loadingWorkspace")}
-      </p>
+      <LoadingState
+        label={isSignedOut ? t("takingYouToSignIn") : t("loadingWorkspace")}
+      />
     </main>
   );
 }
