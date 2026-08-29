@@ -242,7 +242,7 @@ one-hour ceiling was unreachable.
 | 1.6.2 | OpenTelemetry traces and metrics on the existing correlation id | ✅ |
 | 1.6.3 | **Automated test suite** | ✅ 74 tests |
 | 1.6.4 | CI — lint, types, migrations, secret scan, tests, both builds | 🟡 written, unproven |
-| 1.6.5 | Environments, secret manager, rehearsed deploy and rollback | ⬜ |
+| 1.6.5 | Environments, secret manager, rehearsed deploy and rollback | 🟡 written, never run |
 
 **1.6.3 — done. 74 tests, `pytest tests/`.**
 
