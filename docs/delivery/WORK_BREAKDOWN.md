@@ -239,12 +239,12 @@ one-hour ceiling was unreachable.
 | | | |
 |---|---|---|
 | 1.6.1 | S3-compatible files — tenant-prefixed keys, hash, scan state, signed URLs | ✅ |
-| 1.6.2 | OpenTelemetry traces and metrics on the existing correlation id | ⬜ |
-| 1.6.3 | **Automated test suite** | ✅ 67 tests |
+| 1.6.2 | OpenTelemetry traces and metrics on the existing correlation id | ✅ |
+| 1.6.3 | **Automated test suite** | ✅ 74 tests |
 | 1.6.4 | CI — lint, types, migrations, secret scan, tests, both builds | 🟡 written, unproven |
 | 1.6.5 | Environments, secret manager, rehearsed deploy and rollback | ⬜ |
 
-**1.6.3 — done. 67 tests, `pytest tests/`.**
+**1.6.3 — done. 74 tests, `pytest tests/`.**
 
 Every run builds a throwaway database by running the migrations, and drops it afterwards. Built
 by alembic rather than `create_all`, because `create_all` produces the tables the models
@@ -283,8 +283,17 @@ stays `pending` and stays undownloadable — visible, rather than a silent allow
 12 tests. Two found real bugs: a composite `SET NULL` foreign key was nulling `tenant_id` too, so
 removing a person who had uploaded anything would have failed; and the relay compared a Python
 clock against database timestamps, which fails whenever the two disagree.
-**1.6.2 done when** one browser action can be followed end to end by its correlation id, and no
-span carries a secret.
+**1.6.2 — done.** The correlation id that has been on every log line since the first commit is
+now on every span too, with the tenant and the actor, so a trace and a log join on any of them.
+
+Off unless `UBOSS_OTLP_ENDPOINT` is set — spans are still created and then dropped, so the code
+path that runs on a laptop is the one that runs in production. A product that needs a telemetry
+backend in order to start is a product nobody can run locally.
+
+7 tests, including one that fails if any span attribute ever looks like a secret or contains an
+email address. That half of the exit check needs a guard, not an assertion: a span reaches a
+collector, a vendor and a shared dashboard, and nothing stops somebody adding a request body to
+one except a test that fails when they do.
 **1.6.4 — written, and honestly incomplete.** `.github/workflows/ci.yml` runs four jobs: lint and
 types, then tests, build and the security scan in parallel. `scripts/check.sh` runs the same set
 locally, so a pull request cannot pass on a laptop and fail there.

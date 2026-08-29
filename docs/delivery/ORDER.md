@@ -45,7 +45,7 @@ committed. Not before.
 | ✅ | 1.5.1 | Append-only audit, atomic with its change |
 | ✅ | 1.5.2 | Least-privilege relay role |
 | ✅ | 1.5.3 | The relay — lease, publish, retry, dead-letter |
-| ✅ | 1.6.3 | Automated test suite — 67 tests |
+| ✅ | 1.6.3 | Automated test suite — 74 tests |
 | 🟡 | 1.6.4 | CI pipeline — written; unprovable without a remote |
 | ✅ | 1.7.1 | Generated OpenAPI types — *done out of order* |
 
@@ -58,7 +58,7 @@ committed. Not before.
 | # | | Exit check |
 |---|---|---|
 | ✅ | **1.6.1** Files / S3 | done — 12 tests |
-| **2** | **1.6.2** OpenTelemetry | One browser action followed end to end by its correlation id; no span carries a secret |
+| ✅ | **1.6.2** OpenTelemetry | done — 7 tests |
 | **3** | **1.6.5** Environments, secrets, deploy and rollback | A deploy and a rollback have both been performed against staging |
 | **4** | **1.7.2** Translation keys | No user-visible literal outside the message catalogue |
 | **5** | **1.7.3** Locale, timezone, date and number formatting | The same instant renders correctly for two people in different timezones |

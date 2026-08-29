@@ -21,6 +21,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from uboss.api.health import router as health_router
 from uboss.api.router import build_v1_router
+from uboss.core import telemetry
 from uboss.core.errors import install_error_handlers
 from uboss.core.logging import configure_logging, get_logger
 from uboss.core.middleware import (
@@ -50,6 +51,8 @@ def _lifespan(settings: Settings):  # type: ignore[no-untyped-def]
         )
         app.state.redis = redis
         app.state.settings = settings
+        #  Instrumented here rather than in `create_app`, because the engine only exists now.
+        telemetry.instrument(app, engine)
         log.info(
             "api_start",
             environment=settings.environment,
@@ -73,6 +76,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     configure_event_loop()
 
     settings = settings or get_settings()
+    telemetry.configure(settings)
     configure_logging(
         level=settings.log_level,
         json_output=settings.environment != "local",

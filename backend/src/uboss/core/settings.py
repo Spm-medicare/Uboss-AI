@@ -92,6 +92,17 @@ class Settings(BaseSettings):
     temporal_address: str = "localhost:7233"
     temporal_namespace: str = "default"
 
+    # ── telemetry ────────────────────────────────────────────────────────────────────────
+    #: Where traces go. Empty means they are created and discarded — the code path that runs on
+    #: a laptop is the one that runs in production, and a product that needs a telemetry backend
+    #: in order to start is a product nobody can run locally.
+    otlp_endpoint: str = ""
+
+    #: How many traces production keeps. A trace per request costs more than it is worth at
+    #: scale, and the interesting ones are errors, which a collector keeps regardless. Ignored
+    #: outside production, where everything is sampled.
+    trace_sample_ratio: float = Field(default=0.1, ge=0.0, le=1.0)
+
     # ── operational ──────────────────────────────────────────────────────────────────────
     log_level: Literal["debug", "info", "warning", "error"] = "info"
     #: Hosts this API will answer to. A request arriving with any other Host header is refused,
