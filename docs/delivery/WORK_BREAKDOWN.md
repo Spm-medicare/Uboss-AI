@@ -11,7 +11,7 @@ and "the page opens" are not evidence. A sub-step without a passing check is not
 
 **Status: 0 of 8 Gates passed. 0 of 28 steps complete. 9 in progress. 19 not started.**
 
-Within them: 1.1.1–1.1.3 and 1.2.1–1.2.5 are done and verified.
+Within them: **1.1 is complete** (1.1.1–1.1.4) and 1.2.1–1.2.5 are done and verified.
 
 Legend: ✅ done and verified · 🟡 partly done · ⬜ not started
 
@@ -62,14 +62,14 @@ and first-slice contracts.
 
 # Gate 1 — Minimum Platform Foundation
 
-## 1.1 — Database and tenant-boundary hardening  🟡
+## 1.1 — Database and tenant-boundary hardening  ✅
 
 | | | |
 |---|---|---|
 | 1.1.1 | Composite tenant foreign keys | ✅ |
 | 1.1.2 | Tenant RLS on every tenant-owned table | ✅ |
 | 1.1.3 | **Narrow the credentials table** | ✅ |
-| 1.1.4 | Migration preflight, rollback and restore procedure | ⬜ ⟵ **next** |
+| 1.1.4 | Migration preflight, rollback and restore procedure | ✅ |
 
 **1.1.3 — done.** Migration 0006 revoked every privilege on `users` from `uboss_app` and
 replaced them with five `SECURITY DEFINER` functions, one per operation authentication performs.
@@ -84,8 +84,13 @@ ten failures -> account locks -> correct password refused 401 -> unlock works
 multi-workspace challenge -> select-workspace without a password -> 200
 ```
 
-**1.1.4 done when** the procedure is in a runbook and one migration has been applied *and* rolled
-back against a copy of the database by following it exactly.
+**1.1.4 — done.** `docs/runbooks/MIGRATIONS.md` holds the procedure;
+`scripts/migration_preflight.py` reports pending revisions, which of them can be reversed, and
+any statement that takes a blocking lock — exiting non-zero when a human has to decide.
+
+Rehearsed on a restored copy: 0006 rolled back to 0005 (auth functions gone, `users` grant
+restored), then forward to head again (functions back, grant revoked, 3 users / 4 memberships /
+25 roles unchanged). Recorded in the runbook.
 
 ## 1.2 — Authentication and session completion  🟡
 
@@ -286,10 +291,9 @@ as a plan and behave as a guess.
 # Order
 
 ```
-NOW    1.1.4    migration safety procedure
+NOW    1.3.1 → 1.3.5    real permission ceiling
 
-THEN   1.3.1 → 1.3.5    real permission ceiling
-       1.4.1 → 1.4.3    idempotency and concurrency
+THEN   1.4.1 → 1.4.3    idempotency and concurrency
        1.6.3            first automated test suite
 
 THEN   1.5.2, 1.5.3     outbox relay

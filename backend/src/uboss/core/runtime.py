@@ -20,7 +20,8 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 
 def loop_factory() -> Callable[[], asyncio.AbstractEventLoop] | None:
@@ -49,11 +50,17 @@ def configure_event_loop() -> None:
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
-def run(coro: asyncio.Future[None] | object) -> None:
-    """`asyncio.run` with the right loop for this platform.
+def run[T](coro: Coroutine[Any, Any, T]) -> T:
+    """`asyncio.run` with the right loop for this platform, **returning what the coroutine
+    returned**.
 
     Every entry point in the backend goes through this rather than calling `asyncio.run`
-    directly, so none of them can be the one that forgets.
+    directly, so none of them can be the one that forgets the loop factory.
+
+    The return value is the point of the signature. An earlier version was annotated `-> None`
+    and discarded the result, which is silent: a caller doing `value = run(fetch())` got `None`
+    and no error, and the preflight script duly reported an empty database that was in fact at
+    head. Typed generically so the type checker catches the next one.
     """
     configure_event_loop()
-    asyncio.run(coro, loop_factory=loop_factory())  # type: ignore[arg-type]
+    return asyncio.run(coro, loop_factory=loop_factory())
