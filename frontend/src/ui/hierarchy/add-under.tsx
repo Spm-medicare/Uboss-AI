@@ -176,7 +176,7 @@ export function AddUnderDialog({
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {t(`add.${option}`)}
+                {t(`addKind.${option}`)}
               </button>
             ))}
           </div>

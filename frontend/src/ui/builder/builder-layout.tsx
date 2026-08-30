@@ -135,7 +135,10 @@ export function BuilderLayout({
         {/*  §29: "readable form width". Capped, because a form field stretched across a wide
             monitor is a field nobody can scan. */}
         <div className="min-w-0 flex-1 pb-6">
-          <div className="max-w-3xl space-y-8">{children}</div>
+          {/*  Wider than a reading column, because the forms are workbook sheets and Form 3's
+              table has sixteen columns. 48rem forced a nine-column table to scroll on a monitor
+              with room for it. Prose inside a section still sets its own `max-w-prose`. */}
+          <div className="max-w-6xl space-y-8">{children}</div>
         </div>
 
         {aside ? (
@@ -276,15 +279,31 @@ export function SaveStateBadge({ state }: { state: SaveState }) {
 export function BuilderSectionCard({
   id,
   title,
+  letter,
   description,
   accent = "primary",
+  action,
+  flush = false,
   children,
 }: {
   id: string;
   title: string;
+  /**
+   * The workbook's own section letter — Form 4's `A`, `B`, `C`.
+   *
+   * Present only where the sheet has one. The client refers to these out loud ("put it in section
+   * B"), so the letter is part of the name rather than an ornament; the sections §9 adds have no
+   * letter on the sheet and get none here, because inventing one would put a label on screen that
+   * is not on the form they print.
+   */
+  letter?: string;
   description?: string;
   /** The stripe down the left edge. Meaning, not decoration — see the call site. */
   accent?: "primary" | "human" | "ai" | "hybrid" | "approval" | "success" | "danger";
+  /** A control belonging to the whole section — a toggle, a count. */
+  action?: ReactNode;
+  /** For a section whose content draws its own edges, like the step table. */
+  flush?: boolean;
   children: ReactNode;
 }) {
   const stripes: Record<string, string> = {
@@ -310,15 +329,26 @@ export function BuilderSectionCard({
         stripes[accent],
       )}
     >
-      <div className="border-b border-border px-5 py-4 pl-6">
-        <h3 id={`${id}-heading`} className="text-sm font-semibold">
-          {title}
-        </h3>
-        {description ? (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        ) : null}
+      <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4 pl-6">
+        <div className="min-w-0">
+          <h3 id={`${id}-heading`} className="flex items-baseline gap-2 text-sm font-semibold">
+            {letter ? (
+              <span
+                aria-hidden
+                className="grid size-5 shrink-0 place-items-center rounded bg-muted text-[0.6875rem] font-bold text-muted-foreground"
+              >
+                {letter}
+              </span>
+            ) : null}
+            {title}
+          </h3>
+          {description ? (
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          ) : null}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      <div className="space-y-4 px-5 py-5 pl-6">{children}</div>
+      <div className={cn(flush ? "" : "space-y-4 px-5 py-5 pl-6")}>{children}</div>
     </section>
   );
 }

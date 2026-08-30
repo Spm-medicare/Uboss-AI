@@ -87,7 +87,8 @@
     "emailPlaceholder": "you@company.com",
     "submitting": "Signing in",
     "providerUnavailable": "{provider} sign-in is not configured for this deployment",
-    "noProvidersConfigured": "Single sign-on is not set up on this deployment yet. Use your email and password."
+    "noProvidersConfigured": "Single sign-on is not set up on this deployment yet. Use your email and password.",
+    "offline": "We could not reach UBOSS. Check your connection and try again — you have not been signed in."
   },
   "workspaceChooser": {
     "title": "Choose a workspace",
@@ -250,10 +251,6 @@
     "departmentName": "Department name",
     "addPosition": "Position",
     "positionTitle": "Job title",
-    "add": {
-      "person": "A person",
-      "department": "A department"
-    },
     "cancel": "Cancel",
     "archive": "Archive",
     "noPositions": "No positions here yet.",
@@ -321,7 +318,12 @@
     "removeUnitWithSeats": "It has {count} seats in it. They leave the chart with it, and anybody holding one is no longer placed.",
     "removeUnitEmpty": "It has no seats in it. The record of it is kept.",
     "removeUnitConfirm": "Yes, remove it",
-    "seatCount": "{count, plural, =0 {no seats} one {# seat} other {# seats}}"
+    "seatCount": "{count, plural, =0 {no seats} one {# seat} other {# seats}}",
+    "addKind": {
+      "person": "A person",
+      "department": "A department"
+    },
+    "add": "Add"
   },
   "import": {
     "title": "Import a structure",
@@ -386,7 +388,14 @@
     "saving": "Saving…",
     "savedAt": "Saved {time}",
     "offline": "Offline — will save when you reconnect",
-    "notSaved": "Not saved"
+    "notSaved": "Not saved",
+    "stepColumn": "Step",
+    "stepNumber": "Step {number}",
+    "moveUp": "Move step {step} up",
+    "moveDown": "Move step {step} down",
+    "removeStep": "Remove step {step}",
+    "showOutput": "Show output",
+    "hideOutput": "Hide output"
   },
   "objective": {
     "objectives": "Objectives",
@@ -455,7 +464,7 @@
     "ownerIs": "Owner: {name}",
     "versionIs": "Version {version}",
     "updatedOn": "Updated {date}",
-    "processHelp": "One card for each step of the work as it happens today. This is what the analysis reads.",
+    "processHelp": "One row for each step of the work as it happens today, in the fourteen columns of the approved form. This is what the analysis reads.",
     "noStepsTitle": "No steps described yet",
     "noStepsBody": "Add the first step of the work as it happens now — who does it, when it starts, and what they actually do.",
     "addStep": "Add a step",
@@ -529,7 +538,8 @@
     "analyseNeedsSteps": "Describe at least one step of the current process first.",
     "publishHelp": "What publishing this would mean, and who has to approve it.",
     "reviewAndPublish": "Review and publish",
-    "intro": "An objective states what a piece of work is for and what a good outcome looks like. Everything else is built from it."
+    "intro": "An objective states what a piece of work is for and what a good outcome looks like. Everything else is built from it.",
+    "processCaption": "One row per step of how the work is done today: who does it, when, what they use, what it produces, how long it takes and what goes wrong."
   },
   "plan": {
     "timelineTitle": "What happened",
@@ -579,7 +589,11 @@
     "emptiedBody": "Every step has been removed. Add one, or analyse again to start from a fresh proposal.",
     "proposedCount": "{count, plural, one {# proposed by UBOSS} other {# proposed by UBOSS}}",
     "editedCount": "{count, plural, one {# you changed} other {# you changed}}",
-    "yoursCount": "{count, plural, one {# you added} other {# you added}}"
+    "yoursCount": "{count, plural, one {# you added} other {# you added}}",
+    "outputLabel": "Output · Form 2 · Objective Builder",
+    "outputTitle": "What the analysis produced",
+    "outputEmpty": "Nothing has been analysed yet. Run the analysis and what it produced appears here.",
+    "comparisonTitle": "AI and human changes"
   },
   "publish": {
     "who": "Who",
@@ -655,7 +669,7 @@
     "versionIs": "Version {version}",
     "updatedOn": "Updated {date}",
     "forObjective": "For {name}",
-    "methodHelp": "One card per step, in the sixteen columns of the approved form. This is what makes the job repeatable.",
+    "methodHelp": "One row per step, in the sixteen columns of the approved form. This is what makes the job repeatable.",
     "noStepsTitle": "No steps yet",
     "noStepsBody": "Describe the first step exactly as it is done — who, when, what, how, and what to do if something is missing.",
     "addStep": "Add a step",
@@ -804,7 +818,11 @@
     "toolPermissions": "Allowed to",
     "toolNeedsPermission": "Say what this is allowed to do. A tool with no permission is one every call would be refused.",
     "toolNote": "Note",
-    "intro": "A job is the work itself — its tasks, who does each one, and the approvals between them."
+    "intro": "A job is the work itself — its tasks, who does each one, and the approvals between them.",
+    "methodCaption": "One row per step of the exact method: who, when, the input, the method, the rule, the output, the approval, and what to do if something is missing or wrong.",
+    "field": {
+      "mode": "Work mode"
+    }
   },
   "schedule": {
     "noneTitle": "This job does not run by itself",
@@ -924,12 +942,12 @@
     "sections": {
       "identity": "Identity",
       "purpose": "Purpose and boundaries",
-      "design": "Agent design",
+      "design": "Agent design confirmation",
       "skills": "Skills",
-      "situations": "When things go wrong",
+      "situations": "Error, approval & escalation rules",
       "controls": "Controls",
       "limits": "Access and limits",
-      "publish": "Tests and publish"
+      "publish": "Simple tests and publish"
     },
     "purposeDescription": "What it is for, how it should work, and what it must never do.",
     "designDescription": "Form 4 section A — the steps this agent performs, in order.",
@@ -1044,7 +1062,20 @@
     "approveAndPublish": "Approve and publish",
     "versionsTitle": "Published versions",
     "approvedBy": "approved by {name}",
-    "intro": "Agents run an approved version of a job. Design one here, test it in the sandbox, and publish the version that runs."
+    "intro": "Agents run an approved version of a job. Design one here, test it in the sandbox, and publish the version that runs.",
+    "designCaption": "One row per step of the agent's design: what it uses, what it does, what it produces, and what it must never do.",
+    "noApproval": "None",
+    "sectionLetter": {
+      "design": "A",
+      "situations": "B",
+      "publish": "C"
+    },
+    "formTitle": "FORM 4 — AGENT BUILDER | DESIGN, CONTROLS & TESTS",
+    "formNote": "Generated from Forms 2 and 3. Confirm or correct the agent design before it can be tested and published.",
+    "outputLabel": "Output · Form 4 · Agent Builder",
+    "outputTitle": "Sandbox results",
+    "outputEmpty": "Nothing has been run yet. Record a sandbox test below and the results appear here.",
+    "actualResultHint": "Write what you observed when you ran it. A status other than Not Run needs one."
   },
   "registry": {
     "intro": "The registry holds 400 approved skills plus this workspace's own. Search ranks by resemblance; the gates decide what may actually be used.",

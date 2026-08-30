@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Save, Send, Undo2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useRef } from "react";
 
 import type {
   AgentUpdate,
@@ -136,6 +136,18 @@ function Editor({
   const [active, setActive] = useState<SectionId>("identity");
   const editable = draft.is_editable;
 
+  //  The version the server last confirmed, held in a ref rather than read off the queued draft.
+  //
+  //  `autosave.schedule(next)` snapshots the draft as it was when somebody typed. If a save is
+  //  already in flight, that snapshot carries the version from *before* it — stale by the time it
+  //  is sent. And because the idempotency key is derived from the version, the second save reuses
+  //  the first one's key with different content, which the server correctly refuses as a replay.
+  //  The symptom is a save that fails for anybody who keeps typing while one is going out.
+  //
+  //  `expected_version` guards against **somebody else's** write, not against this client's own
+  //  queued edit, so the right value is the newest version this client has been given.
+  const confirmedVersion = useRef(draft.version);
+
   const send = useCallback(async (next: Agent) => {
     const payload: AgentUpdate = {
       name: next.name,
@@ -175,9 +187,10 @@ function Editor({
         resolver_decision_id,
         notes,
       })),
-      expected_version: next.version,
+      expected_version: confirmedVersion.current,
     };
     const saved = await saveAgent(next.id, payload);
+    confirmedVersion.current = saved.version;
     //  The server's copy wins, except for anything typed while the request was out.
     setDraft((current) => ({ ...saved, name: current.name === next.name ? saved.name : current.name }));
     //  Saving clears every recorded test result, so the panel that shows them has to be refetched
@@ -439,6 +452,8 @@ function Editor({
       <BuilderSectionCard
         id="design"
         title={t("sections.design")}
+        letter={t("sectionLetter.design")}
+        flush
         description={t("designDescription")}
       >
         <DesignSteps
@@ -498,6 +513,7 @@ function Editor({
       <BuilderSectionCard
         id="situations"
         title={t("sections.situations")}
+        letter={t("sectionLetter.situations")}
         description={t("situationsDescription")}
       >
         <Situations
@@ -540,7 +556,11 @@ function Editor({
       </BuilderSectionCard>
 
       {/*  ── 8. Form 4 section C, the two gates, and publish ─────────────────────── */}
-      <BuilderSectionCard id="publish" title={t("sections.publish")}>
+      <BuilderSectionCard
+        id="publish"
+        title={t("sections.publish")}
+        letter={t("sectionLetter.publish")}
+      >
         <PublishSection draft={draft} onReload={onReload} />
       </BuilderSectionCard>
     </BuilderLayout>

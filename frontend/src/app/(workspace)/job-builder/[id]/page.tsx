@@ -1,10 +1,10 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Plus, Save, Send, Undo2 } from "lucide-react";
+import {CheckCircle2, Save, Send, Undo2} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useRef } from "react";
 
 import type {
   AssignmentRuleInput,
@@ -45,7 +45,8 @@ import {
   BuilderSectionCard,
   type BuilderSection,
 } from "@/ui/builder/builder-layout";
-import { JobStepCard } from "@/ui/builder/job-step-card";
+import { SheetSteps } from "@/ui/builder/design-table";
+import { jobColumns } from "@/ui/builder/workbook-columns";
 import { ScheduleSection } from "@/ui/builder/schedule-section";
 import { Suggest } from "@/ui/builder/suggest";
 import { JobInputs, JobTools, WhoRules } from "@/ui/builder/who-and-inputs";
@@ -62,6 +63,9 @@ import { AppShell } from "@/ui/shell/app-shell";
  * comes before who does it and what it needs, because a person describing their own work starts
  * by describing the work.
  */
+/** PLAN §9's work modes. The product's own vocabulary, not a customer's list. */
+const MODES = ["human", "ai_agent", "hybrid"] as const;
+
 export default function JobBuilderFormPage() {
   const t = useTranslations("job");
   const params = useParams<{ id: string }>();
@@ -135,6 +139,18 @@ function Editor({
   const [active, setActive] = useState<SectionId>("identity");
   const editable = draft.is_editable;
 
+  //  The version the server last confirmed, held in a ref rather than read off the queued draft.
+  //
+  //  `autosave.schedule(next)` snapshots the draft as it was when somebody typed. If a save is
+  //  already in flight, that snapshot carries the version from *before* it — stale by the time it
+  //  is sent. And because the idempotency key is derived from the version, the second save reuses
+  //  the first one's key with different content, which the server correctly refuses as a replay.
+  //  The symptom is a save that fails for anybody who keeps typing while one is going out.
+  //
+  //  `expected_version` guards against **somebody else's** write, not against this client's own
+  //  queued edit, so the right value is the newest version this client has been given.
+  const confirmedVersion = useRef(draft.version);
+
   const send = useCallback(async (next: Job) => {
     const payload: JobUpdate = {
       name: next.name,
@@ -166,10 +182,11 @@ function Editor({
       ),
       assignment_rules: next.assignment_rules.map(({ id: _id, position: _p, ...rest }) => rest),
       inputs: next.inputs.map(({ id: _id, position: _p, ...rest }) => rest),
-      expected_version: next.version,
+      expected_version: confirmedVersion.current,
     };
     const saved = await saveJob(next.id, payload);
-    //  The server's copy wins, except for anything typed while the request was out — the classic
+    confirmedVersion.current = saved.version;
+        //  The server's copy wins, except for anything typed while the request was out — the classic
     //  autosave bug, and the one people notice.
     setDraft((current) => ({ ...saved, ...unsavedSince(current, next) }));
   }, []);
@@ -384,57 +401,26 @@ function Editor({
         accent="human"
         title={t("sections.method")}
         description={t("methodHelp")}
+        flush
       >
-        {draft.steps.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
-            <p className="text-sm font-medium">{t("noStepsTitle")}</p>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-              {t("noStepsBody")}
-            </p>
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {draft.steps.map((step, index) => (
-              <JobStepCard
-                key={index}
-                step={step}
-                index={index}
-                total={draft.steps.length}
-                lists={lists}
-                disabled={!editable}
-                onChange={(next) =>
-                  edit({
-                    steps: draft.steps.map((item, at) =>
-                      at === index ? { ...item, ...next } : item,
-                    ),
-                  })
-                }
-                onRemove={() =>
-                  edit({ steps: draft.steps.filter((_, at) => at !== index) })
-                }
-                onMove={(direction) => {
-                  const target = index + direction;
-                  if (target < 0 || target >= draft.steps.length) return;
-                  const next = [...draft.steps];
-                  const moved = next[index]!;
-                  next[index] = next[target]!;
-                  next[target] = moved;
-                  edit({ steps: next });
-                }}
-              />
-            ))}
-          </ul>
-        )}
-
-        <Button
-          icon={<Plus className="size-4" />}
+        {/*  Pinned to the *read* row rather than left to inference: the columns are generic over
+            anything carrying the input fields, and the page holds rows that also have `id` and
+            `position`. Without the type argument, `onChange` hands back the narrower shape. */}
+        <SheetSteps<Job["steps"][number]>
+          tone="form-3"
+          caption={t("methodCaption")}
+          columns={jobColumns(lists, MODES, t("field.mode"))}
+          rows={draft.steps}
           disabled={!editable}
-          onClick={() =>
-            edit({ steps: [...draft.steps, { mode: "human" } as Job["steps"][number]] })
-          }
-        >
-          {t("addStep")}
-        </Button>
+          addLabel={t("addStep")}
+          emptyLabel={t("noStepsBody")}
+          //  `human` by default. A step with no mode is a step the runtime cannot route, and
+          //  "a person does it" is the honest starting assumption for a method somebody is
+          //  writing down from how it works today.
+          blank={() => ({ mode: "human" }) as Job["steps"][number]}
+          onChange={(steps) => edit({ steps })}
+        />
+
       </BuilderSectionCard>
 
       {/*  ── 3. WHO — §8's multiple assignment rules ─────────────────────────────── */}

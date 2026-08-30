@@ -23,6 +23,12 @@ import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { QueryStates } from "@/ui/states";
 import { AnalysisTimeline } from "@/ui/builder/analysis-timeline";
+import {
+  OutputBlock,
+  OutputEmpty,
+  OutputPanel,
+  OutputToggle,
+} from "@/ui/builder/output-panel";
 import { PlanStep } from "@/ui/builder/plan-step";
 
 /**
@@ -55,6 +61,10 @@ export function PlanSection({
   const queryClient = useQueryClient();
   const [failure, setFailure] = useState<string | null>(null);
 
+  //  The drawer holding what a run produced. Opened by a run and closed only by a person —
+  //  see `output-panel.tsx` for why nothing dismisses a result for you.
+  const [outputOpen, setOutputOpen] = useState(false);
+
   const plan = useQuery({
     queryKey: ["objective", objectiveId, "plan"],
     queryFn: ({ signal }) => fetchPlan(objectiveId, signal),
@@ -81,6 +91,10 @@ export function PlanSection({
     onSuccess: () => {
       reload();
       onReloadObjective();
+      //  Running is the moment somebody wants to see what came back, so the run opens it. Nothing
+      //  else does: a drawer that opened on load would cover the form for somebody who came to
+      //  edit the plan rather than to re-run it.
+      setOutputOpen(true);
     },
     onError: (error) => setFailure(error.message),
   });
@@ -94,40 +108,66 @@ export function PlanSection({
       >
         {plan.data ? (
           <>
-            {plan.data.analysis ? (
-              <div className="rounded-lg border border-border bg-card p-4">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold">{t("timelineTitle")}</p>
-                  {plan.data.analysis.model ? (
-                    //  Which model, and what it cost. Said plainly rather than buried: somebody
-                    //  paying for this is entitled to see it on the screen that spent it.
-                    <span className="text-xs text-muted-foreground">
-                      {t("ranOn", {
-                        model: plan.data.analysis.model,
-                        tokens:
-                          (plan.data.analysis.input_tokens ?? 0) +
-                          (plan.data.analysis.output_tokens ?? 0),
-                      })}
-                    </span>
-                  ) : null}
-                </div>
+            {/*  The toggle sits with the run, not in the page chrome, so "show me what that
+                produced" is next to the thing that produced it. */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold">{t("timelineTitle")}</p>
+              <span className="[&_button]:border-border [&_button]:bg-muted [&_button]:text-foreground [&_button:hover]:bg-accent [&_button]:focus-visible:outline-[var(--ub-focus)]">
+                <OutputToggle
+                  open={outputOpen}
+                  onToggle={() => setOutputOpen(!outputOpen)}
+                  {...(plan.data.analysis ? { count: 1 } : {})}
+                />
+              </span>
+            </div>
 
-                <AnalysisTimeline analysis={plan.data.analysis} timeZone={timeZone} />
-
-                {plan.data.analysis.status === "failed" ? (
-                  <Alert tone="danger" className="mt-3">
-                    {plan.data.analysis.failure_detail}
-                  </Alert>
-                ) : null}
-                {plan.data.analysis.note ? (
-                  <Alert tone="info" className="mt-3" title={t("modelNote")}>
-                    {plan.data.analysis.note}
-                  </Alert>
-                ) : null}
-              </div>
+            {/*  A failure stays in the form. It is the reason nothing happened, and a reason
+                behind a toggle is somebody pressing the button again and learning nothing. */}
+            {failure ? <Alert tone="danger">{failure}</Alert> : null}
+            {plan.data.analysis?.status === "failed" ? (
+              <Alert tone="danger">{plan.data.analysis.failure_detail}</Alert>
             ) : null}
 
-            {failure ? <Alert tone="danger">{failure}</Alert> : null}
+            <OutputPanel
+              open={outputOpen}
+              onClose={() => setOutputOpen(false)}
+              label={t("outputLabel")}
+              title={t("outputTitle")}
+            >
+              {plan.data.analysis ? (
+                <>
+                  <OutputBlock title={t("timelineTitle")}>
+                    <AnalysisTimeline analysis={plan.data.analysis} timeZone={timeZone} />
+                    {plan.data.analysis.model ? (
+                      //  Which model, and what it cost. Said plainly rather than buried:
+                      //  somebody paying for this is entitled to see it on the screen that
+                      //  spent it.
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        {t("ranOn", {
+                          model: plan.data.analysis.model,
+                          tokens:
+                            (plan.data.analysis.input_tokens ?? 0) +
+                            (plan.data.analysis.output_tokens ?? 0),
+                        })}
+                      </p>
+                    ) : null}
+                    {plan.data.analysis.note ? (
+                      <Alert tone="info" className="mt-3" title={t("modelNote")}>
+                        {plan.data.analysis.note}
+                      </Alert>
+                    ) : null}
+                  </OutputBlock>
+
+                  {plan.data.steps.length > 0 ? (
+                    <OutputBlock title={t("comparisonTitle")}>
+                      <Comparison plan={plan.data} />
+                    </OutputBlock>
+                  ) : null}
+                </>
+              ) : (
+                <OutputEmpty>{t("outputEmpty")}</OutputEmpty>
+              )}
+            </OutputPanel>
 
             {plan.data.steps.length === 0 ? (
               <NoPlanYet
@@ -138,8 +178,6 @@ export function PlanSection({
               />
             ) : (
               <>
-                <Comparison plan={plan.data} />
-
                 <ul className="space-y-2">
                   {plan.data.steps.map((step, index) => (
                     <PlanStep

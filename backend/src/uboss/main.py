@@ -106,7 +106,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_origins=settings.cors_origin_list,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-Correlation-Id"],
+        #  Every header the browser client actually sends. `If-Match` was missing, and the
+        #  consequence was not subtle: it carries `expected_version`, so a browser preflight
+        #  refused **every optimistic-concurrency write in the product** — saving an agent, a job,
+        #  an objective, renaming a department. Creates worked, because they carry no version, so
+        #  the fault looked like "editing is broken" rather than like a CORS list.
+        #
+        #  Kept as an explicit list rather than a wildcard: a wildcard with `allow_credentials`
+        #  is rejected by browsers anyway, and an explicit list is a place this can be reviewed.
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "Idempotency-Key",
+            "If-Match",
+            "X-Correlation-Id",
+        ],
         expose_headers=["X-Correlation-Id"],
     )
     #  A wildcard origin with credentials is rejected by browsers anyway, but an explicit list

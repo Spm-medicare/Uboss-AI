@@ -54,6 +54,41 @@
   --ub-auth-panel-from: #142a4d;
   --ub-auth-panel-to: #060d19;
 
+  /* The four workbook forms, each keeping the sheet's own identity.
+     This is how the client recognises which form they are looking at — they say "the blue one"
+     — so the hue is part of the vocabulary rather than decoration. Every bar carrying one of
+     these is white text on it, and each is dark enough to hold white at AA. */
+  --ub-form-1: #6d5bd0;
+  --ub-form-2: #2b6cb0;
+  --ub-form-3: #1a8f86;
+  --ub-form-4: #b06c24;
+
+  /* The wash under a section, and the tint on a section bar. */
+  --ub-form-1-soft: #f1eefc;
+  --ub-form-2-soft: #eaf1fa;
+  --ub-form-3-soft: #e8f6f4;
+  --ub-form-4-soft: #fbf1e6;
+
+  /* The output drawer. Dark in both themes, on purpose.
+     A result is not the form — it is what came *back* — and the surface says so before a word is
+     read. The previous build made the same call and gave the reason: a panel dressed as the page
+     it reports on makes somebody check twice whether they are looking at input or output. Dark
+     also means the drawer reads as *over* the form rather than as more of it, which is what a
+     drawer is.
+     Its own token set rather than the sidebar's: those are furniture you stop seeing, and this is
+     the thing being read. */
+  --ub-panel: #10151f;
+  --ub-panel-raised: #1a212e;
+  --ub-panel-text: #eef1f6;
+  --ub-panel-muted: #a2adbf;
+  --ub-panel-line: #29323f;
+
+  /* The workbook's instruction line. Amber because that is what it is on the sheet, and because
+     an instruction is neither a warning nor a success. */
+  --ub-sheet-note: #fdf6e3;
+  --ub-sheet-note-line: #e5cf9a;
+  --ub-sheet-note-ink: #6b4f13;
+
   /* The org chart's depth ramp — one colour per level of the tree.
      Structural, never a status: `ui/README.md` forbids colour-only meaning, and a node's level
      is already given by its position, its connector and the unit-type badge on it. The colour
@@ -130,6 +165,20 @@
 
   /* On a dark ground the wash is a lift rather than a tint: the same hue at low alpha over the
      card, which keeps it readable without the muddy result of darkening a pastel. */
+  --ub-form-1: #8b7ae0;
+  --ub-form-2: #4d8fd6;
+  --ub-form-3: #35b0a6;
+  --ub-form-4: #d18f47;
+
+  --ub-form-1-soft: #1a1730;
+  --ub-form-2-soft: #12203a;
+  --ub-form-3-soft: #0f2b2a;
+  --ub-form-4-soft: #2b2013;
+
+  --ub-sheet-note: #2a2313;
+  --ub-sheet-note-line: #5c4a1e;
+  --ub-sheet-note-ink: #e8d9ae;
+
   --ub-level-0-soft: #141c2e;
   --ub-level-1-soft: #10222a;
   --ub-level-2-soft: #11241f;
@@ -167,6 +216,17 @@
   --color-border: var(--ub-border);
   --color-input: var(--ub-border);
   --color-ring: var(--ub-focus);
+
+  --color-panel: var(--ub-panel);
+  --color-panel-raised: var(--ub-panel-raised);
+  --color-panel-foreground: var(--ub-panel-text);
+  --color-panel-muted: var(--ub-panel-muted);
+  --color-panel-line: var(--ub-panel-line);
+
+  --color-form-1: var(--ub-form-1);
+  --color-form-2: var(--ub-form-2);
+  --color-form-3: var(--ub-form-3);
+  --color-form-4: var(--ub-form-4);
 
   --color-level-0-soft: var(--ub-level-0-soft);
   --color-level-1-soft: var(--ub-level-1-soft);

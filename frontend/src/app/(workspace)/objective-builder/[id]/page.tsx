@@ -1,10 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Save, Send, Sparkles } from "lucide-react";
+import {Save, Send, Sparkles} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useRef } from "react";
 
 import type { CurrentStepInput, ObjectiveUpdate } from "@/lib/api/contract";
 import {
@@ -36,7 +36,8 @@ import {
 } from "@/ui/builder/builder-layout";
 import { PlanSection } from "@/ui/builder/plan-section";
 import { PublishSection } from "@/ui/builder/publish-section";
-import { StepCard } from "@/ui/builder/step-card";
+import { SheetSteps } from "@/ui/builder/design-table";
+import { objectiveColumns } from "@/ui/builder/workbook-columns";
 import { Suggest } from "@/ui/builder/suggest";
 import { AppShell } from "@/ui/shell/app-shell";
 
@@ -133,6 +134,18 @@ function Editor({
   const [active, setActive] = useState<SectionId>("identity");
   const editable = draft.is_editable;
 
+  //  The version the server last confirmed, held in a ref rather than read off the queued draft.
+  //
+  //  `autosave.schedule(next)` snapshots the draft as it was when somebody typed. If a save is
+  //  already in flight, that snapshot carries the version from *before* it — stale by the time it
+  //  is sent. And because the idempotency key is derived from the version, the second save reuses
+  //  the first one's key with different content, which the server correctly refuses as a replay.
+  //  The symptom is a save that fails for anybody who keeps typing while one is going out.
+  //
+  //  `expected_version` guards against **somebody else's** write, not against this client's own
+  //  queued edit, so the right value is the newest version this client has been given.
+  const confirmedVersion = useRef(draft.version);
+
   const send = useCallback(
     async (next: Objective) => {
       const payload: ObjectiveUpdate = {
@@ -164,10 +177,11 @@ function Editor({
         ai_assistance: next.ai_assistance,
         human_checkpoints: next.human_checkpoints,
         current_steps: (next.current_steps ?? []).map(stripReadFields),
-        expected_version: next.version,
+        expected_version: confirmedVersion.current,
       };
       const saved = await saveObjective(next.id, payload);
-      //  The server's copy replaces the local one — it carries the new version number, and every
+      confirmedVersion.current = saved.version;
+            //  The server's copy replaces the local one — it carries the new version number, and every
       //  subsequent save depends on it. Keeping the local copy would make the second save a
       //  guaranteed conflict.
       setDraft((current) => ({ ...saved, ...unsavedSince(current, next) }));
@@ -425,49 +439,19 @@ function Editor({
         accent="human"
         title={t("sections.process")}
         description={t("processHelp")}
+        flush
       >
-        {steps.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
-            <p className="text-sm font-medium">{t("noStepsTitle")}</p>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-              {t("noStepsBody")}
-            </p>
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {steps.map((step, index) => (
-              <StepCard
-                key={index}
-                step={step}
-                index={index}
-                total={steps.length}
-                lists={lists}
-                disabled={!editable}
-                onChange={(next) =>
-                  setSteps(steps.map((item, at) => (at === index ? next : item)))
-                }
-                onRemove={() => setSteps(steps.filter((_, at) => at !== index))}
-                onMove={(direction) => {
-                  const target = index + direction;
-                  if (target < 0 || target >= steps.length) return;
-                  const next = [...steps];
-                  const moved = next[index]!;
-                  next[index] = next[target]!;
-                  next[target] = moved;
-                  setSteps(next);
-                }}
-              />
-            ))}
-          </ul>
-        )}
-
-        <Button
-          icon={<Plus className="size-4" />}
+        <SheetSteps
+          tone="form-2"
+          caption={t("processCaption")}
+          columns={objectiveColumns(lists)}
+          rows={steps}
           disabled={!editable}
-          onClick={() => setSteps([...steps, {}])}
-        >
-          {t("addStep")}
-        </Button>
+          addLabel={t("addStep")}
+          emptyLabel={t("noStepsBody")}
+          blank={() => ({})}
+          onChange={setSteps}
+        />
       </BuilderSectionCard>
 
       {/*  ── 3. Outcome ──────────────────────────────────────────────────────────── */}

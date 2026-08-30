@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ChevronDown,
   KeyRound,
   Lock,
   Plus,
@@ -9,7 +8,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId, useState } from "react";
 
 import type {
   AgentStepInput,
@@ -22,18 +20,100 @@ import type {
 } from "@/lib/api/contract";
 import { cn } from "@/lib/cn";
 import { Alert, Badge, Button, Field, Input } from "@/ui";
+import {
+  CellInput,
+  CellSelect,
+  SheetSteps,
+  type SheetColumn,
+} from "@/ui/builder/design-table";
 import { Suggest } from "@/ui/builder/suggest";
 
 /**
  * The Agent form's repeatable sections — Form 4's section A and section B, and §9's groups 4, 6
  * and 7.
  *
- * Cards rather than table rows, for the reason the Job Builder already found: nine columns on a
- * screen means either a horizontal scroll where the person loses which row they are on, or
- * columns squeezed to forty pixels. The card keeps the sheet's own grouping.
+ * Section A is the workbook's table, because the workbook is a table and because the questions
+ * people bring to it are comparative — *which steps have no approval, which one has no
+ * prohibition*. A column answers that by being a column; eight cards make it eight places to
+ * look. `SheetSteps` keeps the card layout for a phone, where a nine-column table is not a table.
  */
 
 // ------------------------------------------------------------------- section A: design rows
+
+/**
+ * Section A, column for column as `UBOSS_Agent_Builder_Forms.xlsx` row 9 defines it.
+ *
+ * The labels are read out of the workbook rather than translated, and that is deliberate: they
+ * are the client's own words on the sheet they print, and the thing they check first is that the
+ * heads match. `Agent Must Never Do` is last on the sheet and last here.
+ */
+function designColumns(
+  t: (key: string) => string,
+  approvals: string[],
+): readonly SheetColumn<AgentStepInput>[] {
+  //  Named, so the arrow it returns is not an anonymous component in a stack trace.
+  const cell =
+    (key: keyof AgentStepInput) =>
+    function Cell(
+      step: AgentStepInput,
+      set: (next: AgentStepInput) => void,
+      disabled: boolean,
+    ) {
+      return (
+      <CellInput
+        value={(step[key] as string | null) ?? ""}
+        label={String(key)}
+        disabled={disabled}
+        onChange={(value) => set({ ...step, [key]: value || null })}
+      />
+      );
+    };
+
+  return [
+    { label: "Input Used", cell: cell("input_used") },
+    { label: "Input Source", cell: cell("input_source") },
+    { label: "Tool / System", cell: cell("tool_system") },
+    { label: "Agent Action", width: "wide", cell: cell("agent_action") },
+    { label: "Output", cell: cell("output") },
+    { label: "Output Destination", cell: cell("output_destination") },
+    {
+      label: "Approval",
+      width: "narrow",
+      cell: (step, set, disabled) => (
+        <CellSelect
+          value={step.approval ?? ""}
+          options={approvals}
+          label={t("field.approval")}
+          placeholder={t("noApproval")}
+          disabled={disabled}
+          onChange={(value) => set({ ...step, approval: value || null })}
+        />
+      ),
+    },
+    {
+      label: "Agent Must Never Do",
+      width: "wide",
+      cell: (step, set, disabled) => (
+        //  Tinted, because it is the column the whole form turns on and the one a reviewer reads
+        //  first. On the sheet it is the last column and easy to scroll past; the tint is what
+        //  stops it being missed.
+        <div
+          className={cn(
+            "rounded-md",
+            step.must_never_do ? "bg-approval-soft ring-1 ring-inset ring-approval/30" : "",
+          )}
+        >
+          <CellInput
+            value={step.must_never_do ?? ""}
+            label={t("field.mustNeverDo")}
+            disabled={disabled}
+            onChange={(value) => set({ ...step, must_never_do: value || null })}
+          />
+        </div>
+      ),
+    },
+  ];
+}
 
 export function DesignSteps({
   steps,
@@ -48,180 +128,22 @@ export function DesignSteps({
 }) {
   const t = useTranslations("agent");
 
-  const set = (index: number, next: AgentStepInput) =>
-    onChange(steps.map((step, at) => (at === index ? next : step)));
-
-  const add = () =>
-    onChange([...steps, { position: steps.length + 1 }]);
-
-  const remove = (index: number) =>
-    onChange(
-      steps
-        .filter((_, at) => at !== index)
-        .map((step, at) => ({ ...step, position: at + 1 })),
-    );
-
   return (
-    <div className="space-y-3">
-      {steps.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          {t("noSteps")}
-        </p>
-      ) : (
-        <ol className="space-y-3">
-          {steps.map((step, index) => (
-            <li key={step.position}>
-              <DesignStepCard
-                step={step}
-                index={index}
-                approvals={approvals}
-                disabled={disabled}
-                onChange={(next) => set(index, next)}
-                onRemove={() => remove(index)}
-              />
-            </li>
-          ))}
-        </ol>
-      )}
-
-      {!disabled ? (
-        <Button variant="secondary" icon={<Plus className="size-3.5" />} onClick={add}>
-          {t("addStep")}
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
-function DesignStepCard({
-  step,
-  index,
-  approvals,
-  disabled,
-  onChange,
-  onRemove,
-}: {
-  step: AgentStepInput;
-  index: number;
-  approvals: string[];
-  disabled: boolean;
-  onChange: (next: AgentStepInput) => void;
-  onRemove: () => void;
-}) {
-  const t = useTranslations("agent");
-  const [open, setOpen] = useState(index === 0);
-  const panelId = useId();
-
-  const set = (key: keyof AgentStepInput, value: string) =>
-    onChange({ ...step, [key]: value || null });
-
-  const summary = step.agent_action?.trim() || step.output?.trim() || "";
-
-  return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="flex items-center gap-2 p-3">
-        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-          {step.position}
-        </span>
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={panelId}
-          onClick={() => setOpen(!open)}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ub-focus)]"
-        >
-          <span className={cn("min-w-0 flex-1 truncate text-sm", !summary && "text-muted-foreground")}>
-            {summary || t("stepUnnamed")}
-          </span>
-          {/*  A prohibition is the thing a reviewer scans for, so it is visible while collapsed. */}
-          {step.must_never_do ? <Badge tone="approval">{t("hasProhibition")}</Badge> : null}
-          <ChevronDown
-            aria-hidden
-            className={cn("size-4 shrink-0 transition-transform duration-150", open && "rotate-180")}
-          />
-        </button>
-        {!disabled ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<Trash2 className="size-3.5" />}
-            onClick={onRemove}
-          >
-            <span className="sr-only">{t("removeStep")}</span>
-          </Button>
-        ) : null}
-      </div>
-
-      {open ? (
-        <div id={panelId} className="space-y-3 border-t border-border p-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Suggest
-              label={t("field.inputUsed")}
-              value={step.input_used ?? ""}
-              disabled={disabled}
-              onChange={(value) => set("input_used", value)}
-            />
-            <Suggest
-              label={t("field.inputSource")}
-              value={step.input_source ?? ""}
-              disabled={disabled}
-              onChange={(value) => set("input_source", value)}
-            />
-          </div>
-
-          <Suggest
-            label={t("field.agentAction")}
-            value={step.agent_action ?? ""}
-            multiline
-            disabled={disabled}
-            onChange={(value) => set("agent_action", value)}
-          />
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Suggest
-              label={t("field.toolSystem")}
-              value={step.tool_system ?? ""}
-              disabled={disabled}
-              onChange={(value) => set("tool_system", value)}
-            />
-            <Suggest
-              label={t("field.approval")}
-              value={step.approval ?? ""}
-              options={approvals}
-              disabled={disabled}
-              onChange={(value) => set("approval", value)}
-            />
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Suggest
-              label={t("field.output")}
-              value={step.output ?? ""}
-              disabled={disabled}
-              onChange={(value) => set("output", value)}
-            />
-            <Suggest
-              label={t("field.outputDestination")}
-              value={step.output_destination ?? ""}
-              disabled={disabled}
-              onChange={(value) => set("output_destination", value)}
-            />
-          </div>
-
-          {/*  Given its own block, and coloured, because it is the column the whole form turns
-              on and the one a reviewer reads first. */}
-          <div className="rounded-md border border-approval bg-approval-soft p-3">
-            <Suggest
-              label={t("field.mustNeverDo")}
-              value={step.must_never_do ?? ""}
-              multiline
-              disabled={disabled}
-              onChange={(value) => set("must_never_do", value)}
-            />
-          </div>
-        </div>
-      ) : null}
-    </div>
+    <SheetSteps
+      tone="form-4"
+      caption={t("designCaption")}
+      columns={designColumns(t, approvals)}
+      rows={steps}
+      disabled={disabled}
+      addLabel={t("addStep")}
+      emptyLabel={t("noSteps")}
+      blank={(position) => ({ position })}
+      //  `position` is renumbered on every change rather than carried, so a reorder or a removal
+      //  cannot leave a gap the server would reject.
+      onChange={(next) =>
+        onChange(next.map((step, index) => ({ ...step, position: index + 1 })))
+      }
+    />
   );
 }
 
