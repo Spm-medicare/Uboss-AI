@@ -1,8 +1,10 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, ChevronRight, Plus, Undo2, UserPlus } from "lucide-react";
+import { Building2, ChevronRight, Plus, Undo2, Upload, UserPlus } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import type { OrgUnitRead, PositionRead, UnitType } from "@/lib/api/contract";
@@ -51,6 +53,7 @@ import { AppShell } from "@/ui/shell/app-shell";
 export default function HierarchyPage() {
   const t = useTranslations("hierarchy");
   const { user } = useSession();
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   //  One date for the whole page. Held here rather than in each panel so the tree, the issues
@@ -82,7 +85,16 @@ export default function HierarchyPage() {
       title={t("title")}
       action={
         mayEdit && tree.data && !tree.data.is_empty ? (
-          <AddUnitButton parentId={rootId(tree.data.units)} onDone={refresh} />
+          <div className="flex items-center gap-1.5">
+            <Button
+              size="sm"
+              icon={<Upload className="size-3.5" />}
+              onClick={() => router.push("/hierarchy/import")}
+            >
+              {t("import")}
+            </Button>
+            <AddUnitButton parentId={rootId(tree.data.units)} onDone={refresh} />
+          </div>
         ) : undefined
       }
     >
@@ -205,6 +217,18 @@ function NoTreeYet({ mayEdit, onDone }: { mayEdit: boolean; onDone: () => void }
               {t("createCompany")}
             </Button>
           </form>
+        ) : null}
+
+        {mayEdit ? (
+          <p className="text-sm text-muted-foreground">
+            {t("orImport")}{" "}
+            <Link
+              href="/hierarchy/import"
+              className="text-primary underline underline-offset-4"
+            >
+              {t("importOne")}
+            </Link>
+          </p>
         ) : null}
 
         {create.error ? <Alert tone="danger">{create.error.message}</Alert> : null}

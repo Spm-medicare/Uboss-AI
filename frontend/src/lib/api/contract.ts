@@ -50,6 +50,13 @@ export type RevisionPage = Schemas["RevisionPage"];
 export type RevisionRead = Schemas["RevisionRead"];
 export type ValidationIssue = Schemas["ValidationIssue"];
 
+//  The safe import — PLAN §5.
+export type ImportSummary = Schemas["ImportSummary"];
+export type ImportPreview = Schemas["ImportPreview"];
+export type ImportRowRead = Schemas["ImportRowRead"];
+export type ProposedUnit = Schemas["ProposedUnit"];
+export type ImportMappingUpdate = Schemas["ImportMappingUpdate"];
+
 /** The shape of every failure, from `ErrorEnvelope` — PLAN §28. */
 export type ErrorEnvelope = Schemas["ErrorEnvelope"];
 export type FieldError = Schemas["FieldError"];
