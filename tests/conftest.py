@@ -335,6 +335,11 @@ async def two_workspaces(
             for table in (
                 #  Jobs before objectives: a job references the objective it serves, and a
                 #  published job version is RESTRICT against its job.
+                #  Supervisors before agents: a supervised row is RESTRICT against the agent
+                #  version it pins, and the supervisor itself is RESTRICT against its owner.
+                "supervisor_handlers",
+                "supervisor_supervised",
+                "supervisors",
                 #  Agents before the registry: an agent_skills row is RESTRICT against both the
                 #  skill it names and the decision that chose it.
                 #  The agent points back at the version it published, so the pointer is cleared

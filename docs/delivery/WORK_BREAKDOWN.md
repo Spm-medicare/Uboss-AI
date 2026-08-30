@@ -708,6 +708,80 @@ same rule read at two moments.
 
 6 tests, 29 on the frontend. `tsc`, `eslint`, `vitest` and `next build` clean.
 | 6 | Supervisor — personal and department scopes, handler grants | 4–5 weeks |
+
+## Gate 6, broken down
+
+`PLAN.md` §10. A Supervisor *"monitors and coordinates published Job Agents"* — it does not perform
+business actions itself. CLAUDE.md states the boundary in one line: **Supervisor coordinates;
+bounded Job/Synced workers perform business actions.**
+
+**Two independent scopes, and the word is the requirement.** §10 makes both mandatory:
+
+1. **Supervised members and Agents** — whose Agents are watched?
+2. **Allowed handlers** — who may control this Supervisor?
+
+They are separate questions with separate answers, and the whole gate turns on their staying that
+way. A department head may control a Supervisor watching Agents whose outputs they may not read; a
+person may have their Agents supervised without any say over the Supervisor. A design that let one
+scope imply the other would collapse both into "the manager sees everything", which is the thing an
+Org Node hierarchy exists to avoid.
+
+**Six handler roles, each a real ceiling** — Viewer, Operator (pause/resume and safe retry),
+Reviewer, Approver, Manager (scope and policy), Owner.
+
+**What Claude may not do**, verbatim from §10: *"Claude cannot bypass policy, grant permission,
+perform uncontrolled retries or approve high-risk actions."* Four prohibitions, each of which has
+to be something the schema or the guard refuses rather than something a prompt asks for.
+
+**Where the runtime boundary falls.** Half of §10's capability list — heartbeat, starting
+dependency-ready work, pause/resume/cancel, safe retry — needs the Temporal runtime, which is
+Gate 7. Gate 6 delivers the **governed design**: the scopes, the handler grants, the policies, the
+budgets and the publish gate. The same split Gate 5 made between a designed Agent and a run one,
+and the same rule about saying so: a control that cannot act yet is disabled and labelled, never
+shown working.
+
+§10's form groups, mapped to the steps:
+
+| | | |
+|---|---|---|
+| 6.1 | Supervisor schema and the two independent scopes — supervised set, handler set | ✅ |
+| 6.2 | Handler roles as a ceiling — six roles, granular permissions, no self-grant | ⬜ |
+| 6.3 | §10's form groups 4–9 — order, dependency, quality gates, budget, SLA, escalation | ⬜ |
+| 6.4 | Failure simulation and publish — immutable `SupervisorVersion` | ⬜ |
+| 6.5 | The Supervisor screen | ⬜ |
+
+**Passes when** the two scopes can be set to disjoint sets and both hold, a handler is refused an
+action above their role with the reason recorded, a Supervisor publishes only after its failure
+simulation passes, and nothing in it can grant a permission.
+
+**Not a second permission system.** §14's `Action` vocabulary and the existing guard decide what a
+person may do in the workspace. A handler role narrows that *further* for one Supervisor; it never
+widens it. Gate 6 adds no verb to `Action` — if it needs one, that is a change to §14 and to the
+plan, not to a table.
+
+**6.1 — done.** Migration 0023: `supervisors`, `supervisor_supervised`, `supervisor_handlers`.
+
+**The two scopes are independent, and a test states it as a requirement rather than describing it.**
+`test_the_two_scopes_can_be_disjoint_and_both_hold` sets them to disjoint sets — a department head
+controlling a Supervisor that watches somebody else's Agents, nobody in both — and asserts both
+hold. There is no foreign key between the two tables, no shared column and no rule that reads a
+department and produces a handler. If a future convenience ever derives one from the other, that
+test fails, which is why it exists before anything reads either scope.
+
+**Two kinds, and the third is absent on purpose.** §10: *"Workspace-wide Supervisor is restricted
+and may be added later."* `kind` has two values, and a test proves `'workspace'` cannot be written.
+A value nobody approved is a value somebody eventually sets.
+
+**Personal means personal, and a trigger says so.** §10: *"supervises that user's permitted Job
+Agents."* A supervised row naming anybody but the owner is refused in the database rather than by
+a service — it is what the word means, and an import or a future bulk route must not get around it.
+
+**The owner is `NOT NULL` and its foreign key is `RESTRICT`.** A Supervisor with no owner is one
+nobody is answerable for. Removing somebody who owns one makes you reassign it first, which is a
+decision rather than a cascade — the opposite choice from `agent_versions`, and for the opposite
+reason: that column is history, this one is responsibility.
+
+10 tests, 277 total.
 | 7 | Temporal runtime, to-do, approvals, notifications, governed Copilot | 3–4 weeks |
 | 8.1 | Settings | |
 | 8.2 | Privacy / DPDP | |
