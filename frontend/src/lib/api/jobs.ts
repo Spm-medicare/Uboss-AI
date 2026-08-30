@@ -7,6 +7,7 @@
  */
 
 import { request } from "./client";
+import { operationKey } from "./idempotency";
 import type {
   JobCreate,
   JobList,
@@ -86,7 +87,7 @@ export function createJob(body: JobCreate): Promise<{ id: string; version: strin
   return request("/jobs", {
     method: "POST",
     body,
-    idempotencyKey: `job-create:${body.name}`,
+    idempotencyKey: operationKey("job-create", body.name),
   });
 }
 

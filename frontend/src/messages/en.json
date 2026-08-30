@@ -1239,5 +1239,13 @@
     "offline": "We could not reach UBOSS. Check your connection and try again — nothing has been created.",
     "password": "Password",
     "confirmPassword": "Confirm password"
+  },
+  "stepUp": {
+    "title": "Confirm it is you",
+    "body": "This change affects who can do what, so it needs a recent password confirmation. Your work is not lost — it continues as soon as you confirm.",
+    "password": "Password",
+    "confirm": "Confirm and continue",
+    "confirming": "Confirming",
+    "failed": "That did not work. Check the password and try again."
   }
 }

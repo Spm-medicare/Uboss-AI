@@ -11,6 +11,7 @@
  */
 
 import { request } from "./client";
+import { operationKey } from "./idempotency";
 import type {
   AgentCreate,
   AgentList,
@@ -102,7 +103,7 @@ export function createAgent(body: AgentCreate): Promise<{ id: string; version: s
   return request("/agents", {
     method: "POST",
     body,
-    idempotencyKey: `agent-create:${body.name}`,
+    idempotencyKey: operationKey("agent-create", body.name),
   });
 }
 

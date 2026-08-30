@@ -12,6 +12,7 @@
  */
 
 import { request } from "./client";
+import { operationKey } from "./idempotency";
 import type {
   AssignmentCreate,
   AssignmentEnd,
@@ -88,7 +89,7 @@ export function createUnit(body: OrgUnitCreate): Promise<Written> {
   return request<Written>("/hierarchy/units", {
     method: "POST",
     body,
-    idempotencyKey: `unit-create:${body.parent_id ?? "root"}:${body.name}`,
+    idempotencyKey: operationKey("unit-create", body.parent_id ?? "root", body.name),
   });
 }
 
@@ -123,7 +124,7 @@ export function createPosition(body: PositionCreate): Promise<Written> {
   return request<Written>("/hierarchy/positions", {
     method: "POST",
     body,
-    idempotencyKey: `position-create:${body.org_unit_id}:${body.title}`,
+    idempotencyKey: operationKey("position-create", body.org_unit_id, body.title),
   });
 }
 

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
 import { ApiError } from "@/lib/api/errors";
+import { StepUpProvider } from "@/ui/auth/step-up";
 
 /**
  * Server state for the whole application.
@@ -44,5 +45,12 @@ export function Providers({ children }: { children: ReactNode }) {
   // data reaching another's page.
   const [queryClient] = useState(createQueryClient);
 
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      {/*  Above the screens rather than inside one: a high-risk action can be reached from
+          Hierarchy today and from Settings and the approvals queue later, and each of those
+          building its own password prompt is three prompts that drift. */}
+      <StepUpProvider>{children}</StepUpProvider>
+    </QueryClientProvider>
+  );
 }

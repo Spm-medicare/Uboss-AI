@@ -12,6 +12,7 @@
  */
 
 import { request } from "./client";
+import { operationKey } from "./idempotency";
 import type { SignInResponse } from "./contract";
 
 export interface SignUpInput {
@@ -32,6 +33,6 @@ export function signUp(input: SignUpInput): Promise<SignInResponse> {
     //  `@` and `+` are outside the key alphabet the server accepts, so they are folded rather
     //  than passed through. Folding keeps the key deterministic, which is the whole point — a
     //  key the server rejects turns every retry into a fresh request.
-    idempotencyKey: `sign-up:${input.email.trim().toLowerCase().replace(/[^a-z0-9._:-]/g, "_")}`,
+    idempotencyKey: operationKey("sign-up", input.email.trim().toLowerCase()),
   });
 }

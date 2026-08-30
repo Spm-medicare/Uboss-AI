@@ -9,6 +9,7 @@
  */
 
 import { request } from "./client";
+import { operationKey } from "./idempotency";
 import type {
   HandlerRead,
   SimulationInput,
@@ -103,7 +104,7 @@ export function createSupervisor(
   return request("/supervisors", {
     method: "POST",
     body,
-    idempotencyKey: `supervisor-create:${body.name}`,
+    idempotencyKey: operationKey("supervisor-create", body.name),
   });
 }
 

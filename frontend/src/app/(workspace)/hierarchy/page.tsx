@@ -32,6 +32,7 @@ import {
   Input,
   QueryStates,
 } from "@/ui";
+import { useStepUp } from "@/ui/auth/step-up";
 import { AppShell } from "@/ui/shell/app-shell";
 
 /**
@@ -186,9 +187,12 @@ function rootId(units: OrgUnitRead[]): string | null {
 function NoTreeYet({ mayEdit, onDone }: { mayEdit: boolean; onDone: () => void }) {
   const t = useTranslations("hierarchy");
   const [name, setName] = useState("");
+  const withStepUp = useStepUp();
   const create = useMutation({
     mutationFn: () =>
-      createUnit({ name, unit_type: "company" as UnitType, parent_id: null }),
+      withStepUp(() =>
+        createUnit({ name, unit_type: "company" as UnitType, parent_id: null }),
+      ),
     onSuccess: onDone,
   });
 
@@ -321,8 +325,9 @@ function UnitNode({
   //  The generated contract has `positions` optional — the server always sends it, but a client
   //  that trusts a server's "always" is a client that crashes the day it stops being true.
   const positions = unit.positions ?? [];
+  const withStepUp = useStepUp();
   const archive = useMutation({
-    mutationFn: () => archiveUnit(unit.id, unit.version),
+    mutationFn: () => withStepUp(() => archiveUnit(unit.id, unit.version)),
     onSuccess: onDone,
   });
 
@@ -435,8 +440,9 @@ function PositionRow({
   onDone: () => void;
 }) {
   const t = useTranslations("hierarchy");
+  const withStepUp = useStepUp();
   const archive = useMutation({
-    mutationFn: () => archivePosition(position.id, position.version),
+    mutationFn: () => withStepUp(() => archivePosition(position.id, position.version)),
     onSuccess: onDone,
   });
 
@@ -487,13 +493,16 @@ function AddUnitButton({
   const t = useTranslations("hierarchy");
   const [name, setName] = useState("");
   const [open, setOpen] = useState(false);
+  const withStepUp = useStepUp();
   const create = useMutation({
     mutationFn: () =>
-      createUnit({
-        name,
-        unit_type: "department" as UnitType,
-        parent_id: parentId,
-      }),
+      withStepUp(() =>
+        createUnit({
+          name,
+          unit_type: "department" as UnitType,
+          parent_id: parentId,
+        }),
+      ),
     onSuccess: () => {
       setName("");
       setOpen(false);
@@ -549,8 +558,9 @@ function AddPositionButton({ unitId, onDone }: { unitId: string; onDone: () => v
   const t = useTranslations("hierarchy");
   const [title, setTitle] = useState("");
   const [open, setOpen] = useState(false);
+  const withStepUp = useStepUp();
   const create = useMutation({
-    mutationFn: () => createPosition({ org_unit_id: unitId, title }),
+    mutationFn: () => withStepUp(() => createPosition({ org_unit_id: unitId, title })),
     onSuccess: () => {
       setTitle("");
       setOpen(false);
@@ -618,13 +628,16 @@ function AssignButton({
 }) {
   const t = useTranslations("hierarchy");
   const { user } = useSession();
+  const withStepUp = useStepUp();
   const assign = useMutation({
     mutationFn: async () => {
       const { assignPerson } = await import("@/lib/api/hierarchy");
-      return assignPerson(position.id, {
-        membership_id: user!.membership_id,
-        effective_from: new Date().toISOString().slice(0, 10),
-      });
+      return withStepUp(() =>
+        assignPerson(position.id, {
+          membership_id: user!.membership_id,
+          effective_from: new Date().toISOString().slice(0, 10),
+        }),
+      );
     },
     onSuccess: onDone,
   });
@@ -670,8 +683,9 @@ function History({
 }) {
   const t = useTranslations("hierarchy");
   const format = contextFor(timeZone);
+  const withStepUp = useStepUp();
   const undo = useMutation({
-    mutationFn: (id: string) => undoRevision(id),
+    mutationFn: (id: string) => withStepUp(() => undoRevision(id)),
     onSuccess: onDone,
   });
 

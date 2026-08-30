@@ -8,6 +8,7 @@
  */
 
 import { request } from "./client";
+import { operationKey } from "./idempotency";
 import type {
   CurrentStepRead,
   ObjectiveCreate,
@@ -85,7 +86,7 @@ export function createObjective(
   return request<{ id: string; version: string }>("/objectives", {
     method: "POST",
     body,
-    idempotencyKey: `objective-create:${body.title}`,
+    idempotencyKey: operationKey("objective-create", body.title),
   });
 }
 
