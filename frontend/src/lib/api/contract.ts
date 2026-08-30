@@ -87,6 +87,30 @@ export type PublishSummary = Schemas["PublishSummary"];
 export type WarningRead = Schemas["WarningRead"];
 export type VersionRead = Schemas["VersionRead"];
 
+//  Jobs — the approved workbook's Form 3 and PLAN §8.
+export type JobCard = Schemas["JobCard"];
+export type JobList = Schemas["JobList"];
+export type JobRead = Schemas["JobRead"];
+export type JobCreate = Schemas["JobCreate"];
+export type JobUpdate = Schemas["JobUpdate"];
+export type JobStepInput = Schemas["JobStepInput"];
+export type JobStepRead = Schemas["JobStepRead"];
+export type AssignmentRuleInput = Schemas["AssignmentRuleInput"];
+export type AssignmentRuleRead = Schemas["AssignmentRuleRead"];
+export type JobInputDefinition = Schemas["JobInputDefinition"];
+export type JobInputRead = Schemas["JobInputRead"];
+export type JobStatus = Schemas["JobStatus"];
+export type WhoType = Schemas["WhoType"];
+export type StepMode = Schemas["StepMode"];
+export type AiAccess = Schemas["AiAccess"];
+export type InputRequirement = Schemas["InputRequirement"];
+export type JobWorkbookLists = Schemas["JobWorkbookLists"];
+export type ScheduleRead = Schemas["ScheduleRead"];
+export type ScheduleWrite = Schemas["ScheduleWrite"];
+export type SchedulePreview = Schemas["SchedulePreview"];
+export type JobPublishSummary = Schemas["JobPublishSummary"];
+export type JobVersionRead = Schemas["JobVersionRead"];
+
 /** The shape of every failure, from `ErrorEnvelope` — PLAN §28. */
 export type ErrorEnvelope = Schemas["ErrorEnvelope"];
 export type FieldError = Schemas["FieldError"];

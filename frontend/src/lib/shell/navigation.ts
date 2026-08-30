@@ -111,7 +111,7 @@ export const NAVIGATION: NavGroup[] = [
         href: "/job-builder",
         icon: Workflow,
         requires: "edit_draft",
-        buildsIn: "Gate 4",
+        buildsIn: null,
       },
       {
         id: "agentBuilder",
