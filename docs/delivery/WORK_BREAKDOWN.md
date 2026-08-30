@@ -420,7 +420,7 @@ Agent requirement → Search Skill Registry → Deterministic compatibility gate
 | | | |
 |---|---|---|
 | 5.1 | Skill Registry schema and the seed import — archetypes, skills, rules, gates | ✅ |
-| 5.2 | Search and the deterministic gates — similarity discovers, gates decide | ⬜ |
+| 5.2 | Search and the deterministic gates — similarity discovers, gates decide | ✅ |
 | 5.3 | Agent schema and §9's ten form groups, with skill selection | ⬜ |
 | 5.4 | Sandbox tests and publish — immutable `AgentVersion`, tests as a publish gate | ⬜ |
 | 5.5 | The Agent Builder screen, with the Registry inside it | ⬜ |
@@ -482,6 +482,60 @@ Eleven tests in `tests/integration/test_skill_registry.py`. The five that import
 skip with a stated reason when it is absent — a suite that passed quietly without the catalogue
 would prove nothing about the thing it is named after. The boundary tests seed one row of their
 own rather than the whole sheet, and always run.
+
+**5.2 — done.** `search.py` discovers, `gates.py` decides, `resolver.py` routes and records.
+
+§39 names six things similarity may not override. Five are enforced by a gate, and the sixth is
+reported rather than passed:
+
+| §39 says similarity cannot override | Gate | Quotes |
+|---|---|---|
+| permissions | `authority` | E03 `BLOCKED — authority unresolved` |
+| jurisdiction | `applicability` | its own words |
+| data classification | `data_classification` | **unevaluated** — no skill declares one yet |
+| required approval | `approval` | E12 `CANDIDATE ONLY — approval pending` |
+| version status | `lifecycle` | its own words |
+| stale evidence | `evidence` | E06 `UNVERIFIED — no trace` |
+
+Two more run: `visibility`, and `minimum_inputs` (E02 `DRAFT — missing input`) — the only
+**configurable** gate, and therefore the only one that produces *Configure* rather than *Block*. A
+requirement naming no department, industry or layer is refused before anything is searched, with
+E01's `BLOCKED — ambiguous scope` and the one question to answer.
+
+**A refusal quotes the catalogue, or gives its own reason and quotes nothing.** The wording is read
+from `skill_exactness_gates.failure_state` at evaluation time, so correcting the workbook corrects
+the message. Where none of the twelve says what a gate means — "wrong department" is not
+`STALE — refresh required` — the gate speaks for itself. A message that looked like it came from
+the approved sheet and did not is a message nobody can check.
+
+**Four gates cannot run yet and are recorded as `unevaluated`, never as passed.** Data
+classification, tool scope and schema compatibility read tables the Skill Factory brings; a
+resolution carrying any of them returns `requires_confirmation`, so it is offered to a person
+rather than applied. `scope_exclusions` is a permanent exception, not a gap: in the workbook an
+exclusion is a *sentence*, and a sentence is something a person reads. It is carried verbatim onto
+every candidate card instead.
+
+**Search widens, gates narrow.** Full-text over 0019's generated `tsvector`, ranked by
+`ts_rank_cd` — no embedding call, because a decision recorded today has to be re-derivable
+tomorrow. A plain sentence matches **any** of its words rather than all of them: no skill contains
+every word of a requirement, and an AND search returned nothing, which made *Compose* unreachable.
+Inactive skills are returned and then refused rather than hidden — "no skill does this" and "one
+does, and it was retired" are different answers.
+
+**Migration 0020, `skill_resolver_decisions`, append-only.** Trigger *and* withheld privilege. Each
+row keeps the requirement verbatim, every candidate with its rank, its score, its exclusions and
+every gate that judged it — passes included — plus the gates that did not run. Results are stored,
+not recomputed: re-running today's gates against last quarter's decision would produce today's
+answer and present it as history.
+
+Six routes on `/api/v1/skills`: search, the registry's own vocabulary, one skill, resolve, and the
+decisions this workspace has recorded. Nothing adds a sidebar item — §39 keeps the Registry inside
+Agent Builder and §3 forbids a menu entry.
+
+34 tests. `test_skill_gates.py` runs the gates with no database at all, so *similarity never
+overrides a hard gate* is proved directly rather than inferred from an HTTP response;
+`test_skill_resolver.py` proves it again end to end, against a catalogue row deliberately built to
+outrank everything and fail E03.
 | 6 | Supervisor — personal and department scopes, handler grants | 4–5 weeks |
 | 7 | Temporal runtime, to-do, approvals, notifications, governed Copilot | 3–4 weeks |
 | 8.1 | Settings | |

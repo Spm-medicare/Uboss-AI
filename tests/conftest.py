@@ -301,6 +301,12 @@ async def two_workspaces(
         await session.execute(
             text("ALTER TABLE job_versions DISABLE TRIGGER job_versions_append_only")
         )
+        await session.execute(
+            text(
+                "ALTER TABLE skill_resolver_decisions "
+                "DISABLE TRIGGER skill_resolver_decisions_append_only"
+            )
+        )
         for workspace in (left, right):
             await session.execute(
                 text("SELECT set_config('app.tenant_id', :t, true)"),
@@ -312,6 +318,8 @@ async def two_workspaces(
             for table in (
                 #  Jobs before objectives: a job references the objective it serves, and a
                 #  published job version is RESTRICT against its job.
+                #  A decision points at the skill it chose with RESTRICT, so it goes first.
+                "skill_resolver_decisions",
                 "skills",
                 "job_tools",
                 "job_schedules",
@@ -396,6 +404,12 @@ async def two_workspaces(
         )
         await session.execute(
             text("ALTER TABLE job_versions ENABLE TRIGGER job_versions_append_only")
+        )
+        await session.execute(
+            text(
+                "ALTER TABLE skill_resolver_decisions "
+                "ENABLE TRIGGER skill_resolver_decisions_append_only"
+            )
         )
         await session.commit()
 

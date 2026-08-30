@@ -17,6 +17,7 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     CheckConstraint,
@@ -27,7 +28,10 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    func,
+    text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -207,3 +211,63 @@ class SkillRule(Base, PrimaryKey):
     position: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
 
     __table_args__ = (Index("ix_skill_rules_skill", "skill_id", "position"),)
+
+
+class ResolverRoute(enum.StrEnum):
+    """The five endings PLAN §39 allows a resolution to have.
+
+    `BLOCKED` is one of them. *"Block/route change when no safe choice exists"* is a decision the
+    resolver is required to be able to reach — not a failure to reach one.
+    """
+
+    REUSE = "reuse"
+    CONFIGURE = "configure"
+    COMPOSE = "compose"
+    CREATE = "create"
+    BLOCKED = "blocked"
+
+
+class SkillResolverDecision(Base, PrimaryKey):
+    """What was asked, what was found, which gates refused, and what was decided.
+
+    `docs/product/SKILL_REGISTRY.md`: *"Present route and evidence."* Without this row the
+    resolver would be a recommendation engine — an answer nobody could question six months later.
+
+    Append-only. A decision describes a moment: the requirement as stated, the candidates as they
+    then stood, the gates as the catalogue then defined them. `UPDATE` and `DELETE` are refused by
+    a trigger and withheld from the application role, so a later correction to the catalogue
+    cannot rewrite what was decided under the old wording.
+    """
+
+    __tablename__ = "skill_resolver_decisions"
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="RESTRICT"), nullable=False
+    )
+    requested_by_membership_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=True
+    )
+    #: The requirement verbatim. A decision read back beside a paraphrase proves nothing.
+    requirement: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    source_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    source_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+
+    route: Mapped[str] = mapped_column(String(20), nullable=False)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    #: Null for `create` and `blocked`, and for `compose` — whose answer is a set, so naming one
+    #: member of it would misreport what was decided.
+    selected_skill_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("skills.id", ondelete="RESTRICT"), nullable=True
+    )
+    #: Every candidate with its rank and its gate results. The evidence; the route is the summary.
+    candidates: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    #: Gates that could not run because what they read is not modelled yet. Recorded rather than
+    #: passed — a gate nobody ran has not been satisfied.
+    unevaluated_gates: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )

@@ -382,6 +382,112 @@
         "title": "Body_upload_api_v1_hierarchy_imports_post",
         "type": "object"
       },
+      "CandidateOutcome": {
+        "description": "A candidate and every gate that judged it \u2014 refusals and passes both.",
+        "properties": {
+          "autonomy": {
+            "title": "Autonomy",
+            "type": "string"
+          },
+          "catalogue_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalogue Id"
+          },
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
+          },
+          "exclusions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclusions"
+          },
+          "gates": {
+            "items": {
+              "$ref": "#/components/schemas/GateOutcome"
+            },
+            "title": "Gates",
+            "type": "array"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "layer": {
+            "title": "Layer",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "skill_id": {
+            "format": "uuid",
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "text_match": {
+            "title": "Text Match",
+            "type": "number"
+          }
+        },
+        "required": [
+          "skill_id",
+          "catalogue_id",
+          "name",
+          "layer",
+          "department",
+          "industry",
+          "autonomy",
+          "status",
+          "exclusions",
+          "rank",
+          "text_match",
+          "passed",
+          "gates"
+        ],
+        "title": "CandidateOutcome",
+        "type": "object"
+      },
       "ChooseWorkspaceResponse": {
         "description": "The password was right, but the person belongs to more than one organisation.\n\nReturned with 200, not an error: nothing failed. The client shows a chooser and submits the\nshort-lived challenge \u2014 never the password again. The list is only ever produced after a\ncorrect password.",
         "properties": {
@@ -835,6 +941,85 @@
         "title": "CurrentUser",
         "type": "object"
       },
+      "DecisionCard": {
+        "description": "One past decision, as a list shows it.",
+        "properties": {
+          "candidates": {
+            "title": "Candidates",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "need": {
+            "title": "Need",
+            "type": "string"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "refused": {
+            "title": "Refused",
+            "type": "integer"
+          },
+          "route": {
+            "$ref": "#/components/schemas/ResolverRoute"
+          },
+          "selected_skill_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Skill Id"
+          }
+        },
+        "required": [
+          "id",
+          "route",
+          "rationale",
+          "selected_skill_id",
+          "need",
+          "candidates",
+          "refused",
+          "created_at"
+        ],
+        "title": "DecisionCard",
+        "type": "object"
+      },
+      "DecisionList": {
+        "properties": {
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionCard"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "is_empty": {
+            "title": "Is Empty",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "decisions",
+          "is_empty"
+        ],
+        "title": "DecisionList",
+        "type": "object"
+      },
       "DependencyStatus": {
         "properties": {
           "detail": {
@@ -936,6 +1121,69 @@
         ],
         "title": "Frequency",
         "type": "string"
+      },
+      "GateOutcome": {
+        "description": "One gate's verdict, with the catalogue's own words where it has them.",
+        "properties": {
+          "catalogue_gate_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalogue Gate Id"
+          },
+          "configurable": {
+            "default": false,
+            "title": "Configurable",
+            "type": "boolean"
+          },
+          "failure_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure State"
+          },
+          "gate": {
+            "title": "Gate",
+            "type": "string"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "gate",
+          "name",
+          "outcome",
+          "reason"
+        ],
+        "title": "GateOutcome",
+        "type": "object"
       },
       "ImportApply": {
         "additionalProperties": false,
@@ -5001,6 +5249,57 @@
         "title": "Readiness",
         "type": "object"
       },
+      "RegistryLists": {
+        "description": "The registry's own vocabulary, served rather than copied into the frontend.\n\nA second copy of an approved list is a copy that drifts. The layers, departments, industries\nand archetypes here are the distinct values actually present in the catalogue \u2014 so a filter\ncan never offer a value that matches nothing.",
+        "properties": {
+          "archetypes": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Archetypes",
+            "type": "array"
+          },
+          "autonomy": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Autonomy",
+            "type": "array"
+          },
+          "departments": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Departments",
+            "type": "array"
+          },
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Industries",
+            "type": "array"
+          },
+          "layers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Layers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "layers",
+          "departments",
+          "industries",
+          "archetypes"
+        ],
+        "title": "RegistryLists",
+        "type": "object"
+      },
       "ReportingEdgeCreate": {
         "additionalProperties": false,
         "properties": {
@@ -5045,6 +5344,219 @@
           "dotted"
         ],
         "title": "ReportingKind",
+        "type": "string"
+      },
+      "RequirementIn": {
+        "additionalProperties": false,
+        "description": "The requirement, stated rather than inferred.\n\nE01 refuses an ambiguous scope, so a scope this API guessed at would defeat the gate meant to\ncatch it. `department`, `industry` and `layer` are individually optional and collectively not:\na requirement naming none of them comes back blocked, with the one question to answer.",
+        "properties": {
+          "archetype_id": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archetype Id"
+          },
+          "autonomy_ceiling": {
+            "default": "A1",
+            "pattern": "^A[1-4]$",
+            "title": "Autonomy Ceiling",
+            "type": "string"
+          },
+          "available_inputs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Available Inputs",
+            "type": "array"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "department": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
+          },
+          "evidence_required": {
+            "default": false,
+            "title": "Evidence Required",
+            "type": "boolean"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "layer": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layer"
+          },
+          "need": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Need",
+            "type": "string"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "source_type": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Type"
+          }
+        },
+        "required": [
+          "need"
+        ],
+        "title": "RequirementIn",
+        "type": "object"
+      },
+      "ResolutionRead": {
+        "description": "The route, why, and everything it was decided from.\n\n`unevaluated_gates` is not decoration. Those are gates that could not run because what they\nread is not modelled yet, and a resolution carrying any of them is offered for confirmation\nrather than applied \u2014 which is what `requires_confirmation` says out loud.",
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateOutcome"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "composed_of": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Composed Of",
+            "type": "array"
+          },
+          "coverage": {
+            "additionalProperties": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Coverage",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decision_id": {
+            "format": "uuid",
+            "title": "Decision Id",
+            "type": "string"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "requires_confirmation": {
+            "title": "Requires Confirmation",
+            "type": "boolean"
+          },
+          "route": {
+            "$ref": "#/components/schemas/ResolverRoute"
+          },
+          "selected_skill_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Skill Id"
+          },
+          "unevaluated_gates": {
+            "items": {
+              "$ref": "#/components/schemas/GateOutcome"
+            },
+            "title": "Unevaluated Gates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "decision_id",
+          "route",
+          "rationale",
+          "selected_skill_id",
+          "composed_of",
+          "candidates",
+          "coverage",
+          "unevaluated_gates",
+          "requires_confirmation",
+          "created_at"
+        ],
+        "title": "ResolutionRead",
+        "type": "object"
+      },
+      "ResolverRoute": {
+        "description": "The five endings PLAN \u00a739 allows a resolution to have.\n\n`BLOCKED` is one of them. *\"Block/route change when no safe choice exists\"* is a decision the\nresolver is required to be able to reach \u2014 not a failure to reach one.",
+        "enum": [
+          "reuse",
+          "configure",
+          "compose",
+          "create",
+          "blocked"
+        ],
+        "title": "ResolverRoute",
         "type": "string"
       },
       "RevisionPage": {
@@ -5575,6 +6087,179 @@
           "user"
         ],
         "title": "SignInResponse",
+        "type": "object"
+      },
+      "SkillCard": {
+        "description": "A skill as a search result shows it.\n\n`exclusions` is on the card rather than behind a link on purpose: it is what the skill is\n*not* for, and it is the field that stops a plausible hit from being the wrong choice. Hiding\nit one click away would mean most people never read it.",
+        "properties": {
+          "archetype_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archetype Id"
+          },
+          "autonomy": {
+            "title": "Autonomy",
+            "type": "string"
+          },
+          "catalogue_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalogue Id"
+          },
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
+          },
+          "exclusions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclusions"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "is_catalogue": {
+            "title": "Is Catalogue",
+            "type": "boolean"
+          },
+          "layer": {
+            "title": "Layer",
+            "type": "string"
+          },
+          "minimum_inputs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Inputs"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "positive_trigger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Positive Trigger"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "text_match": {
+            "title": "Text Match",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "catalogue_id",
+          "name",
+          "layer",
+          "department",
+          "industry",
+          "archetype_id",
+          "purpose",
+          "positive_trigger",
+          "exclusions",
+          "minimum_inputs",
+          "autonomy",
+          "status",
+          "is_catalogue",
+          "rank",
+          "text_match"
+        ],
+        "title": "SkillCard",
+        "type": "object"
+      },
+      "SkillSearchResult": {
+        "description": "`is_empty` separates \"nothing matches\" from \"this filter matches nothing\" for the screen.",
+        "properties": {
+          "is_empty": {
+            "title": "Is Empty",
+            "type": "boolean"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SkillCard"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "results",
+          "total",
+          "is_empty"
+        ],
+        "title": "SkillSearchResult",
         "type": "object"
       },
       "Stage": {
@@ -14399,6 +15084,777 @@
         "summary": "Take it back out of the queue",
         "tags": [
           "objectives"
+        ]
+      }
+    },
+    "/api/v1/skills": {
+      "get": {
+        "description": "Ranked candidates \u2014 the shared catalogue and this workspace's own drafts together.\n\nThis ranks; it does not decide. A result here has passed no gate, which is why the card\ncarries the skill's exclusions and its autonomy rather than a tick.",
+        "operationId": "search_registry_api_v1_skills_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 2000,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "layer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Layer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "department",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Department"
+            }
+          },
+          {
+            "in": "query",
+            "name": "industry",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Industry"
+            }
+          },
+          {
+            "in": "query",
+            "name": "archetype_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 8,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Archetype Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillSearchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Search the Skill Registry",
+        "tags": [
+          "skills"
+        ]
+      }
+    },
+    "/api/v1/skills/lists": {
+      "get": {
+        "description": "Read from the rows, so a filter can never offer a value that matches nothing.",
+        "operationId": "registry_lists_api_v1_skills_lists_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryLists"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "The registry's own vocabulary, for the filters",
+        "tags": [
+          "skills"
+        ]
+      }
+    },
+    "/api/v1/skills/resolutions": {
+      "get": {
+        "description": "The evidence trail. Newest first, because the question is usually about the last one.",
+        "operationId": "list_resolutions_api_v1_skills_resolutions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Decisions this workspace has recorded",
+        "tags": [
+          "skills"
+        ]
+      }
+    },
+    "/api/v1/skills/resolutions/{decision_id}": {
+      "get": {
+        "description": "Every candidate and every gate, as they stood when the decision was made.",
+        "operationId": "read_resolution_api_v1_skills_resolutions__decision_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "decision_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Decision Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolutionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "One recorded decision, in full",
+        "tags": [
+          "skills"
+        ]
+      }
+    },
+    "/api/v1/skills/resolve": {
+      "post": {
+        "description": "\u00a739's flow, end to end, with the evidence written down before the answer comes back.\n\nA requirement naming no department, industry or layer comes back `blocked` with E01's own\nwords and the one question to answer \u2014 not a list of twenty guesses.",
+        "operationId": "resolve_requirement_api_v1_skills_resolve_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequirementIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolutionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Resolve a requirement to a route",
+        "tags": [
+          "skills"
+        ]
+      }
+    },
+    "/api/v1/skills/{skill_id}": {
+      "get": {
+        "description": "Declared last so `/lists` and `/resolutions` are not swallowed by the path parameter.",
+        "operationId": "read_skill_api_v1_skills__skill_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "skill_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Skill Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillCard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "One skill, in full",
+        "tags": [
+          "skills"
         ]
       }
     },

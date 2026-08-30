@@ -1246,6 +1246,132 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search the Skill Registry
+         * @description Ranked candidates — the shared catalogue and this workspace's own drafts together.
+         *
+         *     This ranks; it does not decide. A result here has passed no gate, which is why the card
+         *     carries the skill's exclusions and its autonomy rather than a tick.
+         */
+        get: operations["search_registry_api_v1_skills_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The registry's own vocabulary, for the filters
+         * @description Read from the rows, so a filter can never offer a value that matches nothing.
+         */
+        get: operations["registry_lists_api_v1_skills_lists_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/resolutions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Decisions this workspace has recorded
+         * @description The evidence trail. Newest first, because the question is usually about the last one.
+         */
+        get: operations["list_resolutions_api_v1_skills_resolutions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/resolutions/{decision_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One recorded decision, in full
+         * @description Every candidate and every gate, as they stood when the decision was made.
+         */
+        get: operations["read_resolution_api_v1_skills_resolutions__decision_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve a requirement to a route
+         * @description §39's flow, end to end, with the evidence written down before the answer comes back.
+         *
+         *     A requirement naming no department, industry or layer comes back `blocked` with E01's own
+         *     words and the one question to answer — not a list of twenty guesses.
+         */
+        post: operations["resolve_requirement_api_v1_skills_resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/{skill_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One skill, in full
+         * @description Declared last so `/lists` and `/resolutions` are not swallowed by the path parameter.
+         */
+        get: operations["read_skill_api_v1_skills__skill_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health/live": {
         parameters: {
             query?: never;
@@ -1461,6 +1587,41 @@ export interface components {
             sheet_name?: string | null;
         };
         /**
+         * CandidateOutcome
+         * @description A candidate and every gate that judged it — refusals and passes both.
+         */
+        CandidateOutcome: {
+            /** Autonomy */
+            autonomy: string;
+            /** Catalogue Id */
+            catalogue_id: string | null;
+            /** Department */
+            department: string | null;
+            /** Exclusions */
+            exclusions: string | null;
+            /** Gates */
+            gates: components["schemas"]["GateOutcome"][];
+            /** Industry */
+            industry: string | null;
+            /** Layer */
+            layer: string;
+            /** Name */
+            name: string;
+            /** Passed */
+            passed: boolean;
+            /** Rank */
+            rank: number;
+            /**
+             * Skill Id
+             * Format: uuid
+             */
+            skill_id: string;
+            /** Status */
+            status: string;
+            /** Text Match */
+            text_match: number;
+        };
+        /**
          * ChooseWorkspaceResponse
          * @description The password was right, but the person belongs to more than one organisation.
          *
@@ -1598,6 +1759,40 @@ export interface components {
             /** Workspace Slug */
             workspace_slug: string;
         };
+        /**
+         * DecisionCard
+         * @description One past decision, as a list shows it.
+         */
+        DecisionCard: {
+            /** Candidates */
+            candidates: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Need */
+            need: string;
+            /** Rationale */
+            rationale: string;
+            /** Refused */
+            refused: number;
+            route: components["schemas"]["ResolverRoute"];
+            /** Selected Skill Id */
+            selected_skill_id: string | null;
+        };
+        /** DecisionList */
+        DecisionList: {
+            /** Decisions */
+            decisions: components["schemas"]["DecisionCard"][];
+            /** Is Empty */
+            is_empty: boolean;
+        };
         /** DependencyStatus */
         DependencyStatus: {
             /**
@@ -1655,6 +1850,31 @@ export interface components {
          * @enum {string}
          */
         Frequency: "hourly" | "daily" | "weekly" | "monthly";
+        /**
+         * GateOutcome
+         * @description One gate's verdict, with the catalogue's own words where it has them.
+         */
+        GateOutcome: {
+            /** Catalogue Gate Id */
+            catalogue_gate_id?: string | null;
+            /**
+             * Configurable
+             * @default false
+             */
+            configurable: boolean;
+            /** Failure State */
+            failure_state?: string | null;
+            /** Gate */
+            gate: string;
+            /** Missing */
+            missing?: string[];
+            /** Name */
+            name: string;
+            /** Outcome */
+            outcome: string;
+            /** Reason */
+            reason: string;
+        };
         /**
          * ImportApply
          * @description The version the person was looking at when they decided.
@@ -2835,6 +3055,28 @@ export interface components {
              */
             status: "ready" | "degraded";
         };
+        /**
+         * RegistryLists
+         * @description The registry's own vocabulary, served rather than copied into the frontend.
+         *
+         *     A second copy of an approved list is a copy that drifts. The layers, departments, industries
+         *     and archetypes here are the distinct values actually present in the catalogue — so a filter
+         *     can never offer a value that matches nothing.
+         */
+        RegistryLists: {
+            /** Archetypes */
+            archetypes: {
+                [key: string]: string;
+            }[];
+            /** Autonomy */
+            autonomy?: string[];
+            /** Departments */
+            departments: string[];
+            /** Industries */
+            industries: string[];
+            /** Layers */
+            layers: string[];
+        };
         /** ReportingEdgeCreate */
         ReportingEdgeCreate: {
             /**
@@ -2858,6 +3100,90 @@ export interface components {
          * @enum {string}
          */
         ReportingKind: "primary" | "dotted";
+        /**
+         * RequirementIn
+         * @description The requirement, stated rather than inferred.
+         *
+         *     E01 refuses an ambiguous scope, so a scope this API guessed at would defeat the gate meant to
+         *     catch it. `department`, `industry` and `layer` are individually optional and collectively not:
+         *     a requirement naming none of them comes back blocked, with the one question to answer.
+         */
+        RequirementIn: {
+            /** Archetype Id */
+            archetype_id?: string | null;
+            /**
+             * Autonomy Ceiling
+             * @default A1
+             */
+            autonomy_ceiling: string;
+            /** Available Inputs */
+            available_inputs?: string[];
+            /** Capabilities */
+            capabilities?: string[];
+            /** Department */
+            department?: string | null;
+            /**
+             * Evidence Required
+             * @default false
+             */
+            evidence_required: boolean;
+            /** Industry */
+            industry?: string | null;
+            /** Layer */
+            layer?: string | null;
+            /** Need */
+            need: string;
+            /** Source Id */
+            source_id?: string | null;
+            /** Source Type */
+            source_type?: string | null;
+        };
+        /**
+         * ResolutionRead
+         * @description The route, why, and everything it was decided from.
+         *
+         *     `unevaluated_gates` is not decoration. Those are gates that could not run because what they
+         *     read is not modelled yet, and a resolution carrying any of them is offered for confirmation
+         *     rather than applied — which is what `requires_confirmation` says out loud.
+         */
+        ResolutionRead: {
+            /** Candidates */
+            candidates: components["schemas"]["CandidateOutcome"][];
+            /** Composed Of */
+            composed_of: string[];
+            /** Coverage */
+            coverage: {
+                [key: string]: string[];
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Decision Id
+             * Format: uuid
+             */
+            decision_id: string;
+            /** Rationale */
+            rationale: string;
+            /** Requires Confirmation */
+            requires_confirmation: boolean;
+            route: components["schemas"]["ResolverRoute"];
+            /** Selected Skill Id */
+            selected_skill_id: string | null;
+            /** Unevaluated Gates */
+            unevaluated_gates: components["schemas"]["GateOutcome"][];
+        };
+        /**
+         * ResolverRoute
+         * @description The five endings PLAN §39 allows a resolution to have.
+         *
+         *     `BLOCKED` is one of them. *"Block/route change when no safe choice exists"* is a decision the
+         *     resolver is required to be able to reach — not a failure to reach one.
+         * @enum {string}
+         */
+        ResolverRoute: "reuse" | "configure" | "compose" | "create" | "blocked";
         /** RevisionPage */
         RevisionPage: {
             /** Next Before Revision No */
@@ -3086,6 +3412,63 @@ export interface components {
              */
             status: "signed_in";
             user: components["schemas"]["CurrentUser"];
+        };
+        /**
+         * SkillCard
+         * @description A skill as a search result shows it.
+         *
+         *     `exclusions` is on the card rather than behind a link on purpose: it is what the skill is
+         *     *not* for, and it is the field that stops a plausible hit from being the wrong choice. Hiding
+         *     it one click away would mean most people never read it.
+         */
+        SkillCard: {
+            /** Archetype Id */
+            archetype_id: string | null;
+            /** Autonomy */
+            autonomy: string;
+            /** Catalogue Id */
+            catalogue_id: string | null;
+            /** Department */
+            department: string | null;
+            /** Exclusions */
+            exclusions: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Industry */
+            industry: string | null;
+            /** Is Catalogue */
+            is_catalogue: boolean;
+            /** Layer */
+            layer: string;
+            /** Minimum Inputs */
+            minimum_inputs: string | null;
+            /** Name */
+            name: string;
+            /** Positive Trigger */
+            positive_trigger: string | null;
+            /** Purpose */
+            purpose: string | null;
+            /** Rank */
+            rank: number;
+            /** Status */
+            status: string;
+            /** Text Match */
+            text_match: number;
+        };
+        /**
+         * SkillSearchResult
+         * @description `is_empty` separates "nothing matches" from "this filter matches nothing" for the screen.
+         */
+        SkillSearchResult: {
+            /** Is Empty */
+            is_empty: boolean;
+            /** Results */
+            results: components["schemas"]["SkillCard"][];
+            /** Total */
+            total: number;
         };
         /**
          * Stage
@@ -9380,6 +9763,577 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    search_registry_api_v1_skills_get: {
+        parameters: {
+            query?: {
+                q?: string;
+                layer?: string | null;
+                department?: string | null;
+                industry?: string | null;
+                archetype_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillSearchResult"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    registry_lists_api_v1_skills_lists_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistryLists"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_resolutions_api_v1_skills_resolutions_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionList"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    read_resolution_api_v1_skills_resolutions__decision_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                decision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolutionRead"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    resolve_requirement_api_v1_skills_resolve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequirementIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolutionRead"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    read_skill_api_v1_skills__skill_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillCard"];
                 };
             };
             /** @description Not signed in, or the session ended. */

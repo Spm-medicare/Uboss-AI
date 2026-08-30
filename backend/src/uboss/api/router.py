@@ -13,6 +13,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from uboss.core.errors import ErrorEnvelope
+from uboss.modules.agents.resolver_api import router as skills_router
 from uboss.modules.hierarchy.api import router as hierarchy_router
 from uboss.modules.hierarchy.import_api import router as hierarchy_import_router
 from uboss.modules.identity.api import router as identity_router
@@ -58,5 +59,6 @@ def build_v1_router() -> APIRouter:
     router.include_router(jobs_router)
     router.include_router(job_schedule_router)
     router.include_router(job_publish_router)
+    router.include_router(skills_router)
 
     return router
