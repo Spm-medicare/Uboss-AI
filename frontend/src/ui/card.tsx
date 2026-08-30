@@ -35,9 +35,11 @@ export function CardHeader({
   id,
 }: {
   title: string;
-  description?: string;
+  //  Explicitly `| undefined`: `exactOptionalPropertyTypes` treats "absent" and "present but
+  //  undefined" as different, and a caller passing `x ?? undefined` produces the second.
+  description?: string | undefined;
   action?: ReactNode;
-  id?: string;
+  id?: string | undefined;
 }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">

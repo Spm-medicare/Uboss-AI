@@ -98,9 +98,9 @@ retrofitting i18n across five screens is an afternoon, across forty it is a week
 
 | # | | |
 |---|---|---|
-| **13** | 2.1 | Company onboarding — **needs 0B.3 decided first** |
-| **14** | 2.2 | Manual hierarchy — tree, positions, effective dates, revisions |
-| **15** | 2.3 | CSV/XLSX import — upload → scan → mapping → preview → validation → atomic apply |
+| ⛔ | 2.1 | Company onboarding — **needs 0B.3 decided first** |
+| ✅ | 2.2 | Manual hierarchy — tree, positions, effective dates, revisions |
+| **13** | 2.3 | CSV/XLSX import — upload → scan → mapping → preview → validation → atomic apply |
 
 ### Gate 3 — the Objective slice
 

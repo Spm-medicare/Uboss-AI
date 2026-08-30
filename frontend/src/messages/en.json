@@ -168,5 +168,40 @@
   "account": {
     "switchWorkspace": "Switch workspace",
     "switchWorkspaceHint": "Signs you out of this workspace and takes you back to the workspace chooser."
+  },
+  "hierarchy": {
+    "title": "Hierarchy",
+    "intro": "One company tree. Positions exist whether or not somebody is in them, and everything below is as it stands on the date you choose.",
+    "asAt": "As at",
+    "emptyTitle": "No company structure yet",
+    "emptyBody": "Start with the company itself. Departments, positions and reporting lines go inside it.",
+    "emptyBodyReadOnly": "Nobody has set up the structure for this workspace yet.",
+    "companyName": "Company name",
+    "createCompany": "Create",
+    "addDepartment": "Department",
+    "departmentName": "Department name",
+    "addPosition": "Position",
+    "positionTitle": "Position title",
+    "add": "Add",
+    "cancel": "Cancel",
+    "archive": "Archive",
+    "noPositions": "No positions here yet.",
+    "subUnits": "{count, plural, one {# department inside} other {# departments inside}}",
+    "vacant": "Vacant",
+    "filled": "Filled",
+    "assignMe": "Take this seat",
+    "assignMeHint": "Assigns you to this position from today. Choosing a colleague needs the people directory, which arrives with company onboarding.",
+    "issuesTitle": "Worth a look",
+    "historyTitle": "History",
+    "historySubtitle": "Every change to the structure, newest first.",
+    "historyEmpty": "Nothing has changed yet.",
+    "unknownActor": "Someone who has since left",
+    "undo": "Undo",
+    "unitType": {
+      "company": "Company",
+      "division": "Division",
+      "department": "Department",
+      "team": "Team"
+    }
   }
 }

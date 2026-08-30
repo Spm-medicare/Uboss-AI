@@ -89,7 +89,7 @@ export const NAVIGATION: NavGroup[] = [
         href: "/hierarchy",
         icon: Network,
         requires: "view",
-        buildsIn: "Gate 2",
+        buildsIn: null,
       },
     ],
   },

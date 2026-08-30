@@ -31,6 +31,25 @@ export type SessionSummary = Schemas["SessionSummary"];
 export type PasswordStepUpRequest = Schemas["PasswordStepUpRequest"];
 export type StepUpResponse = Schemas["StepUpResponse"];
 
+//  The company tree — PLAN §5.
+export type TreeRead = Schemas["TreeRead"];
+export type OrgUnitRead = Schemas["OrgUnitRead"];
+export type PositionRead = Schemas["PositionRead"];
+export type PersonInSeat = Schemas["PersonInSeat"];
+export type UnitType = Schemas["UnitType"];
+export type ReportingKind = Schemas["ReportingKind"];
+export type OrgUnitCreate = Schemas["OrgUnitCreate"];
+export type OrgUnitUpdate = Schemas["OrgUnitUpdate"];
+export type OrgUnitMove = Schemas["OrgUnitMove"];
+export type PositionCreate = Schemas["PositionCreate"];
+export type PositionUpdate = Schemas["PositionUpdate"];
+export type AssignmentCreate = Schemas["AssignmentCreate"];
+export type AssignmentEnd = Schemas["AssignmentEnd"];
+export type ReportingEdgeCreate = Schemas["ReportingEdgeCreate"];
+export type RevisionPage = Schemas["RevisionPage"];
+export type RevisionRead = Schemas["RevisionRead"];
+export type ValidationIssue = Schemas["ValidationIssue"];
+
 /** The shape of every failure, from `ErrorEnvelope` — PLAN §28. */
 export type ErrorEnvelope = Schemas["ErrorEnvelope"];
 export type FieldError = Schemas["FieldError"];

@@ -350,8 +350,8 @@ empty states. **No fake activity, no invented counts, no disconnected dashboard 
 
 | | |
 |---|---|
-| 2.1 | Company onboarding per the Gate 0 decision; defaults, provisioning audit, rollback |
-| 2.2 | Manual hierarchy — add, edit, move, position status, reporting type, effective dates, revisions |
+| 2.1 | ⛔ Company onboarding per the Gate 0 decision; defaults, provisioning audit, rollback — **blocked on 0B.3** |
+| 2.2 | ✅ Manual hierarchy — add, edit, move, position status, reporting type, effective dates, revisions |
 | 2.3 | CSV/XLSX import — upload → scan → mapping → staging preview → validation → approved atomic apply |
 
 Position is stable; person assignment is effective-dated. No AI and no import writes into the
