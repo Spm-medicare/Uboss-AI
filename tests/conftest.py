@@ -292,6 +292,12 @@ async def two_workspaces(
                 "DISABLE TRIGGER objective_versions_append_only"
             )
         )
+        await session.execute(
+            text(
+                "ALTER TABLE objective_analysis_events "
+                "DISABLE TRIGGER objective_analysis_events_append_only"
+            )
+        )
         for workspace in (left, right):
             await session.execute(
                 text("SELECT set_config('app.tenant_id', :t, true)"),
@@ -305,6 +311,10 @@ async def two_workspaces(
                 #  objective, so the version has to go first, and the append-only trigger on it
                 #  is lifted alongside the other two below.
                 "objective_versions",
+                "objective_step_dependencies",
+                "objective_steps",
+                "objective_analysis_events",
+                "objective_proposals",
                 "objective_current_steps",
                 #  The hierarchy, deepest first. `org_revisions` is append-only like
                 #  `audit_events`, so its trigger is lifted alongside that one below.
@@ -362,6 +372,12 @@ async def two_workspaces(
         await session.execute(
             text(
                 "ALTER TABLE objective_versions ENABLE TRIGGER objective_versions_append_only"
+            )
+        )
+        await session.execute(
+            text(
+                "ALTER TABLE objective_analysis_events "
+                "ENABLE TRIGGER objective_analysis_events_append_only"
             )
         )
         await session.commit()
