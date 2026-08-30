@@ -298,6 +298,9 @@ async def two_workspaces(
                 "DISABLE TRIGGER objective_analysis_events_append_only"
             )
         )
+        await session.execute(
+            text("ALTER TABLE job_versions DISABLE TRIGGER job_versions_append_only")
+        )
         for workspace in (left, right):
             await session.execute(
                 text("SELECT set_config('app.tenant_id', :t, true)"),
@@ -307,6 +310,14 @@ async def two_workspaces(
             #  forgotten here shows up immediately as a foreign-key violation on the tenant
             #  delete — noisy, and better than a suite that leaks an organisation per run.
             for table in (
+                #  Jobs before objectives: a job references the objective it serves, and a
+                #  published job version is RESTRICT against its job.
+                "job_versions",
+                "job_inputs",
+                "job_assignment_rules",
+                "job_step_dependencies",
+                "job_steps",
+                "jobs",
                 #  Objectives before the hierarchy: a published version is RESTRICT against its
                 #  objective, so the version has to go first, and the append-only trigger on it
                 #  is lifted alongside the other two below.
@@ -379,6 +390,9 @@ async def two_workspaces(
                 "ALTER TABLE objective_analysis_events "
                 "ENABLE TRIGGER objective_analysis_events_append_only"
             )
+        )
+        await session.execute(
+            text("ALTER TABLE job_versions ENABLE TRIGGER job_versions_append_only")
         )
         await session.commit()
 

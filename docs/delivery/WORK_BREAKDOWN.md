@@ -382,6 +382,24 @@ validate → context → workstreams → propose → policy → review.
 | Gate | Content | Estimate |
 |---|---|---|
 | 4 | Job Builder — Form 3 header plus all 16 repeatable step fields, schedules | 3–4 weeks |
+
+## Gate 4, broken down
+
+Read from the approved workbook's **Form 3 — Job Method** sheet and `PLAN.md` §8, which agree:
+the sheet's sixteen step columns are exactly the sixteen §8 lists by name. Nothing here is
+invented, and the seventeen dropdown lists come from the workbook's own "Dropdown Lists" sheet.
+
+| | | |
+|---|---|---|
+| 4.1 | ✅ Job schema, Form 3's header, and the sixteen-field step card |  |
+| 4.2 | ✅ WHO assignment rules (§8's six types) and typed INPUT definitions |  |
+| 4.3 | Schedules — auto-run, timezone, recurrence, DST, overlap, missed runs, concurrency | ⬜ |
+| 4.4 | Publish — immutable `JobVersion`, approval route, reusing Gate 3.3's separation of duty | ⬜ |
+| 4.5 | The Job Builder screen, on the shared Builder frame | ⬜ |
+
+**Passes when** a Job publishes an immutable version, its schedule previews correctly across a
+DST boundary, and every one of Form 3's fields round-trips.
+
 | 5 | Agent Builder and Skill Registry — 400 skills / 2,400 rules, resolver, hard gates | 4–5 weeks |
 | 6 | Supervisor — personal and department scopes, handler grants | 4–5 weeks |
 | 7 | Temporal runtime, to-do, approvals, notifications, governed Copilot | 3–4 weeks |

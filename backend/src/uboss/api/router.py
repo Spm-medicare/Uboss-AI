@@ -16,6 +16,7 @@ from uboss.core.errors import ErrorEnvelope
 from uboss.modules.hierarchy.api import router as hierarchy_router
 from uboss.modules.hierarchy.import_api import router as hierarchy_import_router
 from uboss.modules.identity.api import router as identity_router
+from uboss.modules.jobs.api import router as jobs_router
 from uboss.modules.objectives.api import router as objectives_router
 from uboss.modules.objectives.proposal_api import router as objective_plan_router
 from uboss.modules.objectives.publish_api import router as objective_publish_router
@@ -52,5 +53,6 @@ def build_v1_router() -> APIRouter:
     router.include_router(objectives_router)
     router.include_router(objective_plan_router)
     router.include_router(objective_publish_router)
+    router.include_router(jobs_router)
 
     return router

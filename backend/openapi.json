@@ -1,6 +1,16 @@
 {
   "components": {
     "schemas": {
+      "AiAccess": {
+        "description": "What a model may do with an input.\n\n`NONE` is the default because the safe answer should be the one that has to be chosen, not\nthe one that happens when nobody thinks about it.",
+        "enum": [
+          "none",
+          "read",
+          "read_write"
+        ],
+        "title": "AiAccess",
+        "type": "string"
+      },
       "AiAssistance": {
         "description": "\u00a77 group 8 \u2014 how much the product may do without being asked.",
         "enum": [
@@ -170,6 +180,135 @@
           "expected_version"
         ],
         "title": "AssignmentEnd",
+        "type": "object"
+      },
+      "AssignmentRuleInput": {
+        "additionalProperties": false,
+        "properties": {
+          "all_must_act": {
+            "default": false,
+            "title": "All Must Act",
+            "type": "boolean"
+          },
+          "condition_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condition Note"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "target_label": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Label"
+          },
+          "who_type": {
+            "$ref": "#/components/schemas/WhoType"
+          }
+        },
+        "required": [
+          "who_type"
+        ],
+        "title": "AssignmentRuleInput",
+        "type": "object"
+      },
+      "AssignmentRuleRead": {
+        "additionalProperties": false,
+        "properties": {
+          "all_must_act": {
+            "default": false,
+            "title": "All Must Act",
+            "type": "boolean"
+          },
+          "condition_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condition Note"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "target_label": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Label"
+          },
+          "who_type": {
+            "$ref": "#/components/schemas/WhoType"
+          }
+        },
+        "required": [
+          "who_type",
+          "id",
+          "position"
+        ],
+        "title": "AssignmentRuleRead",
+        "type": "object"
+      },
+      "Body_archive_api_v1_jobs__job_id__archive_post": {
+        "properties": {
+          "expected_version": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "title": "Body_archive_api_v1_jobs__job_id__archive_post",
         "type": "object"
       },
       "Body_archive_api_v1_objectives__objective_id__archive_post": {
@@ -1040,6 +1179,1582 @@
           "version"
         ],
         "title": "ImportSummary",
+        "type": "object"
+      },
+      "InputRequirement": {
+        "description": "The workbook's \"Input Status\" list.",
+        "enum": [
+          "Mandatory",
+          "Optional",
+          "Conditional"
+        ],
+        "title": "InputRequirement",
+        "type": "string"
+      },
+      "JobCard": {
+        "description": "A row in the list.",
+        "properties": {
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
+          },
+          "frequency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "objective_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective Name"
+          },
+          "owner_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Name"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "step_count": {
+            "default": 0,
+            "title": "Step Count",
+            "type": "integer"
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "department",
+          "trigger",
+          "frequency",
+          "updated_at"
+        ],
+        "title": "JobCard",
+        "type": "object"
+      },
+      "JobCreate": {
+        "additionalProperties": false,
+        "description": "Only a name is needed to start, as with an Objective.",
+        "properties": {
+          "department": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
+          },
+          "name": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "objective_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective Id"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "JobCreate",
+        "type": "object"
+      },
+      "JobInputDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "ai_access": {
+            "$ref": "#/components/schemas/AiAccess",
+            "default": "none"
+          },
+          "classification": {
+            "default": "internal",
+            "maxLength": 40,
+            "title": "Classification",
+            "type": "string"
+          },
+          "condition_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condition Note"
+          },
+          "input_type": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Input Type",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "requirement": {
+            "$ref": "#/components/schemas/InputRequirement",
+            "default": "Optional"
+          },
+          "retention_note": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention Note"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "validation_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation Note"
+          }
+        },
+        "required": [
+          "name",
+          "input_type"
+        ],
+        "title": "JobInputDefinition",
+        "type": "object"
+      },
+      "JobInputRead": {
+        "additionalProperties": false,
+        "properties": {
+          "ai_access": {
+            "$ref": "#/components/schemas/AiAccess",
+            "default": "none"
+          },
+          "classification": {
+            "default": "internal",
+            "maxLength": 40,
+            "title": "Classification",
+            "type": "string"
+          },
+          "condition_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condition Note"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "input_type": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Input Type",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "requirement": {
+            "$ref": "#/components/schemas/InputRequirement",
+            "default": "Optional"
+          },
+          "retention_note": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention Note"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "validation_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation Note"
+          }
+        },
+        "required": [
+          "name",
+          "input_type",
+          "id",
+          "position"
+        ],
+        "title": "JobInputRead",
+        "type": "object"
+      },
+      "JobList": {
+        "properties": {
+          "is_empty": {
+            "title": "Is Empty",
+            "type": "boolean"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/JobCard"
+            },
+            "title": "Jobs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "jobs",
+          "is_empty"
+        ],
+        "title": "JobList",
+        "type": "object"
+      },
+      "JobRead": {
+        "properties": {
+          "approver_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Membership Id"
+          },
+          "approver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Name"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
+          "assignment_rules": {
+            "items": {
+              "$ref": "#/components/schemas/AssignmentRuleRead"
+            },
+            "title": "Assignment Rules",
+            "type": "array"
+          },
+          "completion_evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completion Evidence"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_person": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Person"
+          },
+          "current_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Role"
+          },
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
+          },
+          "escalation_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation To"
+          },
+          "expected_output": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Output"
+          },
+          "external_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Ref"
+          },
+          "failure_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Action"
+          },
+          "frequency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency"
+          },
+          "high_level_work": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High Level Work"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inputs": {
+            "items": {
+              "$ref": "#/components/schemas/JobInputRead"
+            },
+            "title": "Inputs",
+            "type": "array"
+          },
+          "is_editable": {
+            "title": "Is Editable",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "normal_completion_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normal Completion Time"
+          },
+          "objective_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective Id"
+          },
+          "objective_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective Name"
+          },
+          "objective_step_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective Step Id"
+          },
+          "owner_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Membership Id"
+          },
+          "owner_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Name"
+          },
+          "published_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published Version Id"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose"
+          },
+          "quality_checks": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality Checks"
+          },
+          "retry_policy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Policy"
+          },
+          "sla_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sla Note"
+          },
+          "start_requirement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Requirement"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/JobStepRead"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "time_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Unit"
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/Visibility"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "name",
+          "objective_id",
+          "objective_step_id",
+          "department",
+          "external_ref",
+          "owner_membership_id",
+          "current_person",
+          "current_role",
+          "trigger",
+          "frequency",
+          "high_level_work",
+          "start_requirement",
+          "completion_evidence",
+          "normal_completion_time",
+          "time_unit",
+          "purpose",
+          "expected_output",
+          "quality_checks",
+          "sla_note",
+          "retry_policy",
+          "failure_action",
+          "escalation_to",
+          "visibility",
+          "approver_membership_id",
+          "published_version_id",
+          "archived_at",
+          "version",
+          "created_at",
+          "updated_at",
+          "is_editable"
+        ],
+        "title": "JobRead",
+        "type": "object"
+      },
+      "JobStatus": {
+        "description": "The same lifecycle as an Objective.\n\nOne vocabulary across the Builders, so somebody who has published one knows what the words\nmean on the next. `analyzing` is absent: a Job is written, not proposed.",
+        "enum": [
+          "draft",
+          "needs_review",
+          "ready_to_publish",
+          "published",
+          "active",
+          "paused",
+          "archived"
+        ],
+        "title": "JobStatus",
+        "type": "string"
+      },
+      "JobStepInput": {
+        "additionalProperties": false,
+        "description": "One row of Form 3's step table \u2014 all sixteen columns.\n\nEvery field is optional. Somebody describes their own method a piece at a time, and refusing\na half-written row would mean refusing to autosave, which is how work gets lost.",
+        "properties": {
+          "approval": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval"
+          },
+          "how_exact_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "How Exact Method"
+          },
+          "if_missing_or_wrong": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "If Missing Or Wrong"
+          },
+          "input_exact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Exact"
+          },
+          "input_found_where": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Found Where"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/StepMode",
+            "default": "human"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output"
+          },
+          "output_destination": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Destination"
+          },
+          "rule_formula_check": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Formula Check"
+          },
+          "time_taken": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Taken"
+          },
+          "what_exact_work": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "What Exact Work"
+          },
+          "when_frequency": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "When Frequency"
+          },
+          "when_trigger": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "When Trigger"
+          },
+          "where_performed": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Where Performed"
+          },
+          "who_person": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Who Person"
+          },
+          "who_role": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Who Role"
+          }
+        },
+        "title": "JobStepInput",
+        "type": "object"
+      },
+      "JobStepRead": {
+        "additionalProperties": false,
+        "properties": {
+          "approval": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval"
+          },
+          "depends_on": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Depends On",
+            "type": "array"
+          },
+          "how_exact_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "How Exact Method"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "if_missing_or_wrong": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "If Missing Or Wrong"
+          },
+          "input_exact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Exact"
+          },
+          "input_found_where": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Found Where"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/StepMode",
+            "default": "human"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output"
+          },
+          "output_destination": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Destination"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "rule_formula_check": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Formula Check"
+          },
+          "time_taken": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Taken"
+          },
+          "what_exact_work": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "What Exact Work"
+          },
+          "when_frequency": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "When Frequency"
+          },
+          "when_trigger": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "When Trigger"
+          },
+          "where_performed": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Where Performed"
+          },
+          "who_person": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Who Person"
+          },
+          "who_role": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Who Role"
+          }
+        },
+        "required": [
+          "id",
+          "position"
+        ],
+        "title": "JobStepRead",
+        "type": "object"
+      },
+      "JobUpdate": {
+        "additionalProperties": false,
+        "description": "A draft save \u2014 autosave and Save Draft alike.",
+        "properties": {
+          "approver_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Membership Id"
+          },
+          "assignment_rules": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AssignmentRuleInput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignment Rules"
+          },
+          "completion_evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completion Evidence"
+          },
+          "current_person": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Person"
+          },
+          "current_role": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Role"
+          },
+          "department": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
+          },
+          "escalation_to": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation To"
+          },
+          "expected_output": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Output"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "external_ref": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Ref"
+          },
+          "failure_action": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Action"
+          },
+          "frequency": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency"
+          },
+          "high_level_work": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High Level Work"
+          },
+          "inputs": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JobInputDefinition"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inputs"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "normal_completion_time": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normal Completion Time"
+          },
+          "objective_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective Id"
+          },
+          "objective_step_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective Step Id"
+          },
+          "owner_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Membership Id"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose"
+          },
+          "quality_checks": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality Checks"
+          },
+          "retry_policy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Policy"
+          },
+          "sla_note": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sla Note"
+          },
+          "start_requirement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Requirement"
+          },
+          "steps": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JobStepInput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Steps"
+          },
+          "time_unit": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Unit"
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger"
+          },
+          "visibility": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Visibility"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "JobUpdate",
+        "type": "object"
+      },
+      "JobWorkbookLists": {
+        "description": "The suggested values, served so the frontend keeps no second copy to drift.",
+        "properties": {
+          "approval_timings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Approval Timings",
+            "type": "array"
+          },
+          "approvals": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Approvals",
+            "type": "array"
+          },
+          "departments": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Departments",
+            "type": "array"
+          },
+          "failure_actions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Failure Actions",
+            "type": "array"
+          },
+          "frequencies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Frequencies",
+            "type": "array"
+          },
+          "input_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Input Types",
+            "type": "array"
+          },
+          "methods": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Methods",
+            "type": "array"
+          },
+          "missing_actions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Actions",
+            "type": "array"
+          },
+          "output_formats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Output Formats",
+            "type": "array"
+          },
+          "time_units": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Time Units",
+            "type": "array"
+          },
+          "triggers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Triggers",
+            "type": "array"
+          },
+          "work_places": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Work Places",
+            "type": "array"
+          }
+        },
+        "title": "JobWorkbookLists",
         "type": "object"
       },
       "ObjectiveCard": {
@@ -3273,6 +4988,15 @@
         "title": "StepMerge",
         "type": "object"
       },
+      "StepMode": {
+        "enum": [
+          "human",
+          "ai_agent",
+          "hybrid"
+        ],
+        "title": "StepMode",
+        "type": "string"
+      },
       "StepRead": {
         "properties": {
           "depends_on": {
@@ -3630,6 +5354,20 @@
         ],
         "title": "WarningRead",
         "type": "object"
+      },
+      "WhoType": {
+        "description": "PLAN \u00a78's six WHO types, exactly.\n\nA rule rather than a person, because a `who_person` column works until the first time\nsomebody leaves \u2014 and then every job they touched is assigned to nobody.",
+        "enum": [
+          "user",
+          "team",
+          "department",
+          "role",
+          "hierarchy_position",
+          "hierarchy_subtree",
+          "dynamic_group"
+        ],
+        "title": "WhoType",
+        "type": "string"
       },
       "WorkbookLists": {
         "description": "The suggested values, served so the interface does not keep its own copy.\n\nA second copy in the frontend is a copy that drifts, and the workbook is the approved source.",
@@ -7111,6 +8849,781 @@
         "summary": "Move a department",
         "tags": [
           "hierarchy"
+        ]
+      }
+    },
+    "/api/v1/jobs": {
+      "get": {
+        "description": "`is_empty` separates \"no jobs yet\" from \"none match that filter\" \u2014 different words.",
+        "operationId": "list_jobs_api_v1_jobs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "objective_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Objective Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Archived",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "The jobs in this workspace",
+        "tags": [
+          "jobs"
+        ]
+      },
+      "post": {
+        "description": "A name is enough. Naming an objective carries its department across rather than asking.",
+        "operationId": "create_api_v1_jobs_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Create Api V1 Jobs Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Start a job draft",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/api/v1/jobs/lists": {
+      "get": {
+        "description": "Methods, input types, approval timings and the rest, from the approved sheet.\n\nServed rather than kept in the frontend: a second copy of an approved list is a copy that\ndrifts. They are suggestions, not validation \u2014 each ends in `Other`.",
+        "operationId": "workbook_lists_api_v1_jobs_lists_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobWorkbookLists"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "The workbook's suggested values for Form 3",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}": {
+      "get": {
+        "operationId": "read_api_v1_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "One job, with its steps, WHO rules and inputs",
+        "tags": [
+          "jobs"
+        ]
+      },
+      "patch": {
+        "description": "Autosave and Save Draft alike.\n\nReturns the whole job, so the client's copy and the server's cannot drift after a save that\nchanged something the client did not send \u2014 the version number, which every later save\ndepends on.",
+        "operationId": "update_api_v1_jobs__job_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Save the draft",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}/archive": {
+      "post": {
+        "description": "Archived, never deleted \u2014 every run recorded against it needs it to still exist.",
+        "operationId": "archive_api_v1_jobs__job_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_archive_api_v1_jobs__job_id__archive_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Archive Api V1 Jobs  Job Id  Archive Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Archive a job",
+        "tags": [
+          "jobs"
         ]
       }
     },
