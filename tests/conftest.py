@@ -312,6 +312,7 @@ async def two_workspaces(
             for table in (
                 #  Jobs before objectives: a job references the objective it serves, and a
                 #  published job version is RESTRICT against its job.
+                "skills",
                 "job_tools",
                 "job_schedules",
                 "job_versions",

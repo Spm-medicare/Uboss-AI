@@ -31,14 +31,12 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-#  Every module's models are imported here so that autogenerate sees the complete schema. The
-#  list grows as modules are built; an omission would generate a DROP for a live table.
-from uboss.modules.audit import models as audit_models  # noqa: F401, E402
-from uboss.modules.files import models as files_models  # noqa: F401, E402
-from uboss.modules.identity import models as identity_models  # noqa: F401, E402
-from uboss.modules.identity import policies as identity_policies  # noqa: F401, E402
-from uboss.modules.tenancy import models as tenancy_models  # noqa: F401, E402
+#  One registry rather than a list maintained here. The comment this replaces was right — "an
+#  omission would generate a DROP for a live table" — and four modules had drifted off the list
+#  anyway. `db/registry.py` is now the single place to add one, and a test proves it is complete.
+from uboss.db.registry import import_all  # noqa: E402
 
+import_all()
 target_metadata = Base.metadata
 
 

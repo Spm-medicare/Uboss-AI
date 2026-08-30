@@ -401,6 +401,87 @@ invented, and the seventeen dropdown lists come from the workbook's own "Dropdow
 DST boundary, and every one of Form 3's fields round-trips.
 
 | 5 | Agent Builder and Skill Registry — 400 skills / 2,400 rules, resolver, hard gates | 4–5 weeks |
+
+## Gate 5, broken down
+
+Read from `Universal_Enterprise_Skill_Catalog_IF_THEN (1).xlsx` and `PLAN.md` §9 and §39. The
+workbook holds 12 archetypes, **400 skills**, **2,400 IF-THEN rules** and **12 exactness gates** —
+and those gates are §39's *"deterministic compatibility gates"* by another name, already written
+down with their own failure states.
+
+§39 fixes the flow, and every arrow in it is a step here:
+
+```
+Agent requirement → Search Skill Registry → Deterministic compatibility gates
+→ Reuse | Configure | Compose | Create private Skill Draft
+→ Sandbox tests → Human approval → Versioned active Skill
+```
+
+| | | |
+|---|---|---|
+| 5.1 | Skill Registry schema and the seed import — archetypes, skills, rules, gates | ✅ |
+| 5.2 | Search and the deterministic gates — similarity discovers, gates decide | ⬜ |
+| 5.3 | Agent schema and §9's ten form groups, with skill selection | ⬜ |
+| 5.4 | Sandbox tests and publish — immutable `AgentVersion`, tests as a publish gate | ⬜ |
+| 5.5 | The Agent Builder screen, with the Registry inside it | ⬜ |
+
+**Passes when** a search returns candidates a gate then refuses for a stated reason, an Agent
+publishes only after its tests pass, and no skill can publish itself.
+
+**Not a sidebar module.** §39: *"Skill Registry is internal to Agent Builder."* Nothing here adds
+a menu item — §3 forbids it.
+
+**5.1 — done.** Migration `0019_skill_registry`, four tables.
+
+The shape is the design. `skill_archetypes` (T01–T12) and `skill_exactness_gates` (E01–E12) carry
+no tenant at all: shared reference data, `GRANT SELECT` and nothing else, corrected by a migration
+rather than by the product. `skills` holds **both** the 400 catalogue rows and a tenant's own
+drafts in one table, because a search has to return both and the resolver has to gate both
+identically. `skill_rules` is the 2,400 IF-THEN rules, each keeping the `failure_state` the sheet
+gives it — which is what makes the answer to *"why was this refused"* a row rather than somebody's
+judgement.
+
+The catalogue is **one copy, shared**. `tenant_id IS NULL` means the seed, and the read policy has
+a branch for it that the write policy does not:
+
+```sql
+CREATE POLICY skills_read  ON skills FOR SELECT
+    USING (tenant_id IS NULL OR tenant_id = app_current_tenant());
+CREATE POLICY skills_write ON skills FOR ALL
+    USING (tenant_id = app_current_tenant()) WITH CHECK (tenant_id = app_current_tenant());
+```
+
+Every tenant reads the same 400 rows; none can write them. Copying the catalogue per tenant would
+have meant 400 copies of every correction, and a catalogue that had diverged before anybody
+noticed.
+
+Two checks are held by the schema rather than by whichever service happens to write the row:
+
+- `ck_skills_catalogue_or_private` — a row is one or the other, never both, so no row exists that
+  nobody could classify.
+- `ck_skills_published_was_approved` — §39's *"Skills cannot self-publish."* A published private
+  skill must name who approved it and when.
+
+**The import is idempotent, and reports rather than drops.** `modules/agents/seed.py` matches on
+the workbook's own ids, so re-importing a corrected sheet updates in place instead of leaving two
+`U-001`s. Rows it cannot use go into `Report.skipped` — a skipped row is something somebody has to
+decide about, not a number to watch drift. Against the approved workbook: **12 archetypes, 12
+gates, 400 skills, 2,400 rules, nothing skipped**; a second run reports `0 new, 400 updated`.
+
+Autonomy is stored as the code alone (`A1`…`A4`), not the sheet's `"A1 — Read / analyze"`, because
+a ceiling has to be comparable without parsing a sentence on every check. A generated `tsvector`
+column with a GIN index is in place for 5.2, weighted name → purpose → trigger.
+
+**`db/registry.py` came out of this step and matters beyond it.** `migrations/env.py` was missing
+four model modules from its import list — and its own comment said an omission *"would generate a
+DROP for a live table"*. There is now one import list, used by everything that needs the full
+metadata, and `test_the_model_registry_lists_every_table_in_the_database` compares it against
+`pg_tables`. A module that forgets it fails a test instead of a database.
+
+Eleven tests in `tests/integration/test_skill_registry.py`. The five that import the real workbook
+skip with a stated reason when it is absent — a suite that passed quietly without the catalogue
+would prove nothing about the thing it is named after. The boundary tests seed one row of their
+own rather than the whole sheet, and always run.
 | 6 | Supervisor — personal and department scopes, handler grants | 4–5 weeks |
 | 7 | Temporal runtime, to-do, approvals, notifications, governed Copilot | 3–4 weeks |
 | 8.1 | Settings | |
