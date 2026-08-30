@@ -1853,6 +1853,8 @@ export interface components {
             instructions: string | null;
             /** Io Schemas */
             io_schemas: components["schemas"]["IoSchemaRead"][];
+            /** Is Editable */
+            is_editable: boolean;
             /** Job Id */
             job_id: string | null;
             /** Job Name */

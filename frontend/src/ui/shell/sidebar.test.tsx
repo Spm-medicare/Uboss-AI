@@ -73,18 +73,30 @@ describe("Sidebar", () => {
   });
 
   it("does not link a screen that has not been built", () => {
-    show({ ...BASE, actions: ["view", "edit_draft"] });
+    //  Supervisor needs `run`, so this person has to hold it to see the row at all.
+    show({ ...BASE, actions: ["view", "edit_draft", "run"] });
 
-    const builder = screen
-      .getByText(messages.nav.items.agentBuilder)
+    const supervisor = screen
+      .getByText(messages.nav.items.supervisor)
       .closest("[aria-disabled]");
-    expect(builder).not.toBeNull();
+    expect(supervisor).not.toBeNull();
     //  And it says which gate builds it, rather than leaving a dead row with no explanation.
-    expect(builder).toHaveAttribute("title", "Not built yet — Gate 5");
+    expect(supervisor).toHaveAttribute("title", "Not built yet — Gate 6");
     //  Not a link: a control that navigates to a 404 does not do what it says.
     expect(
-      screen.queryByRole("link", { name: messages.nav.items.agentBuilder }),
+      screen.queryByRole("link", { name: messages.nav.items.supervisor }),
     ).not.toBeInTheDocument();
+  });
+
+  it("links the Agent Builder now that Gate 5 has built it", () => {
+    //  This assertion moved here from the test above when the screen was built. A disabled row
+    //  and a working link are the same rule read at two moments, and the rule is that the
+    //  sidebar never offers a control that does not do what it says.
+    show({ ...BASE, actions: ["view", "edit_draft"] });
+
+    expect(
+      screen.getByRole("link", { name: messages.nav.items.agentBuilder }),
+    ).toHaveAttribute("href", "/agent-builder");
   });
 
   it("links a screen once it exists", () => {

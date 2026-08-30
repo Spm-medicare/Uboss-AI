@@ -522,6 +522,10 @@
             "title": "Io Schemas",
             "type": "array"
           },
+          "is_editable": {
+            "title": "Is Editable",
+            "type": "boolean"
+          },
           "job_id": {
             "anyOf": [
               {
@@ -802,6 +806,7 @@
           "id",
           "version",
           "status",
+          "is_editable",
           "name",
           "objective_id",
           "objective_name",

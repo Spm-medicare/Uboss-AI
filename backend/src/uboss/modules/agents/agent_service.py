@@ -783,6 +783,7 @@ async def _describe(session: AsyncSession, agent: Agent) -> AgentRead:
         id=agent.id,
         version=agent.version,
         status=AgentStatus(agent.status),
+        is_editable=agent.status in EDITABLE,
         name=agent.name,
         objective_id=agent.objective_id,
         objective_name=objective_name,

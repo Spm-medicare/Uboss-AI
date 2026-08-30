@@ -423,7 +423,7 @@ Agent requirement → Search Skill Registry → Deterministic compatibility gate
 | 5.2 | Search and the deterministic gates — similarity discovers, gates decide | ✅ |
 | 5.3 | Agent schema and §9's ten form groups, with skill selection | ✅ |
 | 5.4 | Sandbox tests and publish — immutable `AgentVersion`, tests as a publish gate | ✅ |
-| 5.5 | The Agent Builder screen, with the Registry inside it | ⬜ |
+| 5.5 | The Agent Builder screen, with the Registry inside it | ✅ |
 
 **Passes when** a search returns candidates a gate then refuses for a stated reason, an Agent
 publishes only after its tests pass, and no skill can publish itself.
@@ -654,6 +654,48 @@ backend`, and `tests/` sits at the repository root — so no test file has ever 
 ruff over it today reports 21 findings across the existing suite. Left alone rather than fixed
 mid-gate, because it touches files from every previous step and the clean-up is a decision worth
 taking deliberately.
+
+**5.5 — done.** `/agent-builder` and `/agent-builder/[id]`, on the same frame as the Objective and
+Job Builders — same section rail, same save states, same sticky footer, same autosave rules. §6
+calls it the *shared* Builder experience and a person who has filled in one should not have to
+learn a third.
+
+**The Registry is a section, not a place.** §39: *"Skill Registry is internal to Agent Builder."*
+There is no `/skills` route in the application and no menu entry — §3 forbids one. It sits in the
+rail between Design and Situations, and it offers **browse** and **resolve** as two separate acts,
+because they are two separate acts in the design: one ranks by resemblance, the other runs the
+gates. A single box doing both would let a ranking read as a verdict.
+
+**The screen cannot get around a gate.** A refused candidate has no attach button — the rule is
+enforced in the backend and proved there, so what a screen can still get wrong is offering a
+control that ignores it. Every refusal is rendered with the gate's own sentence, and with the
+catalogue's `failure_state` where one of the twelve says exactly that. The one refusal with a
+named remedy — missing inputs — is the only one carrying a button, and it fills the requirement's
+input list rather than asking somebody to retype the catalogue's wording.
+
+**The truthfulness rules, applied deliberately:**
+
+- No invented numbers. `ts_rank_cd` is shown as an ordinal position (`#1`), never as a percentage.
+  A test asserts the panel renders no `\d+%` anywhere. The publish screen says *"2 of 5 tests
+  pass"* rather than *"40% ready"*, because a percentage needs a definition of "ready" nobody has
+  agreed and would be read as one.
+- No control that does not do what it says. The grant button is replaced by a sentence when the
+  tool is unsaved, when the person lacks `manage_access`, or when the scopes were changed after
+  the grant. A test status other than *Not Run* is disabled until an observation is written,
+  because the schema refuses one without.
+- No success reported for a failure. Every mutation on the screen renders its error; none of them
+  toast.
+
+**`is_editable` moved to the server.** The Job already sends it. Deriving it on the client would
+have been a second copy of a rule the service owns, and the copy on screen is the one people
+would trust.
+
+**A sidebar test was rewritten rather than deleted.** It asserted the Agent Builder was disabled
+and labelled *"Not built yet — Gate 5"*. That is now false, so the assertion moved to Supervisor
+(Gate 6) and a new test asserts the Agent Builder links. A disabled row and a working link are the
+same rule read at two moments.
+
+6 tests, 29 on the frontend. `tsc`, `eslint`, `vitest` and `next build` clean.
 | 6 | Supervisor — personal and department scopes, handler grants | 4–5 weeks |
 | 7 | Temporal runtime, to-do, approvals, notifications, governed Copilot | 3–4 weeks |
 | 8.1 | Settings | |

@@ -118,3 +118,52 @@ export type ErrorEnvelope = Schemas["ErrorEnvelope"];
 export type FieldError = Schemas["FieldError"];
 
 export type { components, paths };
+
+//  The Agent — PLAN §9's ten form groups, and the approved workbook's Form 4.
+export type AgentCard = Schemas["AgentCard"];
+export type AgentList = Schemas["AgentList"];
+export type AgentRead = Schemas["AgentRead"];
+export type AgentCreate = Schemas["AgentCreate"];
+export type AgentUpdate = Schemas["AgentUpdate"];
+export type AgentStatus = Schemas["AgentStatus"];
+export type AgentAudience = Schemas["AgentAudience"];
+export type AgentWorkbookLists = Schemas["AgentWorkbookLists"];
+export type AgentStepInput = Schemas["AgentStepInput"];
+export type AgentStepRead = Schemas["AgentStepRead"];
+export type EscalationRuleInput = Schemas["EscalationRuleInput"];
+export type EscalationRuleRead = Schemas["EscalationRuleRead"];
+export type IoSchemaInput = Schemas["IoSchemaInput"];
+export type IoSchemaRead = Schemas["IoSchemaRead"];
+export type KnowledgeSourceInput = Schemas["KnowledgeSourceInput"];
+export type KnowledgeSourceRead = Schemas["KnowledgeSourceRead"];
+export type ToolInput = Schemas["ToolInput"];
+export type ToolRead = Schemas["ToolRead"];
+export type ShareInput = Schemas["ShareInput"];
+export type ShareRead = Schemas["ShareRead"];
+export type SharePrincipal = Schemas["SharePrincipal"];
+export type AgentSkillInput = Schemas["SkillInput"];
+export type AgentSkillRead = Schemas["SkillRead"];
+export type Situation = Schemas["Situation"];
+
+//  Form 4 section C, and the two publish gates §9 names.
+export type SandboxTestInput = Schemas["SandboxTestInput"];
+export type SandboxTestRead = Schemas["SandboxTestRead"];
+export type SandboxTestList = Schemas["SandboxTestList"];
+export type SandboxTestKind = Schemas["SandboxTestKind"];
+export type SandboxTestStatus = Schemas["SandboxTestStatus"];
+export type AgentPublishSummary = Schemas["AgentPublishSummary"];
+export type AgentPublishGate = Schemas["AgentPublishGate"];
+export type AgentPublishWarning = Schemas["AgentPublishWarning"];
+export type AgentVersionCard = Schemas["AgentVersionCard"];
+export type AgentVersionList = Schemas["AgentVersionList"];
+
+//  The Skill Registry — PLAN §39. Internal to Agent Builder; there is no route for it.
+export type SkillCard = Schemas["SkillCard"];
+export type SkillSearchResult = Schemas["SkillSearchResult"];
+export type RegistryLists = Schemas["RegistryLists"];
+export type RequirementIn = Schemas["RequirementIn"];
+export type ResolutionRead = Schemas["ResolutionRead"];
+export type CandidateOutcome = Schemas["CandidateOutcome"];
+export type GateOutcome = Schemas["GateOutcome"];
+export type DecisionCard = Schemas["DecisionCard"];
+export type DecisionList = Schemas["DecisionList"];

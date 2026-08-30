@@ -313,6 +313,10 @@ class AgentRead(BaseModel):
     id: uuid.UUID
     version: int
     status: AgentStatus
+    #: Whether this draft still accepts edits. Sent rather than derived on the client, because a
+    #: screen that worked out for itself which statuses are editable is a second copy of a rule
+    #: the service already owns — and the copy on screen is the one people would trust.
+    is_editable: bool
     name: str
 
     objective_id: uuid.UUID | None

@@ -119,7 +119,7 @@ export const NAVIGATION: NavGroup[] = [
         href: "/agent-builder",
         icon: Bot,
         requires: "edit_draft",
-        buildsIn: "Gate 5",
+        buildsIn: null,
       },
       {
         id: "supervisor",
