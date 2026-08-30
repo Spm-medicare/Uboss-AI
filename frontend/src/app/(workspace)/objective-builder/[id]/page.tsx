@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Save, Sparkles } from "lucide-react";
+import { Plus, Save, Send, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
@@ -35,6 +35,7 @@ import {
   type BuilderSection,
 } from "@/ui/builder/builder-layout";
 import { PlanSection } from "@/ui/builder/plan-section";
+import { PublishSection } from "@/ui/builder/publish-section";
 import { StepCard } from "@/ui/builder/step-card";
 import { Suggest } from "@/ui/builder/suggest";
 import { AppShell } from "@/ui/shell/app-shell";
@@ -108,7 +109,8 @@ type SectionId =
   | "constraints"
   | "governance"
   | "ai"
-  | "plan";
+  | "plan"
+  | "publish";
 
 function Editor({
   initial,
@@ -222,7 +224,8 @@ function Editor({
         complete: Boolean(draft.approver_membership_id),
       },
       { id: "ai", label: t("sections.ai"), complete: true },
-      { id: "plan", label: t("sections.plan") },
+      { id: "plan", label: t("sections.plan"), complete: false },
+      { id: "publish", label: t("sections.publish") },
     ],
     [draft, steps.length, t],
   );
@@ -269,13 +272,19 @@ function Editor({
             {t("saveDraft")}
           </Button>
           <Button
-            variant="primary"
             icon={<Sparkles className="size-4" />}
             disabled={!editable || steps.length === 0}
             title={steps.length === 0 ? t("analyseNeedsSteps") : undefined}
             onClick={() => goTo("plan")}
           >
             {t("analyse")}
+          </Button>
+          <Button
+            variant="primary"
+            icon={<Send className="size-4" />}
+            onClick={() => goTo("publish")}
+          >
+            {t("reviewAndPublish")}
           </Button>
           {steps.length === 0 ? (
             <span className="text-xs text-muted-foreground">{t("analyseNeedsSteps")}</span>
@@ -663,6 +672,21 @@ function Editor({
           editable={editable}
           timeZone={user?.timezone}
           onReloadObjective={onReload}
+        />
+      </BuilderSectionCard>
+
+      {/*  ── 10. Publish ─────────────────────────────────────────────────────────── */}
+      <BuilderSectionCard
+        id="publish"
+        accent="success"
+        title={t("sections.publish")}
+        description={t("publishHelp")}
+      >
+        <PublishSection
+          objectiveId={draft.id}
+          editable={editable}
+          timeZone={user?.timezone}
+          onChanged={onReload}
         />
       </BuilderSectionCard>
     </BuilderLayout>

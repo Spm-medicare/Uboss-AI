@@ -2625,6 +2625,194 @@
         "title": "ProposedUnit",
         "type": "object"
       },
+      "PublishAction": {
+        "additionalProperties": false,
+        "description": "The version the person was looking at when they decided.\n\nOn approval this is not decoration: it is the difference between approving what you read and\napproving whatever it has become since.",
+        "properties": {
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "PublishAction",
+        "type": "object"
+      },
+      "PublishSummary": {
+        "properties": {
+          "agent_steps": {
+            "title": "Agent Steps",
+            "type": "integer"
+          },
+          "ai_edited": {
+            "title": "Ai Edited",
+            "type": "integer"
+          },
+          "ai_proposed": {
+            "title": "Ai Proposed",
+            "type": "integer"
+          },
+          "analysis_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Model"
+          },
+          "analysis_tokens": {
+            "title": "Analysis Tokens",
+            "type": "integer"
+          },
+          "approval_steps": {
+            "title": "Approval Steps",
+            "type": "integer"
+          },
+          "approver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Name"
+          },
+          "can_approve": {
+            "title": "Can Approve",
+            "type": "boolean"
+          },
+          "can_submit": {
+            "title": "Can Submit",
+            "type": "boolean"
+          },
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
+          },
+          "expected_result": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Result"
+          },
+          "human_added": {
+            "title": "Human Added",
+            "type": "integer"
+          },
+          "human_steps": {
+            "title": "Human Steps",
+            "type": "integer"
+          },
+          "hybrid_steps": {
+            "title": "Hybrid Steps",
+            "type": "integer"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "objective_id": {
+            "format": "uuid",
+            "title": "Objective Id",
+            "type": "string"
+          },
+          "output_steps": {
+            "title": "Output Steps",
+            "type": "integer"
+          },
+          "owner_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Name"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ObjectiveStatus"
+          },
+          "step_count": {
+            "title": "Step Count",
+            "type": "integer"
+          },
+          "submitted_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted By Name"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/WarningRead"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "objective_id",
+          "title",
+          "status",
+          "owner_name",
+          "approver_name",
+          "submitted_by_name",
+          "department",
+          "expected_result",
+          "step_count",
+          "human_steps",
+          "agent_steps",
+          "hybrid_steps",
+          "approval_steps",
+          "output_steps",
+          "ai_proposed",
+          "ai_edited",
+          "human_added",
+          "analysis_model",
+          "analysis_tokens",
+          "next_action",
+          "can_submit",
+          "can_approve",
+          "version"
+        ],
+        "title": "PublishSummary",
+        "type": "object"
+      },
       "Readiness": {
         "properties": {
           "dependencies": {
@@ -3358,6 +3546,63 @@
         "title": "ValidationIssue",
         "type": "object"
       },
+      "VersionRead": {
+        "description": "A published version \u2014 immutable, and evidence.",
+        "properties": {
+          "approved_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "published_at": {
+            "title": "Published At",
+            "type": "string"
+          },
+          "published_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published By Name"
+          },
+          "step_count": {
+            "default": 0,
+            "title": "Step Count",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "version_no": {
+            "title": "Version No",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version_no",
+          "title",
+          "published_at"
+        ],
+        "title": "VersionRead",
+        "type": "object"
+      },
       "Visibility": {
         "enum": [
           "owner",
@@ -3366,6 +3611,25 @@
         ],
         "title": "Visibility",
         "type": "string"
+      },
+      "WarningRead": {
+        "description": "Something the approver should see. Never a blocker.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "WarningRead",
+        "type": "object"
       },
       "WorkbookLists": {
         "description": "The suggested values, served so the interface does not keep its own copy.\n\nA second copy in the frontend is a copy that drifts, and the workbook is the approved source.",
@@ -9001,6 +9265,668 @@
           }
         },
         "summary": "Merge one step into another",
+        "tags": [
+          "objectives"
+        ]
+      }
+    },
+    "/api/v1/objectives/{objective_id}/publish": {
+      "get": {
+        "description": "PLAN \u00a77's publish screen: owners, steps, cost, warnings and the approval route.\n\nComputed on every read. A stored summary could describe an objective that has since changed,\nand a summary that claims to be current and is not is worse than none.",
+        "operationId": "summary_api_v1_objectives__objective_id__publish_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objective_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Objective Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "What publishing this would mean",
+        "tags": [
+          "objectives"
+        ]
+      },
+      "post": {
+        "description": "Approval creates the immutable version \u2014 PLAN \u00a77.\n\nFour things are checked, and none of them by the screen: the caller holds `publish` (high\nrisk, so a recent password proof), they are the named approver, they did not submit it, and\nthe version they read is the version they are approving.",
+        "operationId": "approve_api_v1_objectives__objective_id__publish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objective_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Objective Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishAction"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Approve Api V1 Objectives  Objective Id  Publish Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Approve and publish",
+        "tags": [
+          "objectives"
+        ]
+      }
+    },
+    "/api/v1/objectives/{objective_id}/submit": {
+      "post": {
+        "description": "`edit_draft`, not `publish`.\n\nSubmitting is the last act of writing. Requiring the publish permission for it would mean\nonly people who can approve could ask for approval.",
+        "operationId": "submit_api_v1_objectives__objective_id__submit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objective_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Objective Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishAction"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Submit Api V1 Objectives  Objective Id  Submit Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Send for approval",
+        "tags": [
+          "objectives"
+        ]
+      }
+    },
+    "/api/v1/objectives/{objective_id}/versions": {
+      "get": {
+        "description": "Newest first. Every one of these is immutable and is the evidence of what was approved.",
+        "operationId": "versions_api_v1_objectives__objective_id__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objective_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Objective Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VersionRead"
+                  },
+                  "title": "Response Versions Api V1 Objectives  Objective Id  Versions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "What has been published",
+        "tags": [
+          "objectives"
+        ]
+      }
+    },
+    "/api/v1/objectives/{objective_id}/withdraw": {
+      "post": {
+        "description": "Somebody spots a mistake after submitting. Ordinary, and necessary.",
+        "operationId": "withdraw_api_v1_objectives__objective_id__withdraw_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objective_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Objective Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishAction"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Withdraw Api V1 Objectives  Objective Id  Withdraw Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Take it back out of the queue",
         "tags": [
           "objectives"
         ]

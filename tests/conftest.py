@@ -383,6 +383,72 @@ async def two_workspaces(
         await session.commit()
 
 
+@pytest_asyncio.fixture(loop_scope="session")
+async def colleague(
+    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace]
+) -> AsyncIterator[uuid.UUID]:
+    """A second person in the left workspace, and their membership id.
+
+    Created with the **owner** connection, because `uboss_app` cannot write to `users` — migration
+    0006 took that privilege away and the reason has not changed. A test that could add a user as
+    the application role would be testing a boundary that is not there.
+
+    Separation of duty needs two people, so a suite with only one cannot test it at all.
+    """
+    left, _ = two_workspaces
+    async with build_sessionmaker(owner_engine)() as session:
+        user_id = (
+            await session.execute(
+                text(
+                    "INSERT INTO users (email, password_hash, status) "
+                    "VALUES (:email, 'x', 'active') RETURNING id"
+                ),
+                {"email": f"colleague-{uuid.uuid4().hex[:8]}@test"},
+            )
+        ).scalar_one()
+        await session.execute(
+            text("SELECT set_config('app.tenant_id', :t, true)"),
+            {"t": str(left.tenant_id)},
+        )
+        membership_id = (
+            await session.execute(
+                text(
+                    "INSERT INTO memberships (tenant_id, user_id, display_name, status) "
+                    "VALUES (:t, :u, 'The Approver', 'active') RETURNING id"
+                ),
+                {"t": left.tenant_id, "u": user_id},
+            )
+        ).scalar_one()
+        #  The same role as the first person, so both hold identical permissions and the only
+        #  thing separating them is who they are — which is the thing under test.
+        await session.execute(
+            text(
+                "INSERT INTO membership_roles (tenant_id, membership_id, role_id) "
+                "VALUES (:t, :m, :r)"
+            ),
+            {"t": left.tenant_id, "m": membership_id, "r": left.role_id},
+        )
+        await session.commit()
+
+    yield membership_id
+
+    #  Removed before `two_workspaces` tears the tenant down, or its foreign key would refuse.
+    async with build_sessionmaker(owner_engine)() as session:
+        await session.execute(
+            text("SELECT set_config('app.tenant_id', :t, true)"),
+            {"t": str(left.tenant_id)},
+        )
+        await session.execute(
+            text("DELETE FROM membership_roles WHERE membership_id = :m"),
+            {"m": membership_id},
+        )
+        await session.execute(
+            text("DELETE FROM memberships WHERE id = :m"), {"m": membership_id}
+        )
+        await session.execute(text("DELETE FROM users WHERE id = :u"), {"u": user_id})
+        await session.commit()
+
+
 @pytest.fixture(scope="session")
 def settings_for_tests() -> Settings:
     """Settings as the suite sees them.

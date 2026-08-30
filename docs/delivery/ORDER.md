@@ -108,7 +108,7 @@ retrofitting i18n across five screens is an afternoon, across forty it is a week
 |---|---|---|
 | ✅ | 3.1 | Objective cards and Draft form |
 | ✅ | 3.2 | Claude proposal through the AI Gateway |
-| **18** | 3.3 | Human editor and Publish |
+| ✅ | 3.3 | Human editor and Publish |
 
 **This is the first Gate where the client sees the product they asked for, working end to end.**
 

@@ -82,6 +82,11 @@ export type StageRead = Schemas["StageRead"];
 export type Stage = Schemas["Stage"];
 export type StageState = Schemas["StageState"];
 
+//  Publishing — PLAN §7's summary and immutable version.
+export type PublishSummary = Schemas["PublishSummary"];
+export type WarningRead = Schemas["WarningRead"];
+export type VersionRead = Schemas["VersionRead"];
+
 /** The shape of every failure, from `ErrorEnvelope` — PLAN §28. */
 export type ErrorEnvelope = Schemas["ErrorEnvelope"];
 export type FieldError = Schemas["FieldError"];

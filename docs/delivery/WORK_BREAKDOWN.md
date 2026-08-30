@@ -361,13 +361,13 @@ live hierarchy without preview and approval.
 
 ---
 
-# Gate 3 — Objective end to end  ⬜  ·  5–6 weeks
+# Gate 3 — Objective end to end  ✅  ·  5–6 weeks
 
 | | |
 |---|---|
 | 3.1 | ✅ Objective cards and Draft form — every approved field and conditional rule, autosave |
 | 3.2 | ✅ Claude proposal through the AI Gateway — versioned prompt, schema-validated output |
-| 3.3 | Human editor and Publish — immutable version, approval route, audit evidence |
+| 3.3 | ✅ Human editor and Publish — immutable version, approval route, audit evidence |
 
 The AI produces a **proposal**. It never writes to governed state. Run events are real:
 validate → context → workstreams → propose → policy → review.

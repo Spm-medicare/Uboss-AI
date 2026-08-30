@@ -126,6 +126,14 @@ class Objective(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion):
     created_by_membership_id: Mapped[uuid.UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), nullable=True
     )
+    #: Who sent it for approval. Separation of duty needs a name to compare against — without
+    #: this, "you cannot approve your own work" would have nothing to check and would pass.
+    submitted_by_membership_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=True
+    )
+    submitted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     #: The two tables point at each other — an objective names its published version, and a
     #: version names its objective. `use_alter` tells SQLAlchemy to add this key after both
     #: tables exist rather than trying to order them, which it cannot do and warns about.
@@ -155,10 +163,20 @@ class Objective(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion):
             name="fk_objectives_tenant_approver",
             ondelete="SET NULL (approver_membership_id)",
         ),
+        ForeignKeyConstraint(
+            ["tenant_id", "submitted_by_membership_id"],
+            ["memberships.tenant_id", "memberships.id"],
+            name="fk_objectives_tenant_submitter",
+            ondelete="SET NULL (submitted_by_membership_id)",
+        ),
         UniqueConstraint("tenant_id", "id", name="uq_objectives_tenant_id"),
         CheckConstraint(
             "status NOT IN ('published', 'active', 'paused') OR published_version_id IS NOT NULL",
             name="ck_objectives_published_has_version",
+        ),
+        CheckConstraint(
+            "status <> 'ready_to_publish' OR submitted_by_membership_id IS NOT NULL",
+            name="ck_objectives_submitted_has_submitter",
         ),
         Index("ix_objectives_tenant_status", "tenant_id", "status"),
     )

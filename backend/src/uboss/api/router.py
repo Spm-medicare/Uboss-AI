@@ -18,6 +18,7 @@ from uboss.modules.hierarchy.import_api import router as hierarchy_import_router
 from uboss.modules.identity.api import router as identity_router
 from uboss.modules.objectives.api import router as objectives_router
 from uboss.modules.objectives.proposal_api import router as objective_plan_router
+from uboss.modules.objectives.publish_api import router as objective_publish_router
 
 #: Every failure any route can produce, declared once.
 #
@@ -50,5 +51,6 @@ def build_v1_router() -> APIRouter:
     router.include_router(hierarchy_import_router)
     router.include_router(objectives_router)
     router.include_router(objective_plan_router)
+    router.include_router(objective_publish_router)
 
     return router

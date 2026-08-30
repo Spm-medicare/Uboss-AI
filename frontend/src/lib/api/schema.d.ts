@@ -930,6 +930,100 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/objectives/{objective_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What publishing this would mean
+         * @description PLAN §7's publish screen: owners, steps, cost, warnings and the approval route.
+         *
+         *     Computed on every read. A stored summary could describe an objective that has since changed,
+         *     and a summary that claims to be current and is not is worse than none.
+         */
+        get: operations["summary_api_v1_objectives__objective_id__publish_get"];
+        put?: never;
+        /**
+         * Approve and publish
+         * @description Approval creates the immutable version — PLAN §7.
+         *
+         *     Four things are checked, and none of them by the screen: the caller holds `publish` (high
+         *     risk, so a recent password proof), they are the named approver, they did not submit it, and
+         *     the version they read is the version they are approving.
+         */
+        post: operations["approve_api_v1_objectives__objective_id__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/objectives/{objective_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send for approval
+         * @description `edit_draft`, not `publish`.
+         *
+         *     Submitting is the last act of writing. Requiring the publish permission for it would mean
+         *     only people who can approve could ask for approval.
+         */
+        post: operations["submit_api_v1_objectives__objective_id__submit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/objectives/{objective_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What has been published
+         * @description Newest first. Every one of these is immutable and is the evidence of what was approved.
+         */
+        get: operations["versions_api_v1_objectives__objective_id__versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/objectives/{objective_id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Take it back out of the queue
+         * @description Somebody spots a mistake after submitting. Ordinary, and necessary.
+         */
+        post: operations["withdraw_api_v1_objectives__objective_id__withdraw_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health/live": {
         parameters: {
             query?: never;
@@ -1842,6 +1936,70 @@ export interface components {
             /** Unit Type */
             unit_type: string;
         };
+        /**
+         * PublishAction
+         * @description The version the person was looking at when they decided.
+         *
+         *     On approval this is not decoration: it is the difference between approving what you read and
+         *     approving whatever it has become since.
+         */
+        PublishAction: {
+            /** Expected Version */
+            expected_version: number;
+        };
+        /** PublishSummary */
+        PublishSummary: {
+            /** Agent Steps */
+            agent_steps: number;
+            /** Ai Edited */
+            ai_edited: number;
+            /** Ai Proposed */
+            ai_proposed: number;
+            /** Analysis Model */
+            analysis_model: string | null;
+            /** Analysis Tokens */
+            analysis_tokens: number;
+            /** Approval Steps */
+            approval_steps: number;
+            /** Approver Name */
+            approver_name: string | null;
+            /** Can Approve */
+            can_approve: boolean;
+            /** Can Submit */
+            can_submit: boolean;
+            /** Department */
+            department: string | null;
+            /** Expected Result */
+            expected_result: string | null;
+            /** Human Added */
+            human_added: number;
+            /** Human Steps */
+            human_steps: number;
+            /** Hybrid Steps */
+            hybrid_steps: number;
+            /** Next Action */
+            next_action: string;
+            /**
+             * Objective Id
+             * Format: uuid
+             */
+            objective_id: string;
+            /** Output Steps */
+            output_steps: number;
+            /** Owner Name */
+            owner_name: string | null;
+            status: components["schemas"]["ObjectiveStatus"];
+            /** Step Count */
+            step_count: number;
+            /** Submitted By Name */
+            submitted_by_name: string | null;
+            /** Title */
+            title: string;
+            /** Version */
+            version: number;
+            /** Warnings */
+            warnings?: components["schemas"]["WarningRead"][];
+        };
         /** Readiness */
         Readiness: {
             /** Dependencies */
@@ -2150,10 +2308,46 @@ export interface components {
             kind: string;
         };
         /**
+         * VersionRead
+         * @description A published version — immutable, and evidence.
+         */
+        VersionRead: {
+            /** Approved By Name */
+            approved_by_name?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Published At */
+            published_at: string;
+            /** Published By Name */
+            published_by_name?: string | null;
+            /**
+             * Step Count
+             * @default 0
+             */
+            step_count: number;
+            /** Title */
+            title: string;
+            /** Version No */
+            version_no: number;
+        };
+        /**
          * Visibility
          * @enum {string}
          */
         Visibility: "owner" | "department" | "company";
+        /**
+         * WarningRead
+         * @description Something the approver should see. Never a blocker.
+         */
+        WarningRead: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
         /**
          * WorkbookLists
          * @description The suggested values, served so the interface does not keep its own copy.
@@ -6240,6 +6434,500 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["StepMerge"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    summary_api_v1_objectives__objective_id__publish_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                objective_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishSummary"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    approve_api_v1_objectives__objective_id__publish_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                objective_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    submit_api_v1_objectives__objective_id__submit_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                objective_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    versions_api_v1_objectives__objective_id__versions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                objective_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionRead"][];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    withdraw_api_v1_objectives__objective_id__withdraw_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                objective_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishAction"];
             };
         };
         responses: {
