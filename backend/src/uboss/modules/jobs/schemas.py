@@ -105,6 +105,21 @@ FAILURE_ACTIONS: tuple[str, ...] = (
     "Other",
 )
 
+#: "Permission" — what a job may do with a system it touches. PLAN §19 requires every
+#: external action to go through a governed gateway, and this is the ceiling that gateway
+#: checks.
+PERMISSIONS: tuple[str, ...] = (
+    "Read",
+    "Create",
+    "Update",
+    "Upload",
+    "Download",
+    "Send",
+    "Monitor",
+    "Approve",
+    "Other",
+)
+
 #: "Output Format".
 OUTPUT_FORMATS: tuple[str, ...] = (
     "Text",
@@ -137,6 +152,7 @@ class JobWorkbookLists(BaseModel):
     missing_actions: list[str] = Field(default_factory=lambda: list(MISSING_ACTIONS))
     failure_actions: list[str] = Field(default_factory=lambda: list(FAILURE_ACTIONS))
     output_formats: list[str] = Field(default_factory=lambda: list(OUTPUT_FORMATS))
+    permissions: list[str] = Field(default_factory=lambda: list(PERMISSIONS))
 
 
 class _Payload(BaseModel):
@@ -196,6 +212,23 @@ class JobInputDefinition(BaseModel):
     ai_access: AiAccess = AiAccess.NONE
 
 
+class JobToolDefinition(BaseModel):
+    """A system this job touches — PLAN §8 group 7.
+
+    `permissions` is required and must not be empty: a tool with no permission is a tool
+    the gateway would refuse every call to, and refusing it here lets somebody say what
+    they meant.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=200)
+    permissions: list[str] = Field(min_length=1)
+    #: Which step uses it. Absent means the job as a whole.
+    step_position: int | None = Field(default=None, ge=1)
+    note: str | None = None
+
+
 class JobCreate(_Payload):
     """Only a name is needed to start, as with an Objective."""
 
@@ -239,6 +272,7 @@ class JobUpdate(_Payload):
     steps: list[JobStepInput] | None = None
     assignment_rules: list[AssignmentRuleInput] | None = None
     inputs: list[JobInputDefinition] | None = None
+    tools: list[JobToolDefinition] | None = None
 
     expected_version: int = Field(ge=1)
 
@@ -260,6 +294,13 @@ class AssignmentRuleRead(AssignmentRuleInput):
 class JobInputRead(JobInputDefinition):
     id: uuid.UUID
     position: int
+
+
+class JobToolRead(JobToolDefinition):
+    id: uuid.UUID
+    position: int
+    #: Null until Gate 8 wires the real connections. Naming a tool is not connecting one.
+    integration_id: uuid.UUID | None = None
 
 
 class JobRead(BaseModel):
@@ -299,6 +340,7 @@ class JobRead(BaseModel):
     steps: list[JobStepRead] = Field(default_factory=list)
     assignment_rules: list[AssignmentRuleRead] = Field(default_factory=list)
     inputs: list[JobInputRead] = Field(default_factory=list)
+    tools: list[JobToolRead] = Field(default_factory=list)
 
     published_version_id: uuid.UUID | None
     archived_at: datetime | None

@@ -2016,6 +2016,8 @@ export interface components {
             steps?: components["schemas"]["JobStepRead"][];
             /** Time Unit */
             time_unit: string | null;
+            /** Tools */
+            tools?: components["schemas"]["JobToolRead"][];
             /** Trigger */
             trigger: string | null;
             /**
@@ -2122,6 +2124,44 @@ export interface components {
             who_role?: string | null;
         };
         /**
+         * JobToolDefinition
+         * @description A system this job touches — PLAN §8 group 7.
+         *
+         *     `permissions` is required and must not be empty: a tool with no permission is a tool
+         *     the gateway would refuse every call to, and refusing it here lets somebody say what
+         *     they meant.
+         */
+        JobToolDefinition: {
+            /** Name */
+            name: string;
+            /** Note */
+            note?: string | null;
+            /** Permissions */
+            permissions: string[];
+            /** Step Position */
+            step_position?: number | null;
+        };
+        /** JobToolRead */
+        JobToolRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Integration Id */
+            integration_id?: string | null;
+            /** Name */
+            name: string;
+            /** Note */
+            note?: string | null;
+            /** Permissions */
+            permissions: string[];
+            /** Position */
+            position: number;
+            /** Step Position */
+            step_position?: number | null;
+        };
+        /**
          * JobUpdate
          * @description A draft save — autosave and Save Draft alike.
          */
@@ -2178,6 +2218,8 @@ export interface components {
             steps?: components["schemas"]["JobStepInput"][] | null;
             /** Time Unit */
             time_unit?: string | null;
+            /** Tools */
+            tools?: components["schemas"]["JobToolDefinition"][] | null;
             /** Trigger */
             trigger?: string | null;
             visibility?: components["schemas"]["Visibility"] | null;
@@ -2235,6 +2277,8 @@ export interface components {
             missing_actions?: string[];
             /** Output Formats */
             output_formats?: string[];
+            /** Permissions */
+            permissions?: string[];
             /** Time Units */
             time_units?: string[];
             /** Triggers */

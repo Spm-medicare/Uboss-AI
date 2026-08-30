@@ -11,6 +11,7 @@ import uuid
 from datetime import timedelta
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
@@ -27,6 +28,7 @@ from uboss.modules.jobs.schemas import (
     JobCreate,
     JobInputDefinition,
     JobStepInput,
+    JobToolDefinition,
     JobUpdate,
 )
 from uboss.modules.objectives import service as objectives
@@ -414,4 +416,103 @@ async def test_writing_a_job_needs_edit_draft(
 
         with pytest.raises(PermissionDenied):
             await service.create(session, context, JobCreate(name="Not allowed"))
+        await session.rollback()
+
+
+async def test_a_tool_declares_what_the_job_may_do_with_it(
+    app_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace]
+) -> None:
+    """PLAN §8 group 7, and PLAN §19's governed gateway.
+
+    A tool declaration is a permission ceiling, not a note: a job that never declared `Send` on
+    Outlook does not get to send mail, whatever a model decides mid-run. What is stored here is
+    what that gateway will check.
+    """
+    left, _ = two_workspaces
+    async with build_sessionmaker(app_engine)() as session:
+        context = await _context(session, left)
+        job = await service.create(session, context, JobCreate(name="Quotations"))
+        await session.flush()
+
+        await service.update(
+            session,
+            context,
+            job.id,
+            JobUpdate(
+                steps=[JobStepInput(what_exact_work="Send the quotation")],
+                tools=[
+                    JobToolDefinition(
+                        name="Outlook",
+                        permissions=["Read", "Send"],
+                        step_position=1,
+                        note="The shared sales mailbox only.",
+                    )
+                ],
+                expected_version=job.version,
+            ),
+        )
+        await session.flush()
+
+        saved = await service.read(session, context, job.id)
+        assert len(saved.tools) == 1
+        assert saved.tools[0].permissions == ["Read", "Send"]
+        #  Resolved back to a position, because the client edits by position and the step ids
+        #  change on every save.
+        assert saved.tools[0].step_position == 1
+        #  Not connected to anything yet — Gate 8 wires the real integrations.
+        assert saved.tools[0].integration_id is None
+        await session.rollback()
+
+
+async def test_a_tool_with_no_permission_is_refused(
+    app_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace]
+) -> None:
+    """Every call to it would be refused, so it is better refused where somebody can fix it."""
+    left, _ = two_workspaces
+    async with build_sessionmaker(app_engine)() as session:
+        context = await _context(session, left)
+        job = await service.create(session, context, JobCreate(name="Quotations"))
+        await session.flush()
+
+        with pytest.raises(ValidationError):
+            JobToolDefinition(name="Outlook", permissions=[])
+        await session.rollback()
+
+
+async def test_reordering_steps_does_not_repoint_a_tools_permission(
+    app_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace]
+) -> None:
+    """The step a tool names is resolved by position at save time.
+
+    Storing the id would break on every save, because the step list is replaced wholesale.
+    Storing the number without re-resolving would silently point a permission at different work
+    the first time somebody reordered — which is the failure worth a test.
+    """
+    left, _ = two_workspaces
+    async with build_sessionmaker(app_engine)() as session:
+        context = await _context(session, left)
+        job = await service.create(session, context, JobCreate(name="Quotations"))
+        await session.flush()
+
+        await service.update(
+            session,
+            context,
+            job.id,
+            JobUpdate(
+                steps=[
+                    JobStepInput(what_exact_work="Draft it"),
+                    JobStepInput(what_exact_work="Send it"),
+                ],
+                tools=[
+                    JobToolDefinition(name="Outlook", permissions=["Send"], step_position=2)
+                ],
+                expected_version=job.version,
+            ),
+        )
+        await session.flush()
+
+        saved = await service.read(session, context, job.id)
+        sending_step = saved.steps[1]
+        assert saved.tools[0].step_position == 2
+        assert sending_step.what_exact_work == "Send it"
         await session.rollback()

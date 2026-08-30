@@ -21,10 +21,14 @@ import type {
 } from "./contract";
 
 /** The job with its collections filled in, so no call site has to write `?? []`. */
-export type Job = Omit<JobRead, "steps" | "assignment_rules" | "inputs"> & {
+export type Job = Omit<
+  JobRead,
+  "steps" | "assignment_rules" | "inputs" | "tools"
+> & {
   steps: NonNullable<JobRead["steps"]>;
   assignment_rules: NonNullable<JobRead["assignment_rules"]>;
   inputs: NonNullable<JobRead["inputs"]>;
+  tools: NonNullable<JobRead["tools"]>;
 };
 
 export type Lists = { [K in keyof JobWorkbookLists]-?: string[] };
@@ -35,6 +39,7 @@ function fill(job: JobRead): Job {
     steps: job.steps ?? [],
     assignment_rules: job.assignment_rules ?? [],
     inputs: job.inputs ?? [],
+    tools: job.tools ?? [],
   };
 }
 
@@ -73,6 +78,7 @@ export async function fetchJobLists(signal?: AbortSignal): Promise<Lists> {
     missing_actions: lists.missing_actions ?? [],
     failure_actions: lists.failure_actions ?? [],
     output_formats: lists.output_formats ?? [],
+    permissions: lists.permissions ?? [],
   };
 }
 

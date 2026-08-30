@@ -502,3 +502,47 @@ class JobSchedule(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion):
             name="ck_schedules_concurrency_sane",
         ),
     )
+
+
+class JobTool(Base, PrimaryKey, TenantOwned, Timestamps):
+    """A system this job touches, and what it may do with it — PLAN §8 group 7.
+
+    **A permission, not a note.** PLAN §19 requires every external action to go through a governed
+    gateway; this is what that gateway checks. A job that never declared `Send` on Outlook does not
+    get to send mail, whatever a model decides mid-run.
+    """
+
+    __tablename__ = "job_tools"
+
+    job_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    #: What the person calls it: "Outlook", "our ERP", "the pricing sheet".
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    #: Null until Gate 8 wires the real connections. Naming a tool is not connecting one.
+    integration_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=True
+    )
+    #: The workbook's own "Permission" list. The ceiling, not a description of intent.
+    permissions: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    #: Which step uses it. Null means the job as a whole.
+    step_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "job_id"],
+            ["jobs.tenant_id", "jobs.id"],
+            name="fk_job_tools_tenant_job",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "step_id"],
+            ["job_steps.tenant_id", "job_steps.id"],
+            name="fk_job_tools_tenant_step",
+            #: The step list is replaced wholesale on every save, so a tool pinned to a step
+            #: would lose it. SET NULL keeps the declaration at job level rather than deleting it.
+            ondelete="SET NULL (step_id)",
+        ),
+        UniqueConstraint("tenant_id", "job_id", "position", name="uq_job_tools_position"),
+        Index("ix_job_tools_job", "tenant_id", "job_id", "position"),
+    )

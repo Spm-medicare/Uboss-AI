@@ -2065,6 +2065,13 @@
             ],
             "title": "Time Unit"
           },
+          "tools": {
+            "items": {
+              "$ref": "#/components/schemas/JobToolRead"
+            },
+            "title": "Tools",
+            "type": "array"
+          },
           "trigger": {
             "anyOf": [
               {
@@ -2534,6 +2541,126 @@
         "title": "JobStepRead",
         "type": "object"
       },
+      "JobToolDefinition": {
+        "additionalProperties": false,
+        "description": "A system this job touches \u2014 PLAN \u00a78 group 7.\n\n`permissions` is required and must not be empty: a tool with no permission is a tool\nthe gateway would refuse every call to, and refusing it here lets somebody say what\nthey meant.",
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Permissions",
+            "type": "array"
+          },
+          "step_position": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step Position"
+          }
+        },
+        "required": [
+          "name",
+          "permissions"
+        ],
+        "title": "JobToolDefinition",
+        "type": "object"
+      },
+      "JobToolRead": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "integration_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Integration Id"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Permissions",
+            "type": "array"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "step_position": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step Position"
+          }
+        },
+        "required": [
+          "name",
+          "permissions",
+          "id",
+          "position"
+        ],
+        "title": "JobToolRead",
+        "type": "object"
+      },
       "JobUpdate": {
         "additionalProperties": false,
         "description": "A draft save \u2014 autosave and Save Draft alike.",
@@ -2843,6 +2970,20 @@
             ],
             "title": "Time Unit"
           },
+          "tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JobToolDefinition"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tools"
+          },
           "trigger": {
             "anyOf": [
               {
@@ -3010,6 +3151,13 @@
               "type": "string"
             },
             "title": "Output Formats",
+            "type": "array"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Permissions",
             "type": "array"
           },
           "time_units": {

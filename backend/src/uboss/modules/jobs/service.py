@@ -31,6 +31,7 @@ from uboss.modules.jobs.models import (
     JobStatus,
     JobStep,
     JobStepDependency,
+    JobTool,
 )
 from uboss.modules.jobs.schemas import (
     AssignmentRuleRead,
@@ -40,6 +41,7 @@ from uboss.modules.jobs.schemas import (
     JobList,
     JobRead,
     JobStepRead,
+    JobToolRead,
     JobUpdate,
 )
 from uboss.modules.objectives.models import Objective
@@ -49,6 +51,7 @@ from uboss.modules.objectives.models import Objective
 MAX_STEPS = 60
 MAX_RULES = 20
 MAX_INPUTS = 40
+MAX_TOOLS = 20
 
 
 def _now() -> datetime:
@@ -231,6 +234,7 @@ async def update(
     steps = changes.pop("steps", None)
     rules = changes.pop("assignment_rules", None)
     inputs = changes.pop("inputs", None)
+    tools = changes.pop("tools", None)
 
     for field, value in changes.items():
         if field in _SCALAR_FIELDS:
@@ -247,6 +251,8 @@ async def update(
         await _replace_rules(session, context, job, rules)
     if inputs is not None:
         await _replace_inputs(session, context, job, inputs)
+    if tools is not None:
+        await _replace_tools(session, context, job, tools)
 
     job.version += 1
     await session.flush()
@@ -265,6 +271,7 @@ async def update(
             "steps_replaced": steps is not None,
             "rules_replaced": rules is not None,
             "inputs_replaced": inputs is not None,
+            "tools_replaced": tools is not None,
         },
     )
     return job
@@ -451,6 +458,57 @@ async def _replace_inputs(
     await session.flush()
 
 
+async def _replace_tools(
+    session: AsyncSession,
+    context: SecurityContext,
+    job: Job,
+    tools: list[dict[str, Any]],
+) -> None:
+    """Replace the tool declarations.
+
+    Written after the steps, because a tool may name the step that uses it and the step ids
+    change on every save. The position is resolved to the current step here rather than being
+    stored as a number, so a reorder cannot silently repoint a permission at different work.
+    """
+    if len(tools) > MAX_TOOLS:
+        raise ValidationFailed(f"A job can declare up to {MAX_TOOLS} tools.")
+
+    await session.execute(delete(JobTool).where(JobTool.job_id == job.id))
+    await session.flush()
+
+    steps = list(
+        (
+            await session.execute(
+                select(JobStep).where(JobStep.job_id == job.id).order_by(JobStep.position)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    by_position = {step.position: step.id for step in steps}
+
+    for index, tool in enumerate(tools, start=1):
+        permissions = [str(value) for value in (tool.get("permissions") or [])]
+        if not permissions:
+            name = tool.get("name")
+            raise ValidationFailed(
+                f"Say what {name} is allowed to do. A tool with no permission is one every "
+                "call would be refused."
+            )
+        session.add(
+            JobTool(
+                tenant_id=context.tenant_id,
+                job_id=job.id,
+                position=index,
+                name=str(tool["name"]).strip(),
+                permissions=permissions,
+                step_id=by_position.get(tool.get("step_position") or 0),
+                note=tool.get("note"),
+            )
+        )
+    await session.flush()
+
+
 async def _describe(session: AsyncSession, job: Job) -> JobRead:
     steps = list(
         (
@@ -476,6 +534,15 @@ async def _describe(session: AsyncSession, job: Job) -> JobRead:
         (
             await session.execute(
                 select(JobInput).where(JobInput.job_id == job.id).order_by(JobInput.position)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    tools = list(
+        (
+            await session.execute(
+                select(JobTool).where(JobTool.job_id == job.id).order_by(JobTool.position)
             )
         )
         .scalars()
@@ -580,5 +647,20 @@ async def _describe(session: AsyncSession, job: Job) -> JobRead:
             AssignmentRuleRead.model_validate(rule, from_attributes=True) for rule in rules
         ],
         inputs=[JobInputRead.model_validate(item, from_attributes=True) for item in inputs],
+        tools=[
+            JobToolRead(
+                id=tool.id,
+                position=tool.position,
+                name=tool.name,
+                permissions=tool.permissions,
+                integration_id=tool.integration_id,
+                #  Resolved back to a position for the client, which edits by position.
+                step_position=next(
+                    (step.position for step in steps if step.id == tool.step_id), None
+                ),
+                note=tool.note,
+            )
+            for tool in tools
+        ],
         is_editable=job.is_editable,
     )

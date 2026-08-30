@@ -35,6 +35,7 @@ from uboss.modules.jobs.models import (
     JobStatus,
     JobStep,
     JobStepDependency,
+    JobTool,
     JobVersion,
     StepMode,
 )
@@ -477,6 +478,15 @@ async def _snapshot(session: AsyncSession, job: Job) -> dict[str, Any]:
         .scalars()
         .all()
     )
+    tools = list(
+        (
+            await session.execute(
+                select(JobTool).where(JobTool.job_id == job.id).order_by(JobTool.position)
+            )
+        )
+        .scalars()
+        .all()
+    )
     schedule = (
         await session.execute(select(JobSchedule).where(JobSchedule.job_id == job.id))
     ).scalar_one_or_none()
@@ -580,6 +590,16 @@ async def _snapshot(session: AsyncSession, job: Job) -> dict[str, Any]:
                 "ai_access": item.ai_access,
             }
             for item in inputs
+        ],
+        "tools": [
+            {
+                "position": tool.position,
+                "name": tool.name,
+                "permissions": tool.permissions,
+                "step_id": _plain(tool.step_id),
+                "note": tool.note,
+            }
+            for tool in tools
         ],
         "schedule": (
             {

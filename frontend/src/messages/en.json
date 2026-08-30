@@ -674,7 +674,19 @@
     "notSavedTitle": "That did not save",
     "notSavedBody": "Nothing you typed has been lost — it will be sent again on your next edit, or press Save draft.",
     "readOnlyTitle": "This job cannot be edited",
-    "readOnlyBody": "It is {status}."
+    "readOnlyBody": "It is {status}.",
+    "toolsTitle": "Tools and systems",
+    "toolsHelp": "What this job reaches into, and exactly what it is allowed to do there. Anything not listed is refused.",
+    "addTool": "Add a tool",
+    "removeTool": "Remove tool {tool}",
+    "toolName": "Tool or system",
+    "toolNamePlaceholder": "Outlook, the ERP, the pricing sheet…",
+    "toolStep": "Used at",
+    "toolWholeJob": "Throughout the job",
+    "toolStepNumber": "Step {step}",
+    "toolPermissions": "Allowed to",
+    "toolNeedsPermission": "Say what this is allowed to do. A tool with no permission is one every call would be refused.",
+    "toolNote": "Note"
   },
   "schedule": {
     "noneTitle": "This job does not run by itself",

@@ -10,6 +10,7 @@ import type {
   AssignmentRuleInput,
   JobInputDefinition,
   JobStepInput,
+  JobToolDefinition,
   JobUpdate,
 } from "@/lib/api/contract";
 import {
@@ -47,7 +48,7 @@ import {
 import { JobStepCard } from "@/ui/builder/job-step-card";
 import { ScheduleSection } from "@/ui/builder/schedule-section";
 import { Suggest } from "@/ui/builder/suggest";
-import { JobInputs, WhoRules } from "@/ui/builder/who-and-inputs";
+import { JobInputs, JobTools, WhoRules } from "@/ui/builder/who-and-inputs";
 import { AppShell } from "@/ui/shell/app-shell";
 
 /**
@@ -160,6 +161,9 @@ function Editor({
       visibility: next.visibility,
       approver_membership_id: next.approver_membership_id,
       steps: next.steps.map(stripReadFields),
+      tools: next.tools.map(
+        ({ id: _id, position: _p, integration_id: _i, ...rest }) => rest,
+      ),
       assignment_rules: next.assignment_rules.map(({ id: _id, position: _p, ...rest }) => rest),
       inputs: next.inputs.map(({ id: _id, position: _p, ...rest }) => rest),
       expected_version: next.version,
@@ -462,6 +466,20 @@ function Editor({
           disabled={!editable}
           onChange={(next) => edit({ inputs: next as Job["inputs"] })}
         />
+
+        {/*  §8 group 7. After the inputs, because a tool is what a step reaches into
+            and an input is what it is handed — people fill them in that order. */}
+        <div className="border-t border-border pt-4">
+          <p className="mb-1 text-sm font-medium">{t("toolsTitle")}</p>
+          <p className="mb-3 text-sm text-muted-foreground">{t("toolsHelp")}</p>
+          <JobTools
+            tools={draft.tools as JobToolDefinition[]}
+            permissions={lists.permissions}
+            stepCount={draft.steps.length}
+            disabled={!editable}
+            onChange={(next) => edit({ tools: next as Job["tools"] })}
+          />
+        </div>
       </BuilderSectionCard>
 
       {/*  ── 5. Evidence, quality and failure ────────────────────────────────────── */}

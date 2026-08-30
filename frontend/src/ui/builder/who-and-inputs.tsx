@@ -8,6 +8,7 @@ import type {
   AssignmentRuleInput,
   InputRequirement,
   JobInputDefinition,
+  JobToolDefinition,
   WhoType,
 } from "@/lib/api/contract";
 import { cn } from "@/lib/cn";
@@ -369,6 +370,164 @@ export function JobInputs({
         }
       >
         {t("addInput")}
+      </Button>
+    </div>
+  );
+}
+
+
+/**
+ * The systems this job touches, and what it may do with each — PLAN §8 group 7.
+ *
+ * **A permission, not a note.** PLAN §19 requires every external action to go through a governed
+ * gateway, and this is the ceiling that gateway checks: a job that never declared `Send` on
+ * Outlook does not get to send mail, whatever a model decides mid-run. So permissions are chosen
+ * rather than typed, and a tool with none is refused.
+ *
+ * Naming a tool is not connecting one. Nothing here connects to anything until Gate 8 wires the
+ * real integrations — but saying what a job needs is useful long before that, and the row becomes
+ * a real connection without moving.
+ */
+export function JobTools({
+  tools,
+  permissions,
+  stepCount,
+  disabled,
+  onChange,
+}: {
+  tools: JobToolDefinition[];
+  permissions: string[];
+  stepCount: number;
+  disabled: boolean;
+  onChange: (next: JobToolDefinition[]) => void;
+}) {
+  const t = useTranslations("job");
+
+  function edit(index: number, patch: Partial<JobToolDefinition>) {
+    onChange(tools.map((item, at) => (at === index ? { ...item, ...patch } : item)));
+  }
+
+  return (
+    <div className="space-y-3">
+      <ul className="space-y-2">
+        {tools.map((tool, index) => {
+          const none = (tool.permissions ?? []).length === 0;
+          return (
+            <li
+              key={index}
+              className={cn(
+                "rounded-lg border bg-card p-3",
+                none ? "border-danger" : "border-border",
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Suggest
+                      label={t("toolName")}
+                      value={tool.name}
+                      disabled={disabled}
+                      placeholder={t("toolNamePlaceholder")}
+                      onChange={(value) => edit(index, { name: value })}
+                    />
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                        {t("toolStep")}
+                      </label>
+                      <select
+                        value={tool.step_position ?? ""}
+                        disabled={disabled}
+                        onChange={(event) =>
+                          edit(index, {
+                            step_position: event.target.value
+                              ? Number(event.target.value)
+                              : null,
+                          })
+                        }
+                        className="h-9 w-full rounded-md border border-border bg-card px-2 text-sm disabled:opacity-60"
+                      >
+                        <option value="">{t("toolWholeJob")}</option>
+                        {Array.from({ length: stepCount }, (_, i) => i + 1).map((n) => (
+                          <option key={n} value={n}>
+                            {t("toolStepNumber", { step: n })}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                      {t("toolPermissions")}
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {permissions.map((option) => {
+                        const on = (tool.permissions ?? []).includes(option);
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            disabled={disabled}
+                            aria-pressed={on}
+                            onClick={() =>
+                              edit(index, {
+                                permissions: on
+                                  ? (tool.permissions ?? []).filter((p) => p !== option)
+                                  : [...(tool.permissions ?? []), option],
+                              })
+                            }
+                            className={cn(
+                              "rounded-md border px-2 py-1 text-xs transition-colors duration-150",
+                              "motion-reduce:transition-none disabled:opacity-60",
+                              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
+                              on
+                                ? "border-[var(--ub-brand)] bg-primary text-primary-foreground"
+                                : "border-border bg-card hover:bg-accent",
+                            )}
+                          >
+                            {option}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {none ? (
+                      <Alert tone="danger" className="mt-2">
+                        {t("toolNeedsPermission")}
+                      </Alert>
+                    ) : null}
+                  </div>
+
+                  <Suggest
+                    label={t("toolNote")}
+                    value={tool.note ?? ""}
+                    disabled={disabled}
+                    onChange={(value) => edit(index, { note: value || null })}
+                  />
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="size-8 shrink-0 px-0 text-muted-foreground hover:text-danger"
+                  aria-label={t("removeTool", { tool: index + 1 })}
+                  disabled={disabled}
+                  onClick={() => onChange(tools.filter((_, at) => at !== index))}
+                  icon={<Trash2 className="size-3.5" />}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      <Button
+        icon={<Plus className="size-4" />}
+        disabled={disabled}
+        onClick={() =>
+          onChange([...tools, { name: "", permissions: ["Read"], step_position: null }])
+        }
+      >
+        {t("addTool")}
       </Button>
     </div>
   );
