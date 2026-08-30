@@ -19,12 +19,16 @@
   --ub-brand-hover: #1d4ed8;
   --ub-brand-foreground: #ffffff;
 
-  --ub-sidebar: #0f1012;
-  --ub-sidebar-surface: #202226;
-  --ub-sidebar-active: #303238;
-  --ub-sidebar-text: #f5f7fa;
-  --ub-sidebar-muted: #a9afb9;
-  --ub-sidebar-border: #292b30;
+  /* Deep navy, not neutral black. The signed-out panel is navy and the sidebar is the first
+     thing somebody sees after it — two different darks in one product reads as two products.
+     The hue also gives the brand blue somewhere to sit: an accent on a neutral black looks
+     stuck on, and on a related navy it looks like part of the same surface. */
+  --ub-sidebar: #0a1526;
+  --ub-sidebar-surface: #16263f;
+  --ub-sidebar-active: #1d3557;
+  --ub-sidebar-text: #f2f6fc;
+  --ub-sidebar-muted: #93a4bd;
+  --ub-sidebar-border: #182c48;
 
   --ub-human: #0284c7;
   --ub-ai: #7c3aed;
@@ -43,6 +47,12 @@
   --ub-approval-soft: #fef3c7;
   --ub-success-soft: #dcfce7;
   --ub-danger-soft: #fee2e2;
+
+  /* The signed-out panel. Its own surface, not the sidebar's: the sidebar is near-black
+     furniture you stop seeing, and this is the first thing anybody sees of the product. Deep
+     navy rather than black so the brand blue reads as part of the same family. */
+  --ub-auth-panel-from: #142a4d;
+  --ub-auth-panel-to: #060d19;
 
   --ub-radius-control: 0.5rem;
   --ub-radius-card: 0.75rem;
@@ -78,12 +88,15 @@
   --ub-brand-hover: #60a5fa;
   --ub-brand-foreground: #08111f;
 
-  --ub-sidebar: #090a0c;
-  --ub-sidebar-surface: #181a1e;
-  --ub-sidebar-active: #2c2f35;
-  --ub-sidebar-text: #f7f8fa;
-  --ub-sidebar-muted: #aab0ba;
-  --ub-sidebar-border: #25272c;
+  --ub-sidebar: #060e1b;
+  --ub-sidebar-surface: #122036;
+  --ub-sidebar-active: #1a3053;
+  --ub-sidebar-text: #f4f7fb;
+  --ub-sidebar-muted: #97a7bf;
+  --ub-sidebar-border: #142642;
+
+  --ub-auth-panel-from: #0f2140;
+  --ub-auth-panel-to: #04080f;
 
   --ub-human-soft: #082f49;
   --ub-ai-soft: #2e1065;

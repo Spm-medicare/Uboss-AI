@@ -388,3 +388,39 @@ class Session(Base, PrimaryKey, TenantOwned, Timestamps):
             and self.expires_at > now
             and self.last_seen_at > now - idle_timeout
         )
+
+
+class FederatedIdentity(Base, PrimaryKey, Timestamps):
+    """A provider account linked to a user — Google, Microsoft or Apple.
+
+    **The identity is `(provider, subject)`, never the email address.** A provider's `sub` is
+    stable; an address is not, and matching on one would let somebody who acquires an old address
+    inherit the account it used to belong to. The email here is kept so an administrator can see
+    what the provider asserts, not so anything can be found by it.
+
+    No `tenant_id`, like `users`: a person signs in once and may belong to several workspaces, so
+    a credential cannot belong to one of them.
+    """
+
+    __tablename__ = "federated_identities"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    provider: Mapped[str] = mapped_column(String(20), nullable=False)
+    #: OIDC's `sub`. The provider's own stable identifier for this person.
+    subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    email_verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    display_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    last_sign_in_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint("provider", "subject", name="uq_federated_provider_subject"),
+        UniqueConstraint("user_id", "provider", name="uq_federated_user_provider"),
+        Index("ix_federated_user", "user_id"),
+    )

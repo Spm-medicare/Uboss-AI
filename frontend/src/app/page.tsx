@@ -6,6 +6,7 @@ import { useEffect } from "react";
 
 import { useSession } from "@/lib/auth/use-session";
 import { ErrorState, LoadingState } from "@/ui";
+import { Logo } from "@/ui/brand/mark";
 
 /**
  * The front door.
@@ -40,9 +41,14 @@ export default function RootPage() {
       className="grid min-h-dvh place-items-center bg-background px-6"
       aria-busy={isLoading}
     >
-      <LoadingState
-        label={isSignedOut ? t("takingYouToSignIn") : t("loadingWorkspace")}
-      />
+      {/*  The mark on the very first paint. This page exists for a fraction of a second, and a
+          bare spinner in that moment is the one frame where the product looks like nothing. */}
+      <div className="flex flex-col items-center gap-6">
+        <Logo variant="full" className="text-foreground" />
+        <LoadingState
+          label={isSignedOut ? t("takingYouToSignIn") : t("loadingWorkspace")}
+        />
+      </div>
     </main>
   );
 }

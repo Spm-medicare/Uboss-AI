@@ -13,7 +13,7 @@ Two rules this module exists to keep:
 """
 
 from functools import lru_cache
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -82,6 +82,21 @@ class Settings(BaseSettings):
     ai_model_column_mapping: str = "claude-haiku-4-5-20251001"
     ai_model_proposal: str = "claude-sonnet-5"
 
+    #: Which provider serves every task. One setting, not one per task: a deployment has the
+    #: credentials it has, and a policy that could route half the work to a provider with no key
+    #: would fail on the half nobody tested.
+    #:
+    #: `auto` picks whichever has a key, preferring Anthropic — so a deployment with only an
+    #: OpenAI key works without being told to, and one with both keeps the models named above.
+    ai_provider: Literal["auto", "anthropic", "openai"] = "auto"
+
+    openai_api_key: SecretStr = SecretStr("")
+    openai_base_url: str = "https://api.openai.com"
+    #: The OpenAI equivalents of the two models above, on the same reasoning: a fast model for
+    #: the small structured job, a capable one for the reasoning-heavy one.
+    openai_model_column_mapping: str = "gpt-4.1-mini"
+    openai_model_proposal: str = "gpt-4.1"
+
     # ── object storage ───────────────────────────────────────────────────────────────────
     #: S3-compatible (PLAN §26). MinIO locally, whatever the deployment provides in production —
     #: the same API either way, so there is no branch in the code for "local".
@@ -121,6 +136,102 @@ class Settings(BaseSettings):
     trusted_hosts: str = "localhost,127.0.0.1"
     cors_origins: str = "http://localhost:3000"
 
+    #  ---------------------------------------------------------------- federated sign-in
+    #
+    #  PLAN §21 and the decision table: *"Identity | Managed provider with MFA now; SAML/OIDC and
+    #  SCIM for enterprise."* Each provider is optional and independent — a deployment may enable
+    #  none, one or all three. What matters is that an unconfigured provider is a **supported
+    #  state**: the API says which are available and the sign-in screen offers only those, because
+    #  a button that cannot complete a sign-in is a control that does not do what it says.
+    #
+    #  Secrets are `SecretStr` so they never reach a log line or an error body by accident.
+    google_client_id: str = ""
+    google_client_secret: SecretStr = SecretStr("")
+    microsoft_client_id: str = ""
+    microsoft_client_secret: SecretStr = SecretStr("")
+    #: Microsoft's tenant segment. `common` accepts both work and personal accounts; a single
+    #: directory's id restricts it to that organisation, which is what most customers want.
+    microsoft_tenant: str = "common"
+    apple_client_id: str = ""
+    #: Apple issues a client *secret* that is itself a signed JWT the integrator generates from a
+    #: private key, and it expires. Held as a secret here; minting it is a deployment concern.
+    apple_client_secret: SecretStr = SecretStr("")
+
+    #  ---------------------------------------------------------------- outbound mail
+    #
+    #  1.2.6 — invite, password set, reset and recovery. The outbox records the intent (1.5.3)
+    #  and `notifications.mail` delivers it over SMTP. SMTP rather than a provider API because
+    #  every organisation already has a mailbox, and a reset link is one small transactional
+    #  message — not a campaign that needs deliverability tooling.
+    #
+    #  Unset is a supported state, not a broken one: the recovery screen says the deployment
+    #  cannot send mail rather than claiming an email was sent. That is a fact about the
+    #  deployment and reveals nothing about whether an account exists.
+    smtp_host: str = ""
+    #: 587 is the submission port and gets STARTTLS; 465 opens an implicit TLS socket. Both are
+    #: encrypted — `notifications.mail` refuses to send over a plaintext connection either way.
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: SecretStr = SecretStr("")
+    #: Who the mail claims to be from. Defaults to the SMTP username, which is almost always
+    #: right and is the address the server will let us send as anyway.
+    mail_from_address: str = ""
+    #: The display name beside the address. Not the product name by accident — a person deciding
+    #: whether a reset mail is genuine reads this first.
+    mail_from_name: str = "UBOSS AI"
+
+    @property
+    def mail_sender(self) -> str:
+        """The envelope address, falling back to the account we authenticate as.
+
+        Sending as an address the SMTP account is not authorised for is the most common way a
+        correctly-configured server still refuses the message.
+        """
+        return self.mail_from_address.strip() or self.smtp_username.strip()
+
+    @property
+    def mail_is_configured(self) -> bool:
+        """True when an invite or a reset link could actually be delivered.
+
+        Read by the recovery routes and shown on the screen. 1.2.6's rule is that the screen
+        never says "email sent" unless an email was accepted for delivery — so the honest answer
+        when this is false is to say the system cannot send mail yet.
+
+        A host on its own is not enough. Authentication is what a submission server requires, and
+        a deployment with a host but no credentials would queue events that could never be
+        delivered while telling people to check their inbox.
+        """
+        return bool(
+            self.smtp_host.strip()
+            and self.smtp_username.strip()
+            and self.smtp_password.get_secret_value().strip()
+            and self.mail_sender
+        )
+
+    #: Every provider the product knows how to talk to, in the order the sign-in screen shows
+    #: them. Separate from `enabled_oauth_providers` because the screen draws all of these and
+    #: only enables that subset — a provider missing from the row reads as unsupported, which is
+    #: a different and wrong statement from "not set up here".
+    supported_oauth_providers: ClassVar[tuple[str, ...]] = ("google", "microsoft", "apple")
+
+    @property
+    def enabled_oauth_providers(self) -> tuple[str, ...]:
+        """Which federated providers can actually complete a sign-in.
+
+        A provider with no client id or secret is absent from this tuple, so it never reaches the
+        sign-in screen. Computed rather than configured as a list: a deployment that sets
+        credentials gets the button, and one that does not cannot accidentally advertise it.
+        """
+        configured = []
+        for name, client_id, secret in (
+            ("google", self.google_client_id, self.google_client_secret),
+            ("microsoft", self.microsoft_client_id, self.microsoft_client_secret),
+            ("apple", self.apple_client_id, self.apple_client_secret),
+        ):
+            if client_id.strip() and secret.get_secret_value().strip():
+                configured.append(name)
+        return tuple(configured)
+
     @property
     def storage_is_configured(self) -> bool:
         """True when object storage can actually be reached.
@@ -135,13 +246,35 @@ class Settings(BaseSettings):
         )
 
     @property
+    def resolved_ai_provider(self) -> str:
+        """Which provider will actually be asked, or `""` when none can be.
+
+        `auto` prefers Anthropic when both keys are present, because the models named above are
+        the ones the prompts were written against. An explicit choice is honoured even when its
+        key is missing — the caller then gets "no model is configured", which is the truthful
+        answer for a deployment that named a provider it cannot reach, and far easier to diagnose
+        than a silent fallback to the other one.
+        """
+        anthropic = bool(self.anthropic_api_key.get_secret_value().strip())
+        openai = bool(self.openai_api_key.get_secret_value().strip())
+        match self.ai_provider:
+            case "anthropic":
+                return "anthropic" if anthropic else ""
+            case "openai":
+                return "openai" if openai else ""
+            case _:
+                if anthropic:
+                    return "anthropic"
+                return "openai" if openai else ""
+
+    @property
     def ai_is_configured(self) -> bool:
         """True when a model can actually be reached.
 
         Read by the screens that must say plainly whether a proposal came from a model or from
         the deterministic rules alone.
         """
-        return bool(self.anthropic_api_key.get_secret_value().strip())
+        return bool(self.resolved_ai_provider)
 
     @property
     def trusted_host_list(self) -> list[str]:

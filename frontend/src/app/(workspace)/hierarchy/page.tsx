@@ -84,7 +84,9 @@ export default function HierarchyPage() {
     <AppShell
       title={t("title")}
       action={
-        mayEdit && tree.data && !tree.data.is_empty ? (
+        //  Import is offered on an empty tree too. A first structure is exactly the one most
+        //  likely to arrive as a spreadsheet, and the empty state used to hide the route to it.
+        mayEdit && tree.data ? (
           <div className="flex items-center gap-1.5">
             <Button
               size="sm"
@@ -93,15 +95,28 @@ export default function HierarchyPage() {
             >
               {t("import")}
             </Button>
-            <AddUnitButton parentId={rootId(tree.data.units)} onDone={refresh} />
+            {tree.data.is_empty ? null : (
+              <AddUnitButton parentId={rootId(tree.data.units)} onDone={refresh} />
+            )}
           </div>
         ) : undefined
       }
     >
       <div className="mx-auto max-w-5xl space-y-6">
+        {/*  A heading on the page, not only in the top bar. The bar names the room; a person
+            landing here needs to be told what the screen is for before they are asked to pick a
+            date, and a screen that opens with a form control reads as a fragment of something
+            else. */}
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <p className="max-w-prose text-sm text-muted-foreground">{t("intro")}</p>
-          <div className="w-44">
+          <div>
+            <h2 className="text-[1.5rem] font-bold leading-tight tracking-tight">
+              {t("heading")}
+            </h2>
+            <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
+              {t("intro")}
+            </p>
+          </div>
+          <div className="w-44 shrink-0">
             <Field label={t("asAt")} htmlFor="as-at" required>
               {(field) => (
                 <Input

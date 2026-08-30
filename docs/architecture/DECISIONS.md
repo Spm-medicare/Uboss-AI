@@ -955,3 +955,103 @@ impossible.
 **One test found a real bug.** `backoff_for` capped its exponent at `2**10 = 1024`, so the
 documented one-hour ceiling was unreachable — the exponent cap bound before the seconds cap. The
 exponent is now capped above where the seconds cap bites.
+
+## 31. Self-service sign-up, and why `administer` came back with it
+
+Decision 17 closed self-service registration and priced re-opening it exactly:
+
+> Consequence: self-service sign-up would need a deliberate, separately-reviewed path. That is
+> the correct amount of friction for the operation that brings a new customer's data boundary
+> into existence.
+
+The product owner asked for sign-up twice. This is that path, and this entry is the review.
+
+**`uboss_app` gained no privilege.** It still cannot insert `tenants` and still cannot write
+`users`. Everything happens inside one `SECURITY DEFINER` function, `signup_create_workspace`
+(migration 0027) — the same shape migration 0006 already uses for the five authentication
+operations. So the capability is a **named door**, not a permission: there is one function, it
+does one thing, and no future route can create a tenant by accident because nothing else can
+insert one. `EXECUTE` is revoked from `PUBLIC` before it is granted, and `search_path` is pinned.
+
+**A taken address and a taken workspace name refuse identically.** The function returns nothing
+and writes nothing for either, and `signup.create_workspace` raises one sentence covering both.
+Two distinguishable refusals would turn the form into an address-enumeration oracle. Which it
+actually was is in the audit trail, where an administrator can read it and a stranger cannot.
+
+**Signed in immediately, and only because they just chose the password.** There is no email
+confirmation step: confirming an address needs mail, and a screen saying "check your inbox" on a
+deployment that cannot send would be the plainest possible version of reporting a success that
+did not happen. When mail is configured, verification belongs after the first sign-in.
+
+### The part that was wrong, and what it cost
+
+0027 originally withheld `administer` from the founder, reasoning that it *"governs the
+deployment rather than the workspace"*. **That was wrong.** Every verb in §14 is workspace-scoped;
+`hierarchy/service.py` says so itself — drawing a reporting line is `administer`, and that is a
+decision about one organisation made by somebody senior in it.
+
+The cost was visible the first time anybody looked at the screen: a founder signed up, opened
+Hierarchy — the first thing any workspace needs, and what everything else is scoped by — and got
+the read-only empty state, with no way to create a structure. **The product's first step was shut
+to the only person in the workspace.** Migration 0028 grants the verb and back-fills the
+workspaces created in between.
+
+What actually keeps organisations apart was never this list. It is `uboss_app` holding no
+privilege on `tenants` or `users`, row-level security scoping every query to the bound tenant, and
+the token being the only thing that binds it. A founder with `administer` can administer *their
+own workspace* and nothing else — which is what the word means.
+
+**A screenshot found it, not a test.** Every test passed, including one asserting `administer`
+was absent: the suite was checking that the design was implemented, and the design was wrong.
+That is the class of fault only looking at the running product catches.
+
+## 32. Mail goes out over SMTP, and the sender refuses to downgrade
+
+Decision 30 recorded that no publisher was registered and every event was dead-lettered. Mail
+credentials now exist, so `notifications/mail.py` and `notifications/publishers.py` deliver, and
+`uboss.outbox_worker` is the process that runs the relay.
+
+**SMTP rather than a provider API.** Every organisation already has a mailbox, and a reset link is
+one small transactional message — not a campaign needing deliverability tooling. `smtplib` on a
+worker thread rather than a new async dependency: the outbox provides the durability, so the
+client only has to be correct.
+
+**TLS is not negotiable, and this is the whole security value of the module.** Port 465 opens an
+implicit TLS socket; every other port runs `STARTTLS`, and `starttls()` raises when the server
+does not offer it — nothing catches that. `smtplib` will happily put a live password-reset token
+on a plaintext socket if you let it, and an SMTP server that quietly stops offering `STARTTLS`
+reads every reset link that passes through it. `test_the_sender_refuses_a_server_that_will_not_do_starttls`
+drives a real socket that greets and offers nothing, and asserts the send fails.
+
+**A publisher that returns means delivered.** The relay marks the row on a return, so every
+`smtplib` error propagates and the event is retried with backoff. Swallowing one would mark a
+reset as sent that never left the building.
+
+**Two bugs the tests found, both silent in production.** `recovery.request_reset` read
+`memberships` with no tenant bound — row-level security correctly returned nothing, so
+`_any_tenant` answered "no tenant" for *every* account and no reset was ever queued, while the
+screen said a link was on its way. And `oauth.find_user` and three lookups in `recovery` read
+`users` directly, which `uboss_app` has no privilege on; the fix was the narrow `auth_find_by_*`
+functions, not a grant.
+
+## 33. Two model providers, because one adapter never proved the gateway
+
+`model_gateway`'s claim has always been that swapping provider is one line of policy and no
+change above it. With a single adapter that claim was untested. `openai_adapter.py` is the
+sibling, and `service.run` now picks between them on `settings.resolved_ai_provider` — one line,
+as advertised.
+
+**`auto` prefers Anthropic when both keys are present**, because the prompts were written against
+the models named in settings. An explicit `UBOSS_AI_PROVIDER` is honoured even when its key is
+missing: the caller then gets "no model is configured", which is truthful for a deployment that
+named a provider it cannot reach and far easier to diagnose than a silent fallback.
+
+**Both adapters answer through a forced tool call.** OpenAI's `strict: true` makes the schema
+enforced rather than suggested. The shape differences — system as a message, `parameters` rather
+than `input_schema`, arguments returned as a JSON *string* — are all inside the one file, which is
+the point of having it.
+
+**A 429 is two different situations.** `insufficient_quota` will never succeed; "try again
+shortly" on an exhausted balance is advice that cannot come true and sends an operator looking
+for a traffic spike instead of a billing page. The two are told apart by the error *code*, and
+anything unreadable falls through to the temporary reading.

@@ -19,6 +19,7 @@ from uboss.modules.agents.resolver_api import router as skills_router
 from uboss.modules.hierarchy.api import router as hierarchy_router
 from uboss.modules.hierarchy.import_api import router as hierarchy_import_router
 from uboss.modules.identity.api import router as identity_router
+from uboss.modules.identity.auth_api import router as auth_router
 from uboss.modules.jobs.api import router as jobs_router
 from uboss.modules.jobs.publish_api import router as job_publish_router
 from uboss.modules.jobs.schedule_api import router as job_schedule_router
@@ -55,6 +56,7 @@ def build_v1_router() -> APIRouter:
     #  Modules are added here as each step of the build completes. Nothing is listed before it
     #  works end to end: a route that returns a placeholder is a route that lies to the frontend.
     router.include_router(identity_router)
+    router.include_router(auth_router)
     router.include_router(hierarchy_router)
     router.include_router(hierarchy_import_router)
     router.include_router(objectives_router)

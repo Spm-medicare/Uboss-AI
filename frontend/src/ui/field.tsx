@@ -26,6 +26,7 @@ export function Field({
   hint,
   required = false,
   htmlFor,
+  action,
 }: {
   label: string;
   /** Receives the resolved ids. The control must spread them or none of the above is true. */
@@ -44,6 +45,12 @@ export function Field({
   hint?: string | undefined;
   required?: boolean;
   htmlFor?: string;
+  /**
+   * A control that belongs to this field but is not part of it — "Forgot password?" beside a
+   * password label. On the label's own line so the eye never has to leave the field, and after
+   * the label in the DOM so the reading order is still label, control, message.
+   */
+  action?: ReactNode;
 }) {
   const generated = useId();
   const id = htmlFor ?? generated;
@@ -59,14 +66,17 @@ export function Field({
 
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium">
-        {label}
-        {required ? null : (
-          <span className="ml-1.5 font-normal text-muted-foreground">
-            {t("optional")}
-          </span>
-        )}
-      </label>
+      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+        <label htmlFor={id} className="block text-sm font-medium">
+          {label}
+          {required ? null : (
+            <span className="ml-1.5 font-normal text-muted-foreground">
+              {t("optional")}
+            </span>
+          )}
+        </label>
+        {action}
+      </div>
 
       {children({
         id,

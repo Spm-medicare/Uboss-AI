@@ -17,7 +17,10 @@ dependencies = [
     "alembic>=1.14",
     "psycopg[binary,pool]>=3.2",
     "argon2-cffi>=23.1",
-    "pyjwt>=2.9",
+    #  `[crypto]` pulls in `cryptography`, which is what verifies an RS256 id token against a
+    #  provider's JWKS. Without it PyJWT parses the token and cannot check the signature — and a
+    #  federated sign-in that skips signature verification accepts any token anybody forges.
+    "pyjwt[crypto]>=2.9",
     "python-multipart>=0.0.20",
     "httpx>=0.28",
     "structlog>=24.4",

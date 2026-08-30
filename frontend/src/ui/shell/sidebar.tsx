@@ -15,6 +15,7 @@ import {
   type NavItem,
 } from "@/lib/shell/navigation";
 import { useAgentsGroup } from "@/lib/shell/use-sidebar";
+import { Monogram, Wordmark } from "@/ui/brand/mark";
 
 /**
  * The dark sidebar of PLAN §29.
@@ -69,24 +70,36 @@ export function Sidebar({
           collapsed && "justify-center",
         )}
       >
-        <span
-          aria-hidden
-          className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground"
+        {/*  The mark, and it survives the collapse. §3 makes the sidebar collapsible; a
+            collapsed rail with no logo is a column of unattributed icons, and the one thing a
+            person should never have to work out is which product they are in. The monogram
+            alone is exactly what the collapsed width has room for. */}
+        <Link
+          href="/dashboard"
+          aria-label={tProduct("name")}
+          className={cn(
+            "flex min-w-0 items-center gap-2.5 rounded-md",
+            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
+          )}
         >
-          U
-        </span>
-        {!collapsed ? (
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight">
-            {tProduct("name")}
+          {/*  The same tile the signed-out panel uses. Somebody who has just signed in sees the
+              mark move from one panel to the other rather than change shape. */}
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-white/10 ring-1 ring-inset ring-white/10">
+            <Monogram className="h-[1.05rem] text-sidebar-foreground" />
           </span>
-        ) : null}
+          {!collapsed ? (
+            <Wordmark className="min-w-0 shrink truncate text-[0.9375rem] text-sidebar-foreground" />
+          ) : null}
+        </Link>
         {!collapsed ? (
-          <SidebarButton
-            onClick={onToggle}
-            label={t("collapse")}
-            icon={<PanelLeftClose className="size-4" />}
-            expanded
-          />
+          <span className="ml-auto">
+            <SidebarButton
+              onClick={onToggle}
+              label={t("collapse")}
+              icon={<PanelLeftClose className="size-4" />}
+              expanded
+            />
+          </span>
         ) : null}
       </div>
 
@@ -99,9 +112,14 @@ export function Sidebar({
           />
         </div>
       ) : (
-        <p className="truncate px-4 pb-3 text-xs text-sidebar-muted">
-          {user.workspace_name}
-        </p>
+        <div className="px-3 pb-3">
+          <p className="truncate rounded-lg bg-sidebar-surface px-3 py-2 text-xs font-medium text-sidebar-foreground ring-1 ring-inset ring-sidebar-border">
+            <span className="block text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-sidebar-muted">
+              {t("workspace")}
+            </span>
+            {user.workspace_name}
+          </p>
+        </div>
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
@@ -240,7 +258,7 @@ function SidebarItem({
   const shape = cn(
     "group relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm",
     "transition-colors duration-150 motion-reduce:transition-none",
-    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
+    "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
     collapsed && "justify-center px-0",
   );
 
@@ -274,10 +292,18 @@ function SidebarItem({
         className={cn(
           shape,
           active
-            ? "bg-sidebar-active font-medium text-sidebar-foreground"
+            ? "bg-sidebar-active font-semibold text-sidebar-foreground"
             : "text-sidebar-muted hover:bg-sidebar-surface hover:text-sidebar-foreground",
         )}
       >
+        {/*  A bar as well as a fill. Colour alone is the one signal a person with low vision or
+            a monochrome display does not get, and "which screen am I on" is not a detail. */}
+        {active ? (
+          <span
+            aria-hidden
+            className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-primary"
+          />
+        ) : null}
         {inner}
         {collapsed ? <Tooltip>{label}</Tooltip> : null}
       </Link>

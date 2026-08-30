@@ -76,16 +76,24 @@ def test_every_mutating_route_requires_an_idempotency_key(
             if "Idempotency-Key" not in headers:
                 missing.append(f"{method.upper()} {path}")
 
-    #  The four session routes are the exceptions, and they are exceptions for one reason: a
+    #  The pre-session routes are the exceptions, and they are exceptions for one reason: a
     #  session is established by presenting credentials, and an idempotency key that replayed the
     #  stored response would hand somebody back a session they did not just authenticate for.
-    #  Listed exactly rather than matched on a prefix, so a fifth auth route added later fails
-    #  here and has to be argued for.
+    #  The same argument covers the federated callback, which is sign-in by another route.
+    #
+    #  `password/forgot` is here for a second reason as well: its whole design is to answer
+    #  identically every time, so replaying it is already what it does — and an unauthenticated
+    #  browser has no sensible key to derive.
+    #
+    #  Listed exactly rather than matched on a prefix, so a new auth route has to be argued for
+    #  here rather than inheriting the exemption by being under `/auth/`.
     allowed = {
         "POST /api/v1/auth/sign-in",
         "POST /api/v1/auth/sign-out",
         "POST /api/v1/auth/select-workspace",
         "POST /api/v1/auth/step-up/password",
+        "POST /api/v1/auth/oauth/{provider}/callback",
+        "POST /api/v1/auth/password/forgot",
     }
     unexpected = sorted(set(missing) - allowed)
     assert not unexpected, f"mutating routes with no Idempotency-Key header: {unexpected}"

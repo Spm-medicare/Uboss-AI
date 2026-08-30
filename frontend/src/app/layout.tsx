@@ -11,8 +11,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "UBOSS",
-    template: "%s · UBOSS",
+    default: "UBOSS AI",
+    template: "%s · UBOSS AI",
   },
   description: "Governed human and AI work: objectives, jobs, agents and approvals.",
   // Nothing in this product should ever appear in a search index or a link preview.

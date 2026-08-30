@@ -204,3 +204,13 @@ export type SupervisorGate = Schemas["SupervisorGate"];
 export type SupervisorWarning = Schemas["SupervisorWarning"];
 export type SupervisorVersionCard = Schemas["SupervisorVersionCard"];
 export type SupervisorVersionList = Schemas["SupervisorVersionList"];
+
+//  Sign-in methods, federated identity and account recovery — PLAN §21 and 1.2.6.
+export type SignInMethods = Schemas["SignInMethods"];
+export type OAuthStart = Schemas["OAuthStart"];
+export type OAuthCallback = Schemas["OAuthCallback"];
+export type ForgotPassword = Schemas["ForgotPassword"];
+export type ForgotPasswordAnswer = Schemas["ForgotPasswordAnswer"];
+export type ResetPassword = Schemas["ResetPassword"];
+export type AcceptInvite = Schemas["AcceptInvite"];
+export type Delivery = Schemas["Delivery"];

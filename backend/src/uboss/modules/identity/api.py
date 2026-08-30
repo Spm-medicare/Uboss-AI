@@ -55,7 +55,7 @@ def _client_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
-def _client_binding(request: Request, settings: Settings) -> str:
+def client_binding(request: Request, settings: Settings) -> str:
     return rate_limit.client_binding(
         settings.auth_signing_key.get_secret_value(),
         ip_address=_client_ip(request),
@@ -63,7 +63,7 @@ def _client_binding(request: Request, settings: Settings) -> str:
     )
 
 
-async def _create_session_response(
+async def create_session_response(
     *,
     response: Response,
     request: Request,
@@ -170,7 +170,7 @@ async def sign_in(
             redis,
             user_id=user.id,
             allowed_workspaces=[tenant.slug for _membership, tenant in workspaces],
-            client_binding=_client_binding(request, settings),
+            client_binding=client_binding(request, settings),
             ttl_seconds=settings.workspace_challenge_seconds,
         )
         return ChooseWorkspaceResponse(
@@ -184,7 +184,7 @@ async def sign_in(
         account=user,
         now=datetime.now(UTC),
     )
-    return await _create_session_response(
+    return await create_session_response(
         response=response,
         request=request,
         session=session,
@@ -220,7 +220,7 @@ async def select_workspace(
     claim = await challenges.consume(
         redis,
         raw=body.challenge,
-        expected_client_binding=_client_binding(request, settings),
+        expected_client_binding=client_binding(request, settings),
     )
     if claim is None or body.workspace not in claim.allowed_workspaces:
         raise identity.SignInRefused()
@@ -253,7 +253,7 @@ async def select_workspace(
         account=user,
         now=datetime.now(UTC),
     )
-    return await _create_session_response(
+    return await create_session_response(
         response=response,
         request=request,
         session=session,

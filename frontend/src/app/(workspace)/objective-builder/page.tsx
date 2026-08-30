@@ -24,6 +24,7 @@ import {
   QueryStates,
 } from "@/ui";
 import { AppShell } from "@/ui/shell/app-shell";
+import { PageHeader } from "@/ui/shell/page-header";
 
 /**
  * The Objective cards — PLAN §7's list.
@@ -56,7 +57,9 @@ export default function ObjectivesPage() {
       title={t("objectives")}
       action={mayCreate ? <NewObjective onCreated={(id) => router.push(`/objective-builder/${id}`)} /> : undefined}
     >
-      <div className="mx-auto max-w-5xl space-y-5">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <PageHeader title={t("objectives")} description={t("intro")} />
+
         <QueryStates
           isPending={objectives.isPending}
           error={objectives.error}
@@ -64,12 +67,22 @@ export default function ObjectivesPage() {
         >
           {objectives.data?.is_empty ? (
             <Card>
-              <CardBody className="space-y-3 py-12 text-center">
+              <CardBody className="space-y-4 py-12 text-center">
                 <Target aria-hidden className="mx-auto size-8 text-muted-foreground" />
-                <p className="text-sm font-medium">{t("emptyTitle")}</p>
-                <p className="mx-auto max-w-sm text-sm text-muted-foreground">
-                  {mayCreate ? t("emptyBody") : t("emptyBodyReadOnly")}
-                </p>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">{t("emptyTitle")}</p>
+                  <p className="mx-auto max-w-sm text-sm leading-relaxed text-muted-foreground">
+                    {mayCreate ? t("emptyBody") : t("emptyBodyReadOnly")}
+                  </p>
+                </div>
+                {/*  The same control the top bar carries. An empty screen whose one
+                    action lives only in the chrome asks somebody to go looking for it,
+                    at the moment they have nothing else on the page to look at. */}
+                {mayCreate ? (
+                  <div className="flex justify-center">
+                    <NewObjective onCreated={(id) => router.push(`/objective-builder/${id}`)} />
+                  </div>
+                ) : null}
               </CardBody>
             </Card>
           ) : (

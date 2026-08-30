@@ -14,18 +14,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from uboss.core.context import SecurityContext
 from uboss.core.settings import Settings
-from uboss.modules.ai_gateway import anthropic_adapter
+from uboss.modules.ai_gateway import anthropic_adapter, openai_adapter
 from uboss.modules.ai_gateway.contract import Completion, ModelUnavailableError, Task, TaskKind
 from uboss.modules.audit import service as audit
 
 
 def model_for(settings: Settings, kind: TaskKind) -> str:
-    """Which model serves this kind of task.
+    """Which model serves this kind of task, on whichever provider is configured.
 
     The one place the question is answered. A caller that wanted to pass a model name would be a
     caller that has to be edited when the model changes — which is what PLAN's forbidden
-    shortcuts are about.
+    shortcuts are about, and the reason the provider swap below is a `match` here rather than a
+    branch at each call site.
     """
+    if settings.resolved_ai_provider == "openai":
+        match kind:
+            case TaskKind.COLUMN_MAPPING:
+                return settings.openai_model_column_mapping
+            case TaskKind.OBJECTIVE_PROPOSAL:
+                return settings.openai_model_proposal
     match kind:
         case TaskKind.COLUMN_MAPPING:
             return settings.ai_model_column_mapping
@@ -51,8 +58,14 @@ async def run(
     """
     model = model_for(settings, task.kind)
 
+    #  The one line that chooses a provider. Everything above and below speaks `Task` and
+    #  `Completion` and cannot tell which one answered — which is the property the gateway
+    #  exists to have, and was untested while there was only one adapter.
+    provider = settings.resolved_ai_provider
+    complete = openai_adapter.complete if provider == "openai" else anthropic_adapter.complete
+
     try:
-        completion = await anthropic_adapter.complete(settings, task, model)
+        completion = await complete(settings, task, model)
     except ModelUnavailableError as unavailable:
         await audit.record(
             session,
