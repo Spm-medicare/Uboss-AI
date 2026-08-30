@@ -14,6 +14,7 @@ from fastapi import APIRouter
 
 from uboss.core.errors import ErrorEnvelope
 from uboss.modules.agents.agent_api import router as agents_router
+from uboss.modules.agents.agent_publish_api import router as agent_publish_router
 from uboss.modules.agents.resolver_api import router as skills_router
 from uboss.modules.hierarchy.api import router as hierarchy_router
 from uboss.modules.hierarchy.import_api import router as hierarchy_import_router
@@ -62,5 +63,6 @@ def build_v1_router() -> APIRouter:
     router.include_router(job_publish_router)
     router.include_router(skills_router)
     router.include_router(agents_router)
+    router.include_router(agent_publish_router)
 
     return router

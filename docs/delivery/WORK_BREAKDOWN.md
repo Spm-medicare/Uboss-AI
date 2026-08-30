@@ -422,7 +422,7 @@ Agent requirement → Search Skill Registry → Deterministic compatibility gate
 | 5.1 | Skill Registry schema and the seed import — archetypes, skills, rules, gates | ✅ |
 | 5.2 | Search and the deterministic gates — similarity discovers, gates decide | ✅ |
 | 5.3 | Agent schema and §9's ten form groups, with skill selection | ✅ |
-| 5.4 | Sandbox tests and publish — immutable `AgentVersion`, tests as a publish gate | ⬜ |
+| 5.4 | Sandbox tests and publish — immutable `AgentVersion`, tests as a publish gate | ✅ |
 | 5.5 | The Agent Builder screen, with the Registry inside it | ⬜ |
 
 **Passes when** a search returns candidates a gate then refuses for a stated reason, an Agent
@@ -589,6 +589,71 @@ index every other tenant-owned table has — the mixin declares it, so the model
 genuinely disagreed, and every RLS policy on them would have been a sequential scan.
 
 23 tests, 247 total.
+
+**5.4 — done.** Migration 0022: `agent_tests` (Form 4 section C) and `agent_versions`.
+
+**Two gates, and only two.** §9 says *"Tests and permission review are publish gates."* Both are
+enforced at submission **and** re-checked at publish, because a test result can be cleared by an
+edit between the two and a publish that trusted the earlier check would approve a design nobody
+tested. Everything else is a warning — shown, never hidden, never in the way. A gate this build
+invented would be a rule nobody approved.
+
+- **Tests.** All five of section C must exist and read `Pass`. A refusal names which one and what
+  state it is in. There is no sandbox runtime until Gate 7, so a status is recorded by the person
+  who ran the test — `run_by` and `run_at` are stamped by the server, never accepted from the
+  caller, and a status other than `Not Run` must carry what actually happened. A `Pass` with no
+  observation is a claim nobody can check, and the schema refuses one.
+- **Permission review.** Every tool must be granted or removed. A tool sitting ungranted at
+  publish is a permission nobody reviewed — *"we'll sort the access out later"* is precisely what
+  this gate exists to prevent.
+
+**A test result belongs to a design.** Saving the Agent clears every recorded result back to
+`Not Run`. Without it, somebody tests an agent, changes what it does, and publishes on the strength
+of the old pass — with every gate reporting green. Deciding which edits "do not count" is exactly
+the judgement that lets a stale pass through, so none of them do. The test itself survives: its
+sample situation and expected result are part of the design, and only what was observed is cleared.
+
+**Section B warns, it does not block.** Form 4 prints the six error situations *without* the
+asterisk it puts on the four fields it does require, and §9 names only two gates. So an unanswered
+situation is surfaced loudly and publishes anyway. Making it block is a business decision the
+client can take; taking it here would have been inventing a rule.
+
+`agent_versions` is immutable twice over — trigger and withheld privilege — with gapless
+`version_no` from an advisory lock, and the snapshot holds the whole design including the tool
+grants and the five results as they stood.
+
+**Three real defects, two of them already shipped.**
+
+1. `ck_agents_running_has_job_version` required a Job version on every running Agent. Form 4 marks
+   *Job* without an asterisk, so an Agent that serves no Job was made unpublishable by a rule the
+   approved form does not state. Now: only when there is a Job.
+2. `ck_agents_submitted_has_approver` covered `published`. Removing a person clears that column, so
+   a published Agent could **prevent somebody from being deleted at all** — an offboarding blocked
+   by a foreign key and a right-to-erasure request that cannot be honoured. What was approved is
+   recorded immutably on the version; the column only says who approves the next change. Scoped to
+   `ready_to_publish`, with a publish-summary warning when a running Agent has lost its contact.
+3. **`job_versions` had the same defect and it was already live.** `ON DELETE SET NULL` pointing
+   into an append-only table is a contradiction: Postgres tries to rewrite the row, the trigger
+   refuses, and anybody who has ever approved a Job becomes undeletable. `audit_events` already
+   solved this by carrying **no** foreign key on `actor_membership_id`. `agent_versions` follows
+   that, and 0022 drops the two constraints from `job_versions` — dropping a foreign key loses no
+   data, and leaving a known offboarding block in place is worse than touching a shipped table.
+
+**A contract test now catches the collision that bit twice.** FastAPI names an OpenAPI component
+after the class, so two modules defining `PublishSummary` make the generator fully qualify **both**
+— the new module's collision renames the existing one, and the frontend fails to compile in a file
+nobody edited. It happened with `Visibility` in 5.3 and `PublishSummary`/`WarningRead` here.
+`tests/integration/test_contract.py` asserts no schema name is fully qualified, and checks two
+other contract-wide rules while it is there: every mutating route carries `Idempotency-Key`, and
+the error envelope is published.
+
+20 tests, 267 total.
+
+**Worth raising: the test suite is not linted.** CI runs `ruff check .` with `working-directory:
+backend`, and `tests/` sits at the repository root — so no test file has ever been linted. Running
+ruff over it today reports 21 findings across the existing suite. Left alone rather than fixed
+mid-gate, because it touches files from every previous step and the clean-up is a decision worth
+taking deliberately.
 | 6 | Supervisor — personal and department scopes, handler grants | 4–5 weeks |
 | 7 | Temporal runtime, to-do, approvals, notifications, governed Copilot | 3–4 weeks |
 | 8.1 | Settings | |

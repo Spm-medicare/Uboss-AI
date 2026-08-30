@@ -307,6 +307,9 @@ async def two_workspaces(
                 "DISABLE TRIGGER skill_resolver_decisions_append_only"
             )
         )
+        await session.execute(
+            text("ALTER TABLE agent_versions DISABLE TRIGGER agent_versions_append_only")
+        )
         for workspace in (left, right):
             await session.execute(
                 text("SELECT set_config('app.tenant_id', :t, true)"),
@@ -315,11 +318,26 @@ async def two_workspaces(
             #  Ordered so a child is removed before its parent. Anything added to the schema and
             #  forgotten here shows up immediately as a foreign-key violation on the tenant
             #  delete — noisy, and better than a suite that leaks an organisation per run.
+            #  An agent's `published_version_id` is RESTRICT against the version, so the pointer
+            #  goes before the row it points at — and the status goes with it, because a running
+            #  agent with no version is exactly what `ck_agents_running_has_published_version`
+            #  exists to refuse.
+            await session.execute(
+                text(
+                    "UPDATE agents SET published_version_id = NULL, status = 'archived' "
+                    "WHERE tenant_id = :t"
+                ),
+                {"t": workspace.tenant_id},
+            )
             for table in (
                 #  Jobs before objectives: a job references the objective it serves, and a
                 #  published job version is RESTRICT against its job.
                 #  Agents before the registry: an agent_skills row is RESTRICT against both the
                 #  skill it names and the decision that chose it.
+                #  The agent points back at the version it published, so the pointer is cleared
+                #  before either can go.
+                "agent_versions",
+                "agent_tests",
                 "agent_shares",
                 "agent_skills",
                 "agent_tools",
@@ -420,6 +438,9 @@ async def two_workspaces(
                 "ALTER TABLE skill_resolver_decisions "
                 "ENABLE TRIGGER skill_resolver_decisions_append_only"
             )
+        )
+        await session.execute(
+            text("ALTER TABLE agent_versions ENABLE TRIGGER agent_versions_append_only")
         )
         await session.commit()
 

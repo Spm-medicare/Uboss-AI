@@ -220,27 +220,41 @@ def upgrade() -> None:
         sa.CheckConstraint(f"status IN ({statuses})", name="ck_agents_status_known"),
         sa.CheckConstraint(f"visibility IN ({visibility})", name="ck_agents_visibility_known"),
         sa.CheckConstraint("length(btrim(name)) > 0", name="ck_agents_name_not_blank"),
-        #  Operation runs only approved, immutable versions. An Agent in a running state without
-        #  one has nothing to run.
+        #  An Agent that serves a Job runs an approved version of it — never the mutable draft.
+        #  An Agent with no Job has nothing to version, and Form 4 marks "Job" without the
+        #  asterisk it puts on the four fields it does require, so requiring one here would be
+        #  inventing a rule the approved form does not state.
         sa.CheckConstraint(
-            "status NOT IN ('published', 'active', 'paused') OR job_version_id IS NOT NULL",
+            "status NOT IN ('published', 'active', 'paused') "
+            "OR job_id IS NULL OR job_version_id IS NOT NULL",
             name="ck_agents_running_has_job_version",
         ),
         sa.CheckConstraint(
             "status <> 'ready_to_publish' OR submitted_by_membership_id IS NOT NULL",
             name="ck_agents_submitted_has_submitter",
         ),
-        #  Form 4 marks both required with an asterisk. Enforced from the moment the design is
-        #  put forward, not before and not after: a form is filled in over time, so refusing the
-        #  first save would be refusing to let somebody start — and an abandoned draft is
-        #  archived without ever having needed an approver.
+        #  Form 4 marks both required with an asterisk. Enforced at the one moment it means
+        #  something — when the design is put forward — and not before or after.
+        #
+        #  Not before, because a form is filled in over time and refusing the first save would be
+        #  refusing to let somebody start; an abandoned draft is archived without ever having
+        #  needed an approver.
+        #
+        #  Not after, and this one was found rather than reasoned: `memberships` clears these
+        #  columns when a person is removed, so a constraint covering `published` made a published
+        #  Agent able to **prevent somebody from being deleted at all** — an offboarding blocked
+        #  by a foreign key, and a right-to-erasure request that cannot be honoured. What was
+        #  approved is recorded immutably in `agent_versions.approved_by_membership_id`; this
+        #  column only says who approves the *next* change. A running Agent whose escalation
+        #  contact has left is a real problem, and the publish summary warns about it — which is
+        #  a report somebody can act on rather than a deadlock nobody can clear.
         sa.CheckConstraint(
-            "status NOT IN ('ready_to_publish', 'published', 'active', 'paused') "
+            "status <> 'ready_to_publish' "
             "OR main_approver_membership_id IS NOT NULL OR main_approver_label IS NOT NULL",
             name="ck_agents_submitted_has_approver",
         ),
         sa.CheckConstraint(
-            "status NOT IN ('ready_to_publish', 'published', 'active', 'paused') "
+            "status <> 'ready_to_publish' "
             "OR escalation_membership_id IS NOT NULL OR escalation_label IS NOT NULL",
             name="ck_agents_submitted_has_escalation",
         ),

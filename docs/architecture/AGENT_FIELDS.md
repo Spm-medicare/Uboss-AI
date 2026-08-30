@@ -86,8 +86,9 @@ dropped from the schema fails a test rather than disappearing from a form nobody
 dropdown lists all end in `Other`, so a value outside one is something the approved form itself
 allows — they are published by `GET /agents/lists` and never validated against. Section B is
 different: the sheet *prints* all six situations as fixed rows, so leaving one unanswered is not a
-value outside a list, it is a decision nobody took. It is an enum, and 5.4 makes the six a publish
-gate.
+value outside a list, it is a decision nobody took. It is an enum — but **not** a publish gate:
+the sheet prints those rows without the asterisk it puts on the four fields it does require, and
+§9 names only two gates. An unanswered situation warns loudly and publishes anyway.
 
 **An unanswered situation is a checklist, not a refusal.** A form is filled in over time, and
 refusing the first save would be refusing to let somebody start. `AgentRead.situations_unanswered`
@@ -102,10 +103,17 @@ model name in domain logic. v3.2 approves *"Claude first through provider-neutra
 names **no policy catalogue**, so `model_policy_key` is free text until an approved list exists.
 This is an open question, not a finished field — see below.
 
-**Main Approver and Error Escalation To are required from submission, not from the first save.**
-The sheet marks both with an asterisk. The check constraint applies from `ready_to_publish`
-onward, which also means an abandoned draft can be archived without ever having needed one — a
-constraint written as "not a draft" got that wrong and a test caught it.
+**Main Approver and Error Escalation To are required at exactly one moment: submission.**
+The sheet marks both with an asterisk, and the check constraint applies on `ready_to_publish`
+alone. It took two corrections to get there, both found by a test rather than by reasoning.
+
+Written first as "not a draft", it made an abandoned draft impossible to archive. Widened to
+"every state from `ready_to_publish` onward", it did something worse: removing a person clears
+these columns, so a **published** Agent could prevent that person from being deleted at all — an
+offboarding blocked by a foreign key and a right-to-erasure request that could not be honoured.
+What was approved is recorded immutably on `agent_versions`; this column only says who approves the
+next change. A running Agent that has lost its escalation contact is reported by the publish
+summary instead.
 
 **A share list contradicting the visibility is refused.** `only_me` with people listed is two
 answers to one question; preferring either would discard somebody's intention without telling them.
@@ -121,8 +129,27 @@ only while the scopes are exactly what was granted.
 the client approves a policy list, a screen cannot offer a closed choice here and this document is
 the record of why. Nothing in the schema depends on a particular value.
 
-## Not here
+## Section C, and the two gates (5.4)
 
-Form 4 section C — the five sandbox tests — is in 5.4 with `agent_versions`. §9 says *"Tests and
-permission review are publish gates"*, and a gate belongs with the thing it guards rather than
-with the form it reads.
+Form 4 section C is `agent_tests`: five printed tests, each with a *Sample Situation*, an
+*Expected Result* and a *Status* from the sheet's own list — `Not Run`, `Pass`, `Fail`, `Blocked`.
+A closed set, because the sheet prints all five.
+
+§9 names two publish gates and this build enforces exactly those two: **all five tests pass**, and
+**every tool has been granted or removed**. Both are checked at submission and again at publish.
+Everything else is a warning.
+
+Section B is one of those warnings. The sheet prints the six error situations without the asterisk
+it puts on Agent Name, Agent Owner, Main Approver and Error Escalation To, and §9 names only two
+gates — so an unanswered situation is surfaced and does not block. Making it block is a business
+decision the client can take.
+
+There is no sandbox runtime until Gate 7. A status is recorded by the person who ran the test;
+`run_by_membership_id` and `run_at` are stamped by the server, and a status other than `Not Run`
+must carry what was actually observed. Saving the Agent clears every result — a pass recorded
+against yesterday's steps says nothing about today's.
+
+`agent_versions` freezes the whole design at approval, including the tool grants and the five
+results. Its `published_by_membership_id` and `approved_by_membership_id` carry **no foreign key**,
+matching `audit_events.actor_membership_id`: an `ON DELETE SET NULL` into an append-only table
+makes anybody who ever approved something undeletable.

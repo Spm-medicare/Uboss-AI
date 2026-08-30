@@ -96,6 +96,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agents/{agent_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What publishing this would mean
+         * @description §9's two gates, every warning, and the one next action worth taking.
+         */
+        get: operations["publish_summary_api_v1_agents__agent_id__publish_get"];
+        put?: never;
+        /**
+         * Approve and publish
+         * @description Approve it, and freeze the design that was approved.
+         *
+         *     The gates are re-checked here, not only at submission: a test result can be cleared by an edit
+         *     between the two, and a publish that trusted the earlier check would approve a design nobody
+         *     tested.
+         */
+        post: operations["publish_api_v1_agents__agent_id__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agent_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send for approval
+         * @description Both gates are checked here too.
+         *
+         *     Sending something into an approval queue that cannot be approved wastes the approver's time
+         *     and teaches people to ignore the queue.
+         */
+        post: operations["submit_api_v1_agents__agent_id__submit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agent_id}/tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Form 4 section C — the five sandbox tests
+         * @description `missing` and a `Not Run` status are different answers, so both are reported.
+         */
+        get: operations["read_tests_api_v1_agents__agent_id__tests_get"];
+        /**
+         * Record the five tests and what was observed
+         * @description Who ran it and when are stamped by the server, never accepted from the caller.
+         */
+        put: operations["write_tests_api_v1_agents__agent_id__tests_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agents/{agent_id}/tools/{tool_id}/grant": {
         parameters: {
             query?: never;
@@ -113,6 +188,46 @@ export interface paths {
          *     name and a time rather than inferring both from a form's history.
          */
         post: operations["grant_tool_api_v1_agents__agent_id__tools__tool_id__grant_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agent_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What has been published
+         * @description Newest first. Gapless numbers — version 3 with no version 2 would be unaccountable.
+         */
+        get: operations["versions_api_v1_agents__agent_id__versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agent_id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Take it back out of the queue
+         * @description The submitter is cleared, so the next submission is judged on its own.
+         */
+        post: operations["withdraw_api_v1_agents__agent_id__withdraw_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1605,6 +1720,101 @@ export interface components {
             is_empty: boolean;
         };
         /**
+         * AgentPublishGate
+         * @description One of §9's two publish gates.
+         *
+         *     `reason` says what would clear it, not merely that it is closed — a screen that says "blocked"
+         *     without saying why sends somebody hunting through six sections.
+         */
+        AgentPublishGate: {
+            /** Gate */
+            gate: string;
+            /** Name */
+            name: string;
+            /** Passed */
+            passed: boolean;
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * AgentPublishRequest
+         * @description `expected_version` is the design the approver read. Approving a different one is not
+         *     approving.
+         */
+        AgentPublishRequest: {
+            /** Expected Version */
+            expected_version: number;
+        };
+        /**
+         * AgentPublishSummary
+         * @description What publishing this would mean, and what is standing in the way.
+         */
+        AgentPublishSummary: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Approver Name */
+            approver_name: string | null;
+            /** Can Approve */
+            can_approve: boolean;
+            /** Can Submit */
+            can_submit: boolean;
+            /** Gates */
+            gates: components["schemas"]["AgentPublishGate"][];
+            /** Granted Tool Count */
+            granted_tool_count: number;
+            /** Io Input Count */
+            io_input_count: number;
+            /** Io Output Count */
+            io_output_count: number;
+            /** Job Name */
+            job_name: string | null;
+            /** Job Version No */
+            job_version_no: number | null;
+            /** Knowledge Count */
+            knowledge_count: number;
+            /** Name */
+            name: string;
+            /** Next Action */
+            next_action: string;
+            /** Owner Name */
+            owner_name: string | null;
+            /** Personal Data Sources */
+            personal_data_sources: number;
+            /** Shared With Count */
+            shared_with_count: number;
+            /** Skill Count */
+            skill_count: number;
+            /** Status */
+            status: string;
+            /** Step Count */
+            step_count: number;
+            /** Submitted By Name */
+            submitted_by_name: string | null;
+            /** Tests Passed */
+            tests_passed: number;
+            /** Tests Total */
+            tests_total: number;
+            /** Tool Count */
+            tool_count: number;
+            /** Version */
+            version: number;
+            /** Warnings */
+            warnings: components["schemas"]["AgentPublishWarning"][];
+        };
+        /**
+         * AgentPublishWarning
+         * @description Worth saying, and not a gate. Shown, never hidden, never in the way.
+         */
+        AgentPublishWarning: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /**
          * AgentRead
          * @description One Agent in full — every group, so a form renders from one request.
          */
@@ -1838,6 +2048,39 @@ export interface components {
             /** Trigger */
             trigger?: string | null;
             visibility?: components["schemas"]["AgentAudience"] | null;
+        };
+        /**
+         * AgentVersionCard
+         * @description One published version. The snapshot itself is fetched separately — it is large.
+         */
+        AgentVersionCard: {
+            /** Approved By Name */
+            approved_by_name: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Job Version Id */
+            job_version_id: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Published At
+             * Format: date-time
+             */
+            published_at: string;
+            /** Published By Name */
+            published_by_name: string | null;
+            /** Version No */
+            version_no: number;
+        };
+        /** AgentVersionList */
+        AgentVersionList: {
+            /** Is Empty */
+            is_empty: boolean;
+            /** Versions */
+            versions: components["schemas"]["AgentVersionCard"][];
         };
         /**
          * AgentWorkbookLists
@@ -3807,6 +4050,90 @@ export interface components {
             summary: string;
         };
         /**
+         * SandboxTestInput
+         * @description One of the five tests: what it tries, what should happen, and what did.
+         *
+         *     `run_by` and `run_at` are deliberately absent. They are stamped by the server from the caller
+         *     and the clock — a result somebody could backdate or attribute to a colleague is not evidence.
+         */
+        SandboxTestInput: {
+            /** Actual Result */
+            actual_result?: string | null;
+            /** Expected Result */
+            expected_result?: string | null;
+            kind: components["schemas"]["SandboxTestKind"];
+            /** Sample Situation */
+            sample_situation?: string | null;
+            /** @default not_run */
+            status: components["schemas"]["SandboxTestStatus"];
+        };
+        /**
+         * SandboxTestKind
+         * @description Form 4 section C's five printed tests, in the sheet's order.
+         *
+         *     Named `Sandbox…` rather than `Test…` because pytest collects any imported class whose name
+         *     begins with `Test`, and an enum it cannot instantiate becomes a warning in every suite that
+         *     imports it.
+         *
+         *     A closed set, because the sheet prints all five: a missing one is not a value outside a list,
+         *     it is a test nobody thought about.
+         * @enum {string}
+         */
+        SandboxTestKind: "normal_case" | "missing_input" | "conflicting_input" | "prohibited_action" | "system_failure";
+        /** SandboxTestList */
+        SandboxTestList: {
+            /** Missing */
+            missing: components["schemas"]["SandboxTestKind"][];
+            /** Passed */
+            passed: number;
+            /** Tests */
+            tests: components["schemas"]["SandboxTestRead"][];
+            /** Total */
+            total: number;
+        };
+        /** SandboxTestRead */
+        SandboxTestRead: {
+            /** Actual Result */
+            actual_result: string | null;
+            /** Expected Result */
+            expected_result: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            kind: components["schemas"]["SandboxTestKind"];
+            /** Label */
+            label: string;
+            /** Run At */
+            run_at: string | null;
+            /** Run By Membership Id */
+            run_by_membership_id: string | null;
+            /** Run By Name */
+            run_by_name: string | null;
+            /** Sample Situation */
+            sample_situation: string | null;
+            status: components["schemas"]["SandboxTestStatus"];
+            /** Status Label */
+            status_label: string;
+        };
+        /**
+         * SandboxTestStatus
+         * @description The workbook's "Test Status" list: Not Run, Pass, Fail, Blocked.
+         * @enum {string}
+         */
+        SandboxTestStatus: "not_run" | "pass" | "fail" | "blocked";
+        /**
+         * SandboxTestsUpdate
+         * @description The five tests, written together. `expected_version` guards the design they describe.
+         */
+        SandboxTestsUpdate: {
+            /** Expected Version */
+            expected_version: number;
+            /** Tests */
+            tests: components["schemas"]["SandboxTestInput"][];
+        };
+        /**
          * SchedulePreview
          * @description The next few firings — PLAN §8's recurrence preview.
          */
@@ -5063,6 +5390,498 @@ export interface operations {
             };
         };
     };
+    publish_summary_api_v1_agents__agent_id__publish_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentPublishSummary"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    publish_api_v1_agents__agent_id__publish_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentPublishRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    submit_api_v1_agents__agent_id__submit_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentPublishRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    read_tests_api_v1_agents__agent_id__tests_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SandboxTestList"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    write_tests_api_v1_agents__agent_id__tests_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SandboxTestsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SandboxTestList"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     grant_tool_api_v1_agents__agent_id__tools__tool_id__grant_post: {
         parameters: {
             query?: never;
@@ -5088,6 +5907,202 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ToolRead"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    versions_api_v1_agents__agent_id__versions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentVersionList"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    withdraw_api_v1_agents__agent_id__withdraw_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentPublishRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
             /** @description Not signed in, or the session ended. */

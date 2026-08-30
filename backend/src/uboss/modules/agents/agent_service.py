@@ -39,11 +39,13 @@ from uboss.modules.agents.agent_models import (
     AgentSkill,
     AgentStatus,
     AgentStep,
+    AgentTest,
     AgentTool,
     Direction,
     SharePrincipal,
     Situation,
 )
+from uboss.modules.agents.agent_publish import clear_results
 from uboss.modules.agents.agent_schemas import (
     MAX_IO_SCHEMAS,
     MAX_KNOWLEDGE_SOURCES,
@@ -310,6 +312,17 @@ async def update(
 
     _refuse_contradictory_sharing(agent, shares)
 
+    #  A test result is about a design. Saving the design makes every recorded result a statement
+    #  about something that no longer exists, so they go back to `not_run` — see
+    #  `agent_publish.clear_results` for why "which edits count" is not a judgement worth making.
+    cleared = clear_results(
+        list(
+            (await session.execute(select(AgentTest).where(AgentTest.agent_id == agent.id)))
+            .scalars()
+            .all()
+        )
+    )
+
     agent.version += 1
     await session.flush()
 
@@ -324,6 +337,7 @@ async def update(
         #  instructions to a model; an audit trail is not the place to keep a second copy.
         detail={
             "fields": sorted(changes),
+            "test_results_cleared": cleared,
             "replaced": sorted(
                 name
                 for name, sent in (

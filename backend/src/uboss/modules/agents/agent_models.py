@@ -31,6 +31,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.schema import FetchedValue
 
 from uboss.db.base import Base
 from uboss.db.mixins import OptimisticVersion, PrimaryKey, TenantOwned, Timestamps
@@ -168,6 +169,9 @@ class Agent(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion):
         DateTime(timezone=True), nullable=True
     )
     created_by_membership_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    #: The frozen version this Agent runs. Set by publish, and a check constraint refuses a
+    #: published, active or paused Agent that names none.
+    published_version_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
@@ -218,6 +222,15 @@ class Agent(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion):
             ["memberships.tenant_id", "memberships.id"],
             name="fk_agents_tenant_creator",
             ondelete="SET NULL (created_by_membership_id)",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "published_version_id"],
+            ["agent_versions.tenant_id", "agent_versions.id"],
+            name="fk_agents_published_version",
+            ondelete="RESTRICT",
+            #  Circular: the version points at the agent and the agent points back at the version
+            #  it published to. SQLAlchemy needs to be told to order the DDL itself.
+            use_alter=True,
         ),
         UniqueConstraint("tenant_id", "id", name="uq_agents_tenant_id"),
         Index("ix_agents_tenant_status", "tenant_id", "status"),
@@ -476,4 +489,121 @@ class AgentShare(Base, PrimaryKey, TenantOwned):
             "principal_id",
             name="uq_agent_shares_principal",
         ),
+    )
+
+
+class SandboxTestKind(enum.StrEnum):
+    """Form 4 section C's five printed tests, in the sheet's order.
+
+    Named `Sandbox…` rather than `Test…` because pytest collects any imported class whose name
+    begins with `Test`, and an enum it cannot instantiate becomes a warning in every suite that
+    imports it.
+
+    A closed set, because the sheet prints all five: a missing one is not a value outside a list,
+    it is a test nobody thought about.
+    """
+
+    NORMAL_CASE = "normal_case"
+    MISSING_INPUT = "missing_input"
+    CONFLICTING_INPUT = "conflicting_input"
+    PROHIBITED_ACTION = "prohibited_action"
+    SYSTEM_FAILURE = "system_failure"
+
+
+class SandboxTestStatus(enum.StrEnum):
+    """The workbook's "Test Status" list: Not Run, Pass, Fail, Blocked."""
+
+    NOT_RUN = "not_run"
+    #  S105 reads the name, not the meaning: this is the workbook's "Pass", not a credential.
+    PASS = "pass"  # noqa: S105
+    FAIL = "fail"
+    BLOCKED = "blocked"
+
+
+class AgentTest(Base, PrimaryKey, TenantOwned, Timestamps):
+    """One of Form 4 section C's five tests, and what happened when somebody ran it.
+
+    **A result belongs to a design.** Saving the Agent clears every result: a pass recorded against
+    yesterday's steps says nothing about today's, and deciding which edits "do not count" is
+    exactly the judgement that lets a stale pass through.
+
+    **There is no sandbox runtime yet** — Gate 7 brings execution. Until then a status is recorded
+    by the person who ran the test, and `run_by_membership_id` and `run_at` are what make that
+    evidence rather than a checkbox. The gate is real either way.
+    """
+
+    __tablename__ = "agent_tests"
+
+    agent_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
+    kind: Mapped[str] = mapped_column(String(30), nullable=False)
+    sample_situation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expected_result: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="not_run")
+    #: What actually happened. A `Fail` with no observation is a claim nobody can act on, and a
+    #: `Pass` with none is a claim nobody can check.
+    actual_result: Mapped[str | None] = mapped_column(Text, nullable=True)
+    run_by_membership_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "agent_id"],
+            ["agents.tenant_id", "agents.id"],
+            name="fk_agent_tests_agent",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "run_by_membership_id"],
+            ["memberships.tenant_id", "memberships.id"],
+            name="fk_agent_tests_runner",
+            ondelete="SET NULL (run_by_membership_id)",
+        ),
+        UniqueConstraint("tenant_id", "agent_id", "kind", name="uq_agent_tests_kind"),
+    )
+
+    @property
+    def passed(self) -> bool:
+        return self.status == SandboxTestStatus.PASS
+
+
+class AgentVersion(Base, PrimaryKey, TenantOwned):
+    """What was approved, frozen.
+
+    Immutable twice over: a trigger refuses `UPDATE` and `DELETE`, and the privileges are withheld
+    from the application role. `version_no` is assigned by a trigger under an advisory lock and is
+    **gapless** — version 3 existing with no version 2 would mean a published thing nobody can
+    account for.
+
+    `job_version_id` is recorded here as well as on the Agent, because the Agent can later be
+    pointed at a newer Job version and this row must still say what *this* version was approved
+    against.
+    """
+
+    __tablename__ = "agent_versions"
+
+    agent_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
+    version_no: Mapped[int] = mapped_column(Integer, nullable=False, server_default=FetchedValue())
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    job_version_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    #: No foreign key, deliberately — the same choice `audit_events.actor_membership_id` makes.
+    #: An `ON DELETE SET NULL` into an append-only table makes anybody who ever approved something
+    #: undeletable, because Postgres tries to rewrite the row and the trigger refuses. Who
+    #: approved this version is a fact about the past; a person leaving does not change it.
+    published_by_membership_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    approved_by_membership_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    published_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+    correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "agent_id"],
+            ["agents.tenant_id", "agents.id"],
+            name="fk_agent_versions_agent",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint("tenant_id", "agent_id", "version_no", name="uq_agent_versions_no"),
+        UniqueConstraint("tenant_id", "id", name="uq_agent_versions_tenant_id"),
     )
