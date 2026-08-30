@@ -994,3 +994,114 @@ screen on top of them. That is exactly what happened to the previous build.
 
 **1.6.3 is what changes the reporting.** Until an automated suite exists, every claim in this
 repository rests on a check somebody ran by hand, once.
+
+---
+
+# Gate 7, broken down
+
+`PLAN.md` §34: *"Deliver Temporal execution, tasks, approvals, To-do, notifications, schedules, run
+evidence and the global governed Copilot."* This is the gate where the product stops being a place
+to **design** governed work and starts being a place where governed work **happens**.
+
+Everything before it produced immutable versions nobody could run. Gates 3 to 6 published
+`ObjectiveVersion`, `JobVersion`, `AgentVersion` and `SupervisorVersion`, and `To-do list` has read
+`SOON` in the sidebar since Gate 1 because there was nothing to put in it. Gate 7 is the runtime
+that turns a published version into a run, a run step into somebody's task, and a task into
+evidence somebody can be shown a year later.
+
+## What the gate turns on
+
+**Only an approved, immutable version ever executes.** `CLAUDE.md` states it as a boundary:
+*"Operation runs only approved, immutable `WorkflowVersion` and `AgentVersion` objects."* A run
+pins the version id it started from and never reads the draft, so editing a Job cannot change what
+a run in flight is doing — which is the whole reason versions are immutable.
+
+**A run is durable, and the durability is the deliverable.** §18 names Temporal, and the exit
+criteria name the failures it has to survive: *"crash/retry/idempotency/outbox recovery tests
+pass."* A worker killed mid-step must resume without repeating the step's external effect. That is
+not a property you add afterwards — it decides the shape of every activity in the gate.
+
+**A human step is a task, not a pause.** §11's To-do list is where a run waits. Somebody completes
+work, provides input, uploads evidence, comments, approves with a reason or delegates; the run
+continues from what they did. A runtime that blocked on a form nobody could find would be a
+runtime that never finishes.
+
+**The Copilot may propose and may not act.** §12 is explicit: *"It cannot publish, approve, grant
+access or perform destructive/high-risk actions on the user's behalf."* Every mutation it suggests
+goes through permission, preview and confirmation — the same guard a person's own click goes
+through, with the model on the outside of it.
+
+| | | |
+|---|---|---|
+| 7.1 | Runs — the durable executor, `runs`/`run_steps`/`run_events`, crash and retry | ✅ |
+| 7.2 | Tasks and the To-do list — §11's five tabs, complete, input, evidence, delegate | ⬜ |
+| 7.3 | Approvals — request, decide with reason, separation of duty, the Approvals tab | ⬜ |
+| 7.4 | Schedules that fire — Gate 4's configuration driving real runs, DST and overlap | ⬜ |
+| 7.5 | Notifications — six categories, preferences, digest, grouping, the bell drawer | ⬜ |
+| 7.6 | Run evidence — what a run read, did, produced and who decided, exportable | ⬜ |
+| 7.7 | The governed Copilot — permission-filtered retrieval, preview, confirmation, audit | ⬜ |
+
+**Passes when** a published Job runs end to end without mock logic, a worker killed mid-step
+resumes without repeating an external effect, a schedule fires correctly across a DST boundary, a
+human step appears in the right person's To-do and its completion continues the run, an approval
+is refused to its own author, every run can be shown as evidence, and the Copilot is refused a
+publish, an approval and a grant.
+
+## 7.1 — Runs, and why this one comes first
+
+Nothing else in the gate exists without it. A task is a run step waiting on a person; a
+notification is a run event that reached somebody; evidence is a run's own record. Building the To-do
+list before the thing that fills it would mean designing a screen against imagined rows.
+
+**Three tables, and the split matters.**
+
+* `runs` — one execution of one pinned version. Carries the version id, who or what started it,
+  the workflow id, the state, and the outcome. Never the draft's id.
+* `run_steps` — one per step of the version, with its own state, attempt count and result. The
+  unit a person is assigned, a supervisor watches and a retry replays.
+* `run_events` — append-only, the same shape as `audit_events` and for the same reason: what
+  happened, in order, with the correlation id that ties it to the request that caused it.
+
+**Idempotency is per step, not per run.** A retried activity must not send the same email twice.
+Every external effect carries a key derived from `(run_id, step_id, attempt-invariant operation)`
+— the same rule `frontend/src/lib/api/idempotency.ts` already keeps for the browser, applied to
+the runtime.
+
+**Temporal is the executor, and the domain does not import it.** Workflows and activities live in
+`modules/runtime/`; the activities call the same service functions the API calls. A domain module
+that imported `temporalio` would be a domain module that cannot be tested without a server —
+which is the same rule `model_gateway` and `integrations/` already keep.
+
+**What is deliberately not in 7.1.** No screen. A run that works and can be inspected in the
+database is the deliverable; the run detail screen is 7.6, and building it here would mean
+building it twice.
+
+**7.1 — done.** Migrations 0029 to 0031, `modules/runtime/`, `uboss.runtime_worker`, and Temporal
+in `infra/compose.yaml` on host port 7234 — the previous stack still holds 7233.
+
+**Proven against a real Temporal, not asserted.** A published Job version was run end to end: two
+steps, each begun and finished once, `run.succeeded` recorded. Then the durability claim was tested
+the only way it can be — a run was queued with **no worker alive**, sat in `pending` and lost
+nothing; a worker was started, Temporal replayed the workflow from its history, and the run
+completed with each step showing `attempt 1` and exactly one `step.started` and one
+`step.succeeded`. Nothing ran twice.
+
+**Four defects found on the way, all of them silent.**
+
+* `service.start` did not flush. The sessionmaker sets `autoflush=False` deliberately, so a caller
+  that started a run and immediately asked for its steps was told there were none.
+* Committing mid-request dropped the tenant binding. `set_config(..., true)` is transaction-local,
+  so the commit that makes a run durable before its workflow starts also unbound the connection,
+  and the next statement was refused by every policy.
+* The run policies spelled out `current_setting(...)::uuid` instead of calling
+  `app_current_tenant()`. Without the `nullif`, a pooled connection whose previous transaction had
+  set a tenant reads `''` on the next one — and `''::uuid` **raises** rather than returning NULL.
+  A policy that raises is not one that fails closed. Migration 0031.
+* `refuse_change()` named `audit_events` whatever table it was defending — five tables use it, so
+  anybody debugging a refused write on `run_events` went and looked at the audit trail.
+  Migration 0030.
+
+And two gaps in the suite's own fixture: it never cleared `jobs.published_version_id` (it cleared
+the agent's and the supervisor's), so no test could ever tear down a published Job; and it did not
+know about `runs`, whose `RESTRICT` against a job version is exactly what stops a version being
+deleted while something that executed it still exists.

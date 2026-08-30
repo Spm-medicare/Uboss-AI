@@ -39,6 +39,7 @@ def import_all() -> None:
     from uboss.modules.jobs import models as jobs_models  # noqa: F401
     from uboss.modules.objectives import models as objectives_models  # noqa: F401
     from uboss.modules.objectives import proposal_models as objectives_proposals  # noqa: F401
+    from uboss.modules.runtime import models as runtime_models  # noqa: F401
     from uboss.modules.supervisors import models as supervisors_models  # noqa: F401
     from uboss.modules.tenancy import models as tenancy_models  # noqa: F401
 

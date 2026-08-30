@@ -305,6 +305,9 @@ async def two_workspaces(
             text("ALTER TABLE job_versions DISABLE TRIGGER job_versions_append_only")
         )
         await session.execute(
+            text("ALTER TABLE run_events DISABLE TRIGGER trg_run_events_append_only")
+        )
+        await session.execute(
             text(
                 "ALTER TABLE skill_resolver_decisions "
                 "DISABLE TRIGGER skill_resolver_decisions_append_only"
@@ -331,6 +334,18 @@ async def two_workspaces(
             #  goes before the row it points at — and the status goes with it, because a running
             #  agent with no version is exactly what `ck_agents_running_has_published_version`
             #  exists to refuse.
+            #  Jobs point at the version they published with RESTRICT, exactly as agents and
+            #  supervisors do, so the pointer goes first — and the status with it, because
+            #  `ck_jobs_published_has_version` refuses a published Job with no version. Missing
+            #  until a test actually published one; the agent and supervisor lines below had it
+            #  and this did not.
+            await session.execute(
+                text(
+                    "UPDATE jobs SET published_version_id = NULL, status = 'draft' "
+                    "WHERE tenant_id = :t"
+                ),
+                {"t": workspace.tenant_id},
+            )
             await session.execute(
                 text(
                     "UPDATE agents SET published_version_id = NULL, status = 'archived' "
@@ -346,6 +361,11 @@ async def two_workspaces(
                 {"t": workspace.tenant_id},
             )
             for table in (
+                #  Runs first of all: a run is RESTRICT against the job version it pinned, which
+                #  is the point — a version cannot be removed while something that executed it
+                #  still exists. `run_events` and `run_steps` cascade from `runs`, and the
+                #  cascade fires the append-only trigger, which is why it is lifted above.
+                "runs",
                 #  Jobs before objectives: a job references the objective it serves, and a
                 #  published job version is RESTRICT against its job.
                 #  Supervisors before agents: a supervised row is RESTRICT against the agent
@@ -464,6 +484,9 @@ async def two_workspaces(
         )
         await session.execute(
             text("ALTER TABLE job_versions ENABLE TRIGGER job_versions_append_only")
+        )
+        await session.execute(
+            text("ALTER TABLE run_events ENABLE TRIGGER trg_run_events_append_only")
         )
         await session.execute(
             text(

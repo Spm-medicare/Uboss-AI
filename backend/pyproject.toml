@@ -21,6 +21,10 @@ dependencies = [
     #  provider's JWKS. Without it PyJWT parses the token and cannot check the signature — and a
     #  federated sign-in that skips signature verification accepts any token anybody forges.
     "pyjwt[crypto]>=2.9",
+    #  The durable executor PLAN §18 names. Imported only by `modules/runtime/` — a domain module
+    #  that imported it would be one that cannot be tested without a server running, which is the
+    #  rule `model_gateway` and `integrations/` already keep.
+    "temporalio>=1.9",
     "python-multipart>=0.0.20",
     "httpx>=0.28",
     "structlog>=24.4",

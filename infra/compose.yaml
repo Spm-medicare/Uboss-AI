@@ -78,6 +78,58 @@ services:
       timeout: 3s
       retries: 20
 
+  # ── the durable executor ──────────────────────────────────────────────────────────────
+  #
+  # PLAN §18 names Temporal, and Gate 7's exit criteria name what it is for: *"crash/retry/
+  # idempotency/outbox recovery tests pass."* A run that survives its worker being killed is not
+  # something you add to a scheduler afterwards; it decides the shape of every activity.
+  #
+  # `auto-setup` creates the schema and the default namespace on first start. That is a
+  # development convenience and nothing more — `deploy/` provisions Temporal properly, because an
+  # image that migrates its own database on boot is not something to point at production data.
+  temporal:
+    image: temporalio/auto-setup:1.25.2
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_SEEDS: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PWD: postgres
+      # Its own databases, beside the product's. Sharing one would put Temporal's history in the
+      # same backup, the same RLS surface and the same migration history as customer data.
+      DBNAME: temporal
+      VISIBILITY_DBNAME: temporal_visibility
+    ports:
+      # 7234 on the host: the previous UBOSS stack still holds Temporal's default 7233, and
+      # taking it from a running system to save one digit is not a trade worth making — the same
+      # reason postgres is on 5433 here. Inside the network the port is still 7233.
+      - "7234:7233"
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "temporal:7233"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  # The workflow inspector. Not required to run anything — it is how a person sees why a run is
+  # stuck, which during this gate is most of the work.
+  temporal-ui:
+    image: temporalio/ui:2.31.2
+    restart: unless-stopped
+    depends_on:
+      temporal:
+        condition: service_started
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:3000
+    ports:
+      # 8234, for the same reason as 7234.
+      - "8234:8080"
+
 volumes:
   postgres-data:
   redis-data:
