@@ -89,16 +89,15 @@ export function SheetSteps<Row>({
 
   if (rows.length === 0) {
     return (
-      <div className="p-4">
-        <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          {emptyLabel}
-        </p>
+      //  No dashed box. The section card is already the frame, and drawing a second one inside
+      //  it put a card in a card with the button adrift underneath — which is what made an
+      //  empty section look like two loose things rather than one.
+      <div className="grid justify-items-center gap-4 px-5 py-10 text-center">
+        <p className="max-w-md text-sm leading-relaxed text-muted-foreground">{emptyLabel}</p>
         {!disabled ? (
-          <div className="mt-3">
-            <Button variant="secondary" icon={<Plus className="size-3.5" />} onClick={add}>
-              {addLabel}
-            </Button>
-          </div>
+          <Button variant="secondary" icon={<Plus className="size-3.5" />} onClick={add}>
+            {addLabel}
+          </Button>
         ) : null}
       </div>
     );
@@ -134,7 +133,7 @@ export function SheetSteps<Row>({
         </SheetTable>
 
         {!disabled ? (
-          <div className="border-t border-border p-3">
+          <div className="border-t border-border bg-muted/30 px-3 py-2.5">
             <Button variant="secondary" icon={<Plus className="size-3.5" />} onClick={add}>
               {addLabel}
             </Button>

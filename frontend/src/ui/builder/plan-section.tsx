@@ -49,6 +49,8 @@ export function PlanSection({
   editable,
   timeZone,
   onReloadObjective,
+  outputOpen,
+  onOutputOpenChange,
 }: {
   objectiveId: string;
   objectiveVersion: number;
@@ -56,14 +58,20 @@ export function PlanSection({
   timeZone: string | undefined;
   /** The analysis moves the objective's status, so the form above has to re-read it. */
   onReloadObjective: () => void;
+  /**
+   * The drawer, controlled by the page.
+   *
+   * Lifted out of this component because it is opened from two places — a run, and the pinned
+   * guidance panel's own toggle — and two pieces of state for one drawer is a drawer that says
+   * "hide" while it is shut.
+   */
+  outputOpen: boolean;
+  onOutputOpenChange: (open: boolean) => void;
 }) {
   const t = useTranslations("plan");
   const queryClient = useQueryClient();
   const [failure, setFailure] = useState<string | null>(null);
 
-  //  The drawer holding what a run produced. Opened by a run and closed only by a person —
-  //  see `output-panel.tsx` for why nothing dismisses a result for you.
-  const [outputOpen, setOutputOpen] = useState(false);
 
   const plan = useQuery({
     queryKey: ["objective", objectiveId, "plan"],
@@ -94,7 +102,7 @@ export function PlanSection({
       //  Running is the moment somebody wants to see what came back, so the run opens it. Nothing
       //  else does: a drawer that opened on load would cover the form for somebody who came to
       //  edit the plan rather than to re-run it.
-      setOutputOpen(true);
+      onOutputOpenChange(true);
     },
     onError: (error) => setFailure(error.message),
   });
@@ -112,13 +120,12 @@ export function PlanSection({
                 produced" is next to the thing that produced it. */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold">{t("timelineTitle")}</p>
-              <span className="[&_button]:border-border [&_button]:bg-muted [&_button]:text-foreground [&_button:hover]:bg-accent [&_button]:focus-visible:outline-[var(--ub-focus)]">
-                <OutputToggle
-                  open={outputOpen}
-                  onToggle={() => setOutputOpen(!outputOpen)}
-                  {...(plan.data.analysis ? { count: 1 } : {})}
-                />
-              </span>
+              <OutputToggle
+                tone="plain"
+                open={outputOpen}
+                onToggle={() => onOutputOpenChange(!outputOpen)}
+                {...(plan.data.analysis ? { count: 1 } : {})}
+              />
             </div>
 
             {/*  A failure stays in the form. It is the reason nothing happened, and a reason
@@ -130,7 +137,7 @@ export function PlanSection({
 
             <OutputPanel
               open={outputOpen}
-              onClose={() => setOutputOpen(false)}
+              onClose={() => onOutputOpenChange(false)}
               label={t("outputLabel")}
               title={t("outputTitle")}
             >

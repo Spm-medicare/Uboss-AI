@@ -138,23 +138,27 @@ function CloseButton({ onClose }: { onClose: () => void }) {
 }
 
 /**
- * The control that opens and closes it, for the sheet's title bar.
+ * The control that opens and closes the drawer.
  *
- * White on the coloured bar rather than a `Button` variant: every variant this codebase has is
- * drawn for a light surface, and a ghost button on a saturated fill either disappears or needs a
- * per-form restyle — which is four variants of one control.
+ * Two tones, because it appears on two surfaces. `on-colour` is white on a form's saturated title
+ * bar; `plain` is the ordinary one for a light panel. A single set of classes could not do both —
+ * a ghost button on a saturated fill either disappears or needs restyling per form, which is four
+ * variants of one control.
  */
 export function OutputToggle({
   open,
   onToggle,
   count,
+  tone = "on-colour",
 }: {
   open: boolean;
   onToggle: () => void;
   /** How many results are waiting. Absent when there are none — see below. */
   count?: number;
+  tone?: "on-colour" | "plain";
 }) {
   const t = useTranslations("builder");
+  const plain = tone === "plain";
 
   return (
     <button
@@ -162,10 +166,12 @@ export function OutputToggle({
       onClick={onToggle}
       aria-expanded={open}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border border-white/25 bg-white/10 px-2.5 py-1.5",
-        "text-xs font-semibold text-white",
-        "transition-colors duration-150 hover:bg-white/20 motion-reduce:transition-none",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
+        "inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1.5",
+        "text-xs font-semibold",
+        "transition-colors duration-150 motion-reduce:transition-none",
+        plain
+          ? "border-border bg-card text-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ub-focus)]"
+          : "border-white/25 bg-white/10 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
       )}
     >
       {open ? (
@@ -177,7 +183,12 @@ export function OutputToggle({
       {/*  Only when there is something to show. A "0" beside "Show output" is an invitation to
            press a button that opens an empty panel. */}
       {!open && count ? (
-        <span className="rounded-full bg-white px-1.5 text-[0.625rem] font-bold tabular-nums text-[color:var(--ub-text)]">
+        <span
+          className={cn(
+            "rounded-full px-1.5 text-[0.625rem] font-bold tabular-nums",
+            plain ? "bg-primary text-primary-foreground" : "bg-white text-[color:var(--ub-text)]",
+          )}
+        >
           {count}
         </span>
       ) : null}

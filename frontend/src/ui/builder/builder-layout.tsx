@@ -135,10 +135,20 @@ export function BuilderLayout({
         {/*  §29: "readable form width". Capped, because a form field stretched across a wide
             monitor is a field nobody can scan. */}
         <div className="min-w-0 flex-1 pb-6">
-          {/*  Wider than a reading column, because the forms are workbook sheets and Form 3's
+          {/*  **One card, not ten.**
+              
+              Each section used to be its own bordered card with a gap between them, which is a
+              stack of ten cards where the workbook has one sheet. The client asked for the sheet:
+              a single frame with section bands inside it, so a form reads as one document rather
+              than as a pile of unrelated panels — and so the numbered rail on the left points at
+              bands of one thing rather than at ten separate things.
+
+              Wider than a reading column, because the forms are workbook sheets and Form 3's
               table has sixteen columns. 48rem forced a nine-column table to scroll on a monitor
               with room for it. Prose inside a section still sets its own `max-w-prose`. */}
-          <div className="max-w-6xl space-y-8">{children}</div>
+          <div className="max-w-6xl overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+            {children}
+          </div>
         </div>
 
         {aside ? (
@@ -195,18 +205,30 @@ function SectionButton({
         compact && "w-auto whitespace-nowrap border border-border",
       )}
     >
-      <span
-        aria-hidden
-        className={cn(
-          "grid size-5 shrink-0 place-items-center rounded-full text-[0.6875rem] font-medium",
-          section.complete
-            ? "bg-success-soft text-success"
-            : active
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground",
-        )}
-      >
-        {section.complete ? "✓" : index + 1}
+      {/*  The number always shows. A tick that *replaced* it made the rail read
+          1, ✓, 3, 4, 5, 6, 7, ✓, 9, 10 — so "Current process" stopped being step 2 the moment
+          it was filled in, and somebody asking a colleague to "look at step 8" had to count.
+          Completion is the colour and the small tick on the corner, both of which are additions
+          to the number rather than a replacement for it. */}
+      <span aria-hidden className="relative shrink-0">
+        <span
+          className={cn(
+            "grid size-5 place-items-center rounded-full text-[0.6875rem] font-semibold tabular-nums",
+            section.complete
+              ? "bg-success-soft text-success"
+              : active
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground",
+          )}
+        >
+          {index + 1}
+        </span>
+        {section.complete ? (
+          <Check
+            className="absolute -right-1 -top-1 size-3 rounded-full bg-success p-px text-white"
+            strokeWidth={3.5}
+          />
+        ) : null}
       </span>
       <span className="min-w-0 flex-1 truncate">{section.label}</span>
       {section.attention ? (
@@ -321,21 +343,23 @@ export function BuilderSectionCard({
       id={id}
       aria-labelledby={`${id}-heading`}
       className={cn(
-        "relative scroll-mt-[calc(var(--ub-topbar-height)+1.5rem)] overflow-hidden",
-        "rounded-lg border border-border bg-card",
+        "relative scroll-mt-[calc(var(--ub-topbar-height)+1.5rem)]",
+        //  A band inside the sheet, not a card of its own: no border of its own, no rounding, no
+        //  gap. The rule above it is what separates one band from the next.
+        "border-t border-border first:border-t-0",
         //  A 3px stripe rather than a coloured header: it marks the section at a glance without
         //  tinting the text, which is where contrast goes wrong first.
         "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:content-['']",
         stripes[accent],
       )}
     >
-      <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4 pl-6">
+      <div className="flex items-start justify-between gap-4 bg-muted/40 px-5 py-3 pl-6">
         <div className="min-w-0">
           <h3 id={`${id}-heading`} className="flex items-baseline gap-2 text-sm font-semibold">
             {letter ? (
               <span
                 aria-hidden
-                className="grid size-5 shrink-0 place-items-center rounded bg-muted text-[0.6875rem] font-bold text-muted-foreground"
+                className="grid size-5 shrink-0 place-items-center rounded bg-card text-[0.6875rem] font-bold text-muted-foreground ring-1 ring-inset ring-border"
               >
                 {letter}
               </span>
@@ -343,7 +367,9 @@ export function BuilderSectionCard({
             {title}
           </h3>
           {description ? (
-            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+            <p className="mt-1 max-w-prose text-sm leading-relaxed text-muted-foreground">
+              {description}
+            </p>
           ) : null}
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}

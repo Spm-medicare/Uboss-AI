@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import {Save, Send, Sparkles} from "lucide-react";
+import {Lightbulb, Save, Send, Sparkles} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useRef } from "react";
@@ -34,6 +34,7 @@ import {
   BuilderSectionCard,
   type BuilderSection,
 } from "@/ui/builder/builder-layout";
+import { OutputToggle } from "@/ui/builder/output-panel";
 import { PlanSection } from "@/ui/builder/plan-section";
 import { PublishSection } from "@/ui/builder/publish-section";
 import { SheetSteps } from "@/ui/builder/design-table";
@@ -132,6 +133,9 @@ function Editor({
 
   const [draft, setDraft] = useState<Objective>(initial);
   const [active, setActive] = useState<SectionId>("identity");
+  //  The output drawer. Opened by a run and by the pinned panel's toggle, so it belongs to the
+  //  screen rather than to whichever component happens to own the run.
+  const [outputOpen, setOutputOpen] = useState(false);
   const editable = draft.is_editable;
 
   //  The version the server last confirmed, held in a ref rather than read off the queued draft.
@@ -272,6 +276,8 @@ function Editor({
           steps={steps.length}
           hasResult={Boolean(draft.expected_result)}
           hasApprover={Boolean(draft.approver_membership_id)}
+          outputOpen={outputOpen}
+          onToggleOutput={() => setOutputOpen(!outputOpen)}
         />
       }
       footer={
@@ -656,6 +662,8 @@ function Editor({
           editable={editable}
           timeZone={user?.timezone}
           onReloadObjective={onReload}
+          outputOpen={outputOpen}
+          onOutputOpenChange={setOutputOpen}
         />
       </BuilderSectionCard>
 
@@ -729,10 +737,14 @@ function Guidance({
   steps,
   hasResult,
   hasApprover,
+  outputOpen,
+  onToggleOutput,
 }: {
   steps: number;
   hasResult: boolean;
   hasApprover: boolean;
+  outputOpen: boolean;
+  onToggleOutput: () => void;
 }) {
   const t = useTranslations("objective");
   const todo = [
@@ -742,10 +754,19 @@ function Guidance({
   ].filter(Boolean) as string[];
 
   return (
-    <Card>
+    <Card className="overflow-hidden border-primary/25 shadow-sm">
+      {/*  A titled header rather than a bold first line. The panel stays put while ten sections
+          scroll past it, so it reads as a fixture of the screen — and a fixture needs a name. */}
+      <div className="flex items-center gap-2 border-b border-primary/20 bg-primary/[0.06] px-3 py-2">
+        <Lightbulb aria-hidden className="size-4 shrink-0 text-primary" />
+        <p className="min-w-0 flex-1 truncate text-sm font-semibold">{t("guidanceTitle")}</p>
+        {/*  The drawer's toggle, top right of the one panel that stays put. Reachable from any
+            scroll position, which is the point — the alternative was scrolling to section nine
+            to look at what section nine produced. */}
+        <OutputToggle tone="plain" open={outputOpen} onToggle={onToggleOutput} />
+      </div>
       <CardBody className="space-y-3">
-        <p className="text-sm font-semibold">{t("guidanceTitle")}</p>
-        <p className="text-sm text-muted-foreground">{t("guidanceBody")}</p>
+        <p className="text-sm leading-relaxed text-muted-foreground">{t("guidanceBody")}</p>
         {todo.length > 0 ? (
           <>
             <p className="pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
