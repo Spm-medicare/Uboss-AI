@@ -313,6 +313,12 @@ async def two_workspaces(
         await session.execute(
             text("ALTER TABLE agent_versions DISABLE TRIGGER agent_versions_append_only")
         )
+        await session.execute(
+            text(
+                "ALTER TABLE supervisor_versions "
+                "DISABLE TRIGGER supervisor_versions_append_only"
+            )
+        )
         for workspace in (left, right):
             await session.execute(
                 text("SELECT set_config('app.tenant_id', :t, true)"),
@@ -332,11 +338,27 @@ async def two_workspaces(
                 ),
                 {"t": workspace.tenant_id},
             )
+            await session.execute(
+                text(
+                    "UPDATE supervisors SET published_version_id = NULL, status = 'archived' "
+                    "WHERE tenant_id = :t"
+                ),
+                {"t": workspace.tenant_id},
+            )
             for table in (
                 #  Jobs before objectives: a job references the objective it serves, and a
                 #  published job version is RESTRICT against its job.
                 #  Supervisors before agents: a supervised row is RESTRICT against the agent
                 #  version it pins, and the supervisor itself is RESTRICT against its owner.
+                #  The supervisor points back at the version it published, so the pointer goes
+                #  first — same shape as the agent's.
+                "supervisor_versions",
+                "supervisor_simulations",
+                "supervisor_notifications",
+                "supervisor_escalations",
+                "supervisor_quality_gates",
+                "supervisor_dependencies",
+                "supervisor_schedules",
                 "supervisor_handlers",
                 "supervisor_supervised",
                 "supervisors",
@@ -452,6 +474,12 @@ async def two_workspaces(
         await session.execute(
             text("ALTER TABLE agent_versions ENABLE TRIGGER agent_versions_append_only")
         )
+        await session.execute(
+            text(
+                "ALTER TABLE supervisor_versions "
+                "ENABLE TRIGGER supervisor_versions_append_only"
+            )
+        )
         await session.commit()
 
 
@@ -513,6 +541,73 @@ async def colleague(
         await session.execute(
             text("DELETE FROM membership_roles WHERE membership_id = :m"),
             {"m": membership_id},
+        )
+        await session.execute(
+            text("DELETE FROM memberships WHERE id = :m"), {"m": membership_id}
+        )
+        await session.execute(text("DELETE FROM users WHERE id = :u"), {"u": user_id})
+        await session.commit()
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def third_person(
+    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace]
+) -> AsyncIterator[uuid.UUID]:
+    """A third member of the left workspace, so a grant has somebody to be aimed at.
+
+    Created on the **owner** connection because `uboss_app` cannot write `users` — migration 0006
+    took that privilege away and the reason has not changed. A test that could add a user as the
+    application role would be testing a boundary that does not exist.
+    """
+    left, _ = two_workspaces
+    suffix = uuid.uuid4().hex[:8]
+    async with build_sessionmaker(owner_engine)() as session:
+        user_id = (
+            await session.execute(
+                text(
+                    "INSERT INTO users (email, password_hash, status) "
+                    "VALUES (:e, 'x', 'active') RETURNING id"
+                ),
+                {"e": f"third-{suffix}@example.test"},
+            )
+        ).scalar_one()
+        await session.execute(
+            text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(left.tenant_id)}
+        )
+        membership_id = (
+            await session.execute(
+                text(
+                    "INSERT INTO memberships (tenant_id, user_id, display_name, status) "
+                    "VALUES (:t, :u, 'Third person', 'active') RETURNING id"
+                ),
+                {"t": left.tenant_id, "u": user_id},
+            )
+        ).scalar_one()
+        #  The same workspace role as everybody else in this tenant. Without it this person holds
+        #  no action at all, and a test meaning to exercise a *handler* refusal would be answered
+        #  by the workspace guard instead — the right refusal for the wrong reason.
+        await session.execute(
+            text(
+                "INSERT INTO membership_roles (tenant_id, membership_id, role_id) "
+                "VALUES (:t, :m, :r)"
+            ),
+            {"t": left.tenant_id, "m": membership_id, "r": left.role_id},
+        )
+        await session.commit()
+
+    yield membership_id
+
+    #  Removed before `two_workspaces` tears the tenant down, or its foreign key would refuse.
+    async with build_sessionmaker(owner_engine)() as session:
+        await session.execute(
+            text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(left.tenant_id)}
+        )
+        await session.execute(
+            text("DELETE FROM supervisor_handlers WHERE membership_id = :m"),
+            {"m": membership_id},
+        )
+        await session.execute(
+            text("DELETE FROM membership_roles WHERE membership_id = :m"), {"m": membership_id}
         )
         await session.execute(
             text("DELETE FROM memberships WHERE id = :m"), {"m": membership_id}

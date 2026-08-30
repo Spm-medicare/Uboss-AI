@@ -747,7 +747,7 @@ shown working.
 | 6.1 | Supervisor schema and the two independent scopes — supervised set, handler set | ✅ |
 | 6.2 | Handler roles as a ceiling — six roles, granular permissions, no self-grant | ✅ |
 | 6.3 | §10's form groups 4–9 — order, dependency, quality gates, budget, SLA, escalation | ✅ |
-| 6.4 | Failure simulation and publish — immutable `SupervisorVersion` | ⬜ |
+| 6.4 | Failure simulation and publish — immutable `SupervisorVersion` | ✅ |
 | 6.5 | The Supervisor screen | ⬜ |
 
 **Passes when** the two scopes can be set to disjoint sets and both hold, a handler is refused an
@@ -861,6 +861,61 @@ because changing a shipped default is a decision rather than a tidy-up.
 bound by; 6.5 shows every control that cannot act yet as disabled and labelled.
 
 23 tests, 313 total.
+
+**6.4 — done.** Migration 0025: `supervisor_simulations` and `supervisor_versions`.
+
+**The gate is the one the plan names, not one invented here.** `PLAN.md` states Gate 6's exit
+itself — *"Exit: failure simulation and forbidden-action tests pass."* Those are two different
+things and they live in two places:
+
+- **Failure simulation** is per Supervisor and enforced by `publish.py`: at least one scenario,
+  and every one passing. Checked at submission *and* re-checked at publish, because a result can
+  be cleared by an edit between the two.
+- **Forbidden action** is repository-wide, and its home is
+  `tests/integration/test_supervisor_forbidden_actions.py` — §10's four prohibitions, one test
+  each, named for the prohibition rather than the mechanism.
+
+**Not a printed list.** The Agent's Form 4 prints five named tests, so `agent_tests` has a closed
+`kind`. §10 prints none for the Supervisor, so a scenario is named by whoever writes it and the
+gate is *"at least one, and every one passes"*. Inventing five named failures would have been
+inventing the plan's missing half.
+
+**What the four forbidden-action tests actually assert.** There is no model call in Gate 6, so
+these test the *system* a model will act through — a prohibition enforced by a prompt is a
+request, one enforced by a guard or a constraint is a rule.
+
+1. *Cannot bypass policy* — the workspace guard runs before the handler role, so a Supervisor's
+   **Owner** is still refused `publish` when the workspace withholds it. And no role reaches
+   `administer`, `audit`, `export` or `integrate`.
+2. *Cannot grant permission* — nobody grants above their own role, and nobody grants to
+   themselves.
+3. *No uncontrolled retries* — negative counts and negative backoff are refused by the schema, and
+   the approved retry ceiling is **frozen in the version**, so raising the draft afterwards does
+   not change what a run is bound by. A limit somebody could raise after approval is not a limit.
+4. *Cannot approve high-risk actions* — nobody approves their own publication, and holding
+   `publish` plus an Owner role is still not enough: you have to be the person **named**.
+   Otherwise approval is a permission rather than a responsibility somebody accepted.
+
+**Both scopes are in the snapshot.** Approving a Supervisor is approving who may control it, so
+the handler list is frozen alongside the supervised set. A record of half the decision would not
+be a record of the decision.
+
+`supervisor_versions` follows `audit_events` on its membership columns — no foreign key, because
+an `ON DELETE SET NULL` into an append-only table makes anybody who ever approved something
+undeletable. That was the defect found in `job_versions` during 6.4's sibling step, and it is not
+repeated here.
+
+**One stated deferral.** `clear_results` exists and is tested as a pure function, but its caller
+is the design-edit service, which lands with the screen in 6.5. Until then **nothing in the
+codebase can change a Supervisor's design**, so there is no path that could leave a stale pass
+behind — a gap that is currently closed by absence rather than by code, and worth saying so.
+
+**A test fixture bug worth recording.** `third_person` created a membership with no workspace
+role, so a test meant to prove a *handler* refusal was answered by the workspace guard instead —
+the right refusal for the wrong reason, and a test that would have passed while the rule it named
+was broken.
+
+21 tests, 333 total.
 | 7 | Temporal runtime, to-do, approvals, notifications, governed Copilot | 3–4 weeks |
 | 8.1 | Settings | |
 | 8.2 | Privacy / DPDP | |

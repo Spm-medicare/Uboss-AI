@@ -16,6 +16,7 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import datetime, time
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -33,6 +34,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.schema import FetchedValue
 
 from uboss.db.base import Base
 from uboss.db.mixins import OptimisticVersion, PrimaryKey, TenantOwned, Timestamps
@@ -129,6 +131,9 @@ class Supervisor(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion):
         DateTime(timezone=True), nullable=True
     )
     created_by_membership_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    #: The frozen version this Supervisor runs. A check constraint refuses a published, active or
+    #: paused Supervisor that names none.
+    published_version_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
@@ -173,6 +178,15 @@ class Supervisor(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion):
             ["memberships.tenant_id", "memberships.id"],
             name="fk_supervisors_escalation",
             ondelete="SET NULL (escalation_membership_id)",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "published_version_id"],
+            ["supervisor_versions.tenant_id", "supervisor_versions.id"],
+            name="fk_supervisors_published_version",
+            ondelete="RESTRICT",
+            #  Circular: the version points at the Supervisor and the Supervisor points back at
+            #  the version it published to. SQLAlchemy needs to be told to order the DDL itself.
+            use_alter=True,
         ),
         UniqueConstraint("tenant_id", "id", name="uq_supervisors_tenant_id"),
         CheckConstraint("length(btrim(name)) > 0", name="ck_supervisors_name_not_blank"),
@@ -500,4 +514,107 @@ class SupervisorNotification(Base, PrimaryKey, TenantOwned, Timestamps):
         ),
         UniqueConstraint("tenant_id", "supervisor_id", "event", name="uq_sup_notify_event"),
         CheckConstraint("position >= 1", name="ck_sup_notify_position"),
+    )
+
+
+class SimulationStatus(enum.StrEnum):
+    """The same four the Agent's sandbox tests use — the approved workbook's "Test Status" list.
+
+    One vocabulary across the product, so somebody who has read one screen knows what the words
+    mean on the next.
+    """
+
+    NOT_RUN = "not_run"
+    PASS = "pass"  # noqa: S105  — the workbook's "Pass", not a credential.
+    FAIL = "fail"
+    BLOCKED = "blocked"
+
+
+class SupervisorSimulation(Base, PrimaryKey, TenantOwned, Timestamps):
+    """One failure scenario — §10 group 10's *"sandbox/failure simulation"*.
+
+    **Not a printed list.** The Agent's Form 4 prints five named tests, so `agent_tests` has a
+    closed `kind`. §10 prints none for the Supervisor, so a scenario is named by whoever writes
+    it and the publish gate is *"at least one, and every one passes"*. Inventing five named
+    failures would have been inventing the plan's missing half.
+
+    **A result belongs to a design.** Editing the Supervisor clears every observed result: a pass
+    recorded against yesterday's dependencies says nothing about today's.
+
+    **There is no runtime.** Gate 7 brings execution, so a status is recorded by the person who
+    ran the scenario. `run_by_membership_id` and `run_at` are what make that evidence rather than
+    a checkbox, and they are stamped by the server.
+    """
+
+    __tablename__ = "supervisor_simulations"
+
+    supervisor_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    what_fails: Mapped[str] = mapped_column(Text, nullable=False)
+    expected_response: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="not_run")
+    observed: Mapped[str | None] = mapped_column(Text, nullable=True)
+    run_by_membership_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "supervisor_id"],
+            ["supervisors.tenant_id", "supervisors.id"],
+            name="fk_sup_sim_supervisor",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "run_by_membership_id"],
+            ["memberships.tenant_id", "memberships.id"],
+            name="fk_sup_sim_runner",
+            ondelete="SET NULL (run_by_membership_id)",
+        ),
+        UniqueConstraint("tenant_id", "supervisor_id", "name", name="uq_sup_sim_name"),
+        CheckConstraint("position >= 1", name="ck_sup_sim_position"),
+    )
+
+    @property
+    def passed(self) -> bool:
+        return self.status == SimulationStatus.PASS
+
+
+class SupervisorVersion(Base, PrimaryKey, TenantOwned):
+    """What was approved, frozen.
+
+    Immutable twice over — a trigger refuses `UPDATE` and `DELETE`, and the privileges are
+    withheld from the application role. `version_no` is assigned under an advisory lock and is
+    gapless.
+
+    `published_by_membership_id` and `approved_by_membership_id` carry **no foreign key**, the
+    choice `audit_events` already makes and the one `job_versions` had to be corrected to in
+    migration 0022: an `ON DELETE SET NULL` into an append-only table makes anybody who ever
+    approved something undeletable, which blocks an offboarding and a right-to-erasure request.
+    """
+
+    __tablename__ = "supervisor_versions"
+
+    supervisor_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
+    version_no: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=FetchedValue()
+    )
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    published_by_membership_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    approved_by_membership_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    published_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+    correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "supervisor_id"],
+            ["supervisors.tenant_id", "supervisors.id"],
+            name="fk_sup_versions_supervisor",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint("tenant_id", "supervisor_id", "version_no", name="uq_sup_versions_no"),
+        UniqueConstraint("tenant_id", "id", name="uq_sup_versions_tenant_id"),
     )

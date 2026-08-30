@@ -13,11 +13,9 @@ about, because "grant permission" is exactly what a handler list is one bad rule
 from __future__ import annotations
 
 import uuid
-from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 
 import pytest
-import pytest_asyncio
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
@@ -477,57 +475,3 @@ async def test_a_stale_handler_change_is_refused(
                 expected_version=supervisor.version + 1,
             )
         await session.rollback()
-
-
-@pytest_asyncio.fixture(loop_scope="session")
-async def third_person(
-    owner_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace]
-) -> AsyncIterator[uuid.UUID]:
-    """A third member of the left workspace, so a grant has somebody to be aimed at.
-
-    Created on the **owner** connection because `uboss_app` cannot write `users` — migration 0006
-    took that privilege away and the reason has not changed. A test that could add a user as the
-    application role would be testing a boundary that does not exist.
-    """
-    left, _ = two_workspaces
-    suffix = uuid.uuid4().hex[:8]
-    async with build_sessionmaker(owner_engine)() as session:
-        user_id = (
-            await session.execute(
-                text(
-                    "INSERT INTO users (email, password_hash, status) "
-                    "VALUES (:e, 'x', 'active') RETURNING id"
-                ),
-                {"e": f"third-{suffix}@example.test"},
-            )
-        ).scalar_one()
-        await session.execute(
-            text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(left.tenant_id)}
-        )
-        membership_id = (
-            await session.execute(
-                text(
-                    "INSERT INTO memberships (tenant_id, user_id, display_name, status) "
-                    "VALUES (:t, :u, 'Third person', 'active') RETURNING id"
-                ),
-                {"t": left.tenant_id, "u": user_id},
-            )
-        ).scalar_one()
-        await session.commit()
-
-    yield membership_id
-
-    #  Removed before `two_workspaces` tears the tenant down, or its foreign key would refuse.
-    async with build_sessionmaker(owner_engine)() as session:
-        await session.execute(
-            text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(left.tenant_id)}
-        )
-        await session.execute(
-            text("DELETE FROM supervisor_handlers WHERE membership_id = :m"),
-            {"m": membership_id},
-        )
-        await session.execute(
-            text("DELETE FROM memberships WHERE id = :m"), {"m": membership_id}
-        )
-        await session.execute(text("DELETE FROM users WHERE id = :u"), {"u": user_id})
-        await session.commit()
