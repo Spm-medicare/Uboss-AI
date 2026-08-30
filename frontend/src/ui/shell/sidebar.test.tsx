@@ -76,23 +76,26 @@ describe("Sidebar", () => {
     show({ ...BASE, actions: ["view", "edit_draft"] });
 
     const builder = screen
-      .getByText(messages.nav.items.objectiveBuilder)
+      .getByText(messages.nav.items.jobBuilder)
       .closest("[aria-disabled]");
     expect(builder).not.toBeNull();
     //  And it says which gate builds it, rather than leaving a dead row with no explanation.
-    expect(builder).toHaveAttribute("title", "Not built yet — Gate 3");
+    expect(builder).toHaveAttribute("title", "Not built yet — Gate 4");
     //  Not a link: a control that navigates to a 404 does not do what it says.
     expect(
-      screen.queryByRole("link", { name: messages.nav.items.objectiveBuilder }),
+      screen.queryByRole("link", { name: messages.nav.items.jobBuilder }),
     ).not.toBeInTheDocument();
   });
 
   it("links a screen once it exists", () => {
-    show({ ...BASE, actions: ["view"] });
+    show({ ...BASE, actions: ["view", "edit_draft"] });
 
     expect(
       screen.getByRole("link", { name: messages.nav.items.hierarchy }),
     ).toHaveAttribute("href", "/hierarchy");
+    expect(
+      screen.getByRole("link", { name: messages.nav.items.objectiveBuilder }),
+    ).toHaveAttribute("href", "/objective-builder");
   });
 
   it("marks the current screen for assistive technology, not only in colour", () => {

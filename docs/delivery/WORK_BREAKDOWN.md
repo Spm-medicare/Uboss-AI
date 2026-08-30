@@ -365,7 +365,7 @@ live hierarchy without preview and approval.
 
 | | |
 |---|---|
-| 3.1 | Objective cards and Draft form — every approved field and conditional rule, autosave |
+| 3.1 | ✅ Objective cards and Draft form — every approved field and conditional rule, autosave |
 | 3.2 | Claude proposal through the AI Gateway — versioned prompt, schema-validated output |
 | 3.3 | Human editor and Publish — immutable version, approval route, audit evidence |
 

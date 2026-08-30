@@ -57,6 +57,21 @@ export type ImportRowRead = Schemas["ImportRowRead"];
 export type ProposedUnit = Schemas["ProposedUnit"];
 export type ImportMappingUpdate = Schemas["ImportMappingUpdate"];
 
+//  Objectives — PLAN §7, and the approved workbook's Form 2.
+export type ObjectiveCard = Schemas["ObjectiveCard"];
+export type ObjectiveList = Schemas["ObjectiveList"];
+export type ObjectiveRead = Schemas["ObjectiveRead"];
+export type ObjectiveCreate = Schemas["ObjectiveCreate"];
+export type ObjectiveUpdate = Schemas["ObjectiveUpdate"];
+export type CurrentStepInput = Schemas["CurrentStepInput"];
+export type CurrentStepRead = Schemas["CurrentStepRead"];
+export type ObjectiveStatus = Schemas["ObjectiveStatus"];
+export type Priority = Schemas["Priority"];
+export type Visibility = Schemas["Visibility"];
+export type AiAssistance = Schemas["AiAssistance"];
+export type WorkbookLists = Schemas["WorkbookLists"];
+export type PersonRef = Schemas["PersonRef"];
+
 /** The shape of every failure, from `ErrorEnvelope` — PLAN §28. */
 export type ErrorEnvelope = Schemas["ErrorEnvelope"];
 export type FieldError = Schemas["FieldError"];

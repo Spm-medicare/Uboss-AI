@@ -103,7 +103,7 @@ export const NAVIGATION: NavGroup[] = [
         href: "/objective-builder",
         icon: Target,
         requires: "edit_draft",
-        buildsIn: "Gate 3",
+        buildsIn: null,
       },
       {
         id: "jobBuilder",
