@@ -16,6 +16,7 @@ export {
   DescriptionList,
   DescriptionRow,
 } from "@/ui/card";
+export { Dialog } from "@/ui/dialog";
 export { Field, controlClass } from "@/ui/field";
 export { Input, Textarea } from "@/ui/input";
 export { Skeleton } from "@/ui/skeleton";

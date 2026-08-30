@@ -6,6 +6,7 @@ import {
   ChevronRight,
   LayoutGrid,
   List,
+  Pencil,
   Plus,
   Undo2,
   Upload,
@@ -43,6 +44,8 @@ import {
   QueryStates,
 } from "@/ui";
 import { useStepUp } from "@/ui/auth/step-up";
+import { AddUnderDialog } from "@/ui/hierarchy/add-under";
+import { EditSeatDialog, EditUnitDialog } from "@/ui/hierarchy/edit-seat";
 import { OrgChart } from "@/ui/hierarchy/org-chart";
 import { AppShell } from "@/ui/shell/app-shell";
 
@@ -64,6 +67,7 @@ import { AppShell } from "@/ui/shell/app-shell";
  */
 export default function HierarchyPage() {
   const t = useTranslations("hierarchy");
+  const tCommon = useTranslations("common");
   const { user } = useSession();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -76,6 +80,15 @@ export default function HierarchyPage() {
   //  work is done, because it holds the controls and stays readable at four hundred nodes.
   //  Chart first: somebody opening this screen is nearly always asking the first question.
   const [view, setView] = useState<"chart" | "list">("chart");
+
+  //  Which `+` was pressed. One piece of state for the whole chart: a dialog mounted per box
+  //  would be sixteen forms on a chart of sixteen people, all but one of them hidden.
+  const [adding, setAdding] = useState<{
+    unit: OrgUnitRead;
+    reportsTo?: PositionRead;
+  } | null>(null);
+  const [editingSeat, setEditingSeat] = useState<PositionRead | null>(null);
+  const [editingUnit, setEditingUnit] = useState<OrgUnitRead | null>(null);
 
   const tree = useQuery({
     queryKey: ["hierarchy", "tree", asAt],
@@ -119,6 +132,8 @@ export default function HierarchyPage() {
         ) : undefined
       }
     >
+      {/*  `max-w-5xl` on the reading column, and the chart steps out of it below. A chart is as
+          wide as the organisation; a column meant for prose is the wrong container for one. */}
       <div className="mx-auto max-w-5xl space-y-6">
         {/*  A heading on the page, not only in the top bar. The bar names the room; a person
             landing here needs to be told what the screen is for before they are asked to pick a
@@ -168,21 +183,53 @@ export default function HierarchyPage() {
               ) : null}
 
               {view === "chart" ? (
+                //  Out of the reading column and across the whole screen. A chart is as wide as
+                //  the organisation, and a 64rem column meant a company with five departments
+                //  scrolling sideways inside a box a third of the window — on a monitor with
+                //  room to show the whole thing. The margins cancel this column's own centring
+                //  and the shell's padding, so the chart starts where the sidebar ends.
+                <div className="-mx-4 w-[calc(100%+2rem)] sm:-mx-6 sm:w-[calc(100%+3rem)]">
                 <OrgChart
                   units={tree.data?.units ?? []}
-                  //  The chart gets the same two buttons the list has, not its own. Passed only
+                  //  One `+` per box and one per seat, both opening the same dialog. Passed only
                   //  when this person may edit, so the chart never has to decide.
                   {...(mayEdit
                     ? {
                         actions: (unit: OrgUnitRead) => (
                           <>
-                            <AddUnitButton parentId={unit.id} onDone={refresh} />
-                            <AddPositionButton unitId={unit.id} onDone={refresh} />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              icon={<Plus className="size-3.5" />}
+                              onClick={() => setAdding({ unit })}
+                            >
+                              {t("addUnder")}
+                            </Button>
+                            {/*  The company itself has no Edit: renaming it is renaming the
+                                workspace, which belongs in settings rather than on a chart. */}
+                            {unit.parent_id === null ? null : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                icon={<Pencil className="size-3.5" />}
+                                onClick={() => setEditingUnit(unit)}
+                              >
+                                {tCommon("edit")}
+                              </Button>
+                            )}
                           </>
                         ),
+                        seatEdit: (position: PositionRead) => setEditingSeat(position),
+                        seatAction: (position: PositionRead) => {
+                          const owner = (tree.data?.units ?? []).find(
+                            (candidate) => candidate.id === position.org_unit_id,
+                          );
+                          if (owner) setAdding({ unit: owner, reportsTo: position });
+                        },
                       }
                     : {})}
                 />
+                </div>
               ) : (
                 <Tree
                   units={tree.data?.units ?? []}
@@ -194,6 +241,33 @@ export default function HierarchyPage() {
             </>
           )}
         </QueryStates>
+
+        {editingSeat ? (
+          <EditSeatDialog
+            position={editingSeat}
+            units={tree.data?.units ?? []}
+            onClose={() => setEditingSeat(null)}
+            onDone={refresh}
+          />
+        ) : null}
+
+        {editingUnit ? (
+          <EditUnitDialog
+            unit={editingUnit}
+            onClose={() => setEditingUnit(null)}
+            onDone={refresh}
+          />
+        ) : null}
+
+        {adding ? (
+          <AddUnderDialog
+            unit={adding.unit}
+            units={tree.data?.units ?? []}
+            reportsTo={adding.reportsTo}
+            onClose={() => setAdding(null)}
+            onDone={refresh}
+          />
+        ) : null}
 
         <History
           isPending={revisions.isPending}

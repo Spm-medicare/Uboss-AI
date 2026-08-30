@@ -59,12 +59,21 @@
      is already given by its position, its connector and the unit-type badge on it. The colour
      only makes a wide chart scannable, which is the job it does in every org chart ever printed.
      Cool to warm as you go down, so the top of the tree is the calmest thing on the page. */
-  --ub-level-0: #1d4ed8;
-  --ub-level-1: #0891b2;
-  --ub-level-2: #0f8f5f;
-  --ub-level-3: #b45309;
-  --ub-level-4: #7c3aed;
-  --ub-level-5: #be185d;
+  --ub-level-0: #4f74e3;
+  --ub-level-1: #3fa8c4;
+  --ub-level-2: #4aa87c;
+  --ub-level-3: #d09a4a;
+  --ub-level-4: #9b7bd4;
+  --ub-level-5: #cf7a9c;
+
+  /* The same hues at a tenth of the strength, for the box's own body. A saturated header on a
+     plain white card is a sticker; a header over a faint wash of the same colour is a card. */
+  --ub-level-0-soft: #eef2fd;
+  --ub-level-1-soft: #ecf7fa;
+  --ub-level-2-soft: #edf7f2;
+  --ub-level-3-soft: #fbf4e9;
+  --ub-level-4-soft: #f4f0fb;
+  --ub-level-5-soft: #fbeff4;
 
   --ub-radius-control: 0.5rem;
   --ub-radius-card: 0.75rem;
@@ -112,12 +121,21 @@
 
   /* Lifted for the dark ground. The light ramp is chosen against white and goes muddy on a
      dark surface; these are the same hues at a brightness that still reads. */
-  --ub-level-0: #60a5fa;
-  --ub-level-1: #22d3ee;
-  --ub-level-2: #34d399;
-  --ub-level-3: #fbbf24;
-  --ub-level-4: #a78bfa;
-  --ub-level-5: #f472b6;
+  --ub-level-0: #7ba3f0;
+  --ub-level-1: #5ec8dd;
+  --ub-level-2: #5fc9a0;
+  --ub-level-3: #e0b667;
+  --ub-level-4: #b49df0;
+  --ub-level-5: #e895b5;
+
+  /* On a dark ground the wash is a lift rather than a tint: the same hue at low alpha over the
+     card, which keeps it readable without the muddy result of darkening a pastel. */
+  --ub-level-0-soft: #141c2e;
+  --ub-level-1-soft: #10222a;
+  --ub-level-2-soft: #11241f;
+  --ub-level-3-soft: #251f12;
+  --ub-level-4-soft: #1d1830;
+  --ub-level-5-soft: #2a1721;
 
   --ub-human-soft: #082f49;
   --ub-ai-soft: #2e1065;
@@ -149,6 +167,13 @@
   --color-border: var(--ub-border);
   --color-input: var(--ub-border);
   --color-ring: var(--ub-focus);
+
+  --color-level-0-soft: var(--ub-level-0-soft);
+  --color-level-1-soft: var(--ub-level-1-soft);
+  --color-level-2-soft: var(--ub-level-2-soft);
+  --color-level-3-soft: var(--ub-level-3-soft);
+  --color-level-4-soft: var(--ub-level-4-soft);
+  --color-level-5-soft: var(--ub-level-5-soft);
 
   --color-level-0: var(--ub-level-0);
   --color-level-1: var(--ub-level-1);

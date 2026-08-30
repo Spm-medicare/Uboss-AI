@@ -20,7 +20,8 @@
     "loading": "Loading…",
     "none": "None",
     "optional": "(optional)",
-    "close": "Close"
+    "close": "Close",
+    "edit": "Edit"
   },
   "signIn": {
     "title": "Welcome to UBOSS",
@@ -248,8 +249,11 @@
     "addDepartment": "Department",
     "departmentName": "Department name",
     "addPosition": "Position",
-    "positionTitle": "Position title",
-    "add": "Add",
+    "positionTitle": "Job title",
+    "add": {
+      "person": "A person",
+      "department": "A department"
+    },
     "cancel": "Cancel",
     "archive": "Archive",
     "noPositions": "No positions here yet.",
@@ -280,7 +284,44 @@
       "list": "List"
     },
     "issuesMore": "Show {count} more",
-    "issuesFewer": "Show fewer"
+    "issuesFewer": "Show fewer",
+    "addUnder": "Add",
+    "addUnderSeat": "Add under {title}",
+    "addUnderUnit": "Add to {unit}",
+    "addUnderBody": "A person joins this department. A department sits inside it.",
+    "whatToAdd": "What are you adding?",
+    "positionTitleHint": "What this seat is called — the person filling it can be assigned after.",
+    "positionTitlePlaceholder": "Backend Lead",
+    "departmentNamePlaceholder": "Customer Support",
+    "designation": "Designation",
+    "designations": {
+      "executive": "Executive",
+      "manager": "Manager",
+      "employee": "Employee"
+    },
+    "designationHint": "The grade in your organisation. It orders people inside a box and does not decide what they may do.",
+    "reportsTo": "Reports to",
+    "reportsToHint": "Their manager. Leave as nobody for the top of the organisation.",
+    "reportsToNobody": "Nobody — top of the organisation",
+    "adding": "Adding",
+    "addFailed": "That could not be added. Nothing has been saved.",
+    "editSeatTitle": "Edit this seat",
+    "editSeatFor": "Edit {title}",
+    "editSeatHeld": "{name} holds this seat. Changing the title changes what the chart calls their job.",
+    "editSeatVacant": "Nobody holds this seat yet.",
+    "removeSeat": "Remove this seat",
+    "removeSeatConfirmTitle": "Remove “{title}”?",
+    "removeSeatHeld": "It leaves the chart and {name} is no longer placed anywhere. The record of the seat and who held it is kept.",
+    "removeSeatVacant": "It leaves the chart. The record of it is kept.",
+    "removeSeatConfirm": "Yes, remove it",
+    "editUnitTitle": "Edit this department",
+    "editUnitBody": "Renaming it changes what the chart calls it. Nothing inside it moves.",
+    "removeUnit": "Remove this department",
+    "removeUnitConfirmTitle": "Remove “{name}”?",
+    "removeUnitWithSeats": "It has {count} seats in it. They leave the chart with it, and anybody holding one is no longer placed.",
+    "removeUnitEmpty": "It has no seats in it. The record of it is kept.",
+    "removeUnitConfirm": "Yes, remove it",
+    "seatCount": "{count, plural, =0 {no seats} one {# seat} other {# seats}}"
   },
   "import": {
     "title": "Import a structure",
