@@ -186,9 +186,9 @@ class _NoStorage:
     """
 
     async def put(self, key: str, data: bytes, *, content_type: str) -> object:
-        from uboss.modules.files.storage import StoredObject
-
         import hashlib
+
+        from uboss.modules.files.storage import StoredObject
 
         return StoredObject(
             key=key, size_bytes=len(data), sha256=hashlib.sha256(data).hexdigest()

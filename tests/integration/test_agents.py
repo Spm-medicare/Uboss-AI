@@ -27,12 +27,11 @@ from uboss.db.base import build_sessionmaker
 from uboss.modules.agents import agent_service as service
 from uboss.modules.agents.agent_models import (
     Agent,
+    AgentAudience,
     AgentStatus,
-    AgentTool,
     Direction,
     SharePrincipal,
     Situation,
-    AgentAudience,
 )
 from uboss.modules.agents.agent_schemas import (
     SITUATION_LABELS,

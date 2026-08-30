@@ -32,7 +32,8 @@ from uboss.modules.audit import relay
 def _relay_url() -> str:
     base = os.environ["UBOSS_MIGRATION_DATABASE_URL"]
     without_database = base.rsplit("/", 1)[0]
-    credentials, host = without_database.split("://", 1)[1].split("@", 1)
+    #  The credentials half is discarded on purpose: the relay connects as `uboss_relay`.
+    _credentials, host = without_database.split("://", 1)[1].split("@", 1)
     scheme = base.split("://", 1)[0]
     return f"{scheme}://uboss_relay:uboss_relay@{host}/{TEST_DATABASE}"
 
@@ -139,7 +140,9 @@ async def test_the_relay_role_is_refused_everywhere_else(
     try:
         async with build_sessionmaker(engine)() as session:
             with pytest.raises(ProgrammingError) as raised:
-                await session.execute(text(f"SELECT count(*) FROM {table}"))
+                #  S608: `table` is a name from this test's own list, and a table name cannot
+                #  be a bind parameter. Asserting the refusal is the whole point of the query.
+                await session.execute(text(f"SELECT count(*) FROM {table}"))  # noqa: S608
             assert "permission denied" in str(raised.value).lower()
             await session.rollback()
     finally:

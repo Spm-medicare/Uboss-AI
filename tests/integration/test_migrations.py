@@ -112,9 +112,13 @@ async def test_every_migration_is_honest_about_reversing() -> None:
     )
 
 
-async def test_every_migration_explains_itself() -> None:
-    """A docstring that says only what it does leaves the next person guessing whether it was
-    safe. The runbook asks for why; this checks somebody wrote one."""
+def _thin_docstrings(minimum_words: int = 40) -> list[str]:
+    """Which migrations say too little. Synchronous, because it reads files.
+
+    Kept out of the test body rather than awaited: reading twenty-two files off local disk inside
+    an event loop is exactly what ASYNC240 is about, and moving it is easier to justify than
+    silencing it.
+    """
     thin: list[str] = []
     for revision in _scripts().walk_revisions():
         path = Path(revision.path)
@@ -122,8 +126,15 @@ async def test_every_migration_explains_itself() -> None:
         start = source.find('"""')
         end = source.find('"""', start + 3)
         docstring = source[start + 3 : end] if start >= 0 and end > start else ""
-        if len(docstring.split()) < 40:
+        if len(docstring.split()) < minimum_words:
             thin.append(path.stem)
+    return thin
+
+
+async def test_every_migration_explains_itself() -> None:
+    """A docstring that says only what it does leaves the next person guessing whether it was
+    safe. The runbook asks for why; this checks somebody wrote one."""
+    thin = _thin_docstrings()
 
     assert thin == [], (
         "these migrations have no real explanation in their docstring: " + ", ".join(thin)

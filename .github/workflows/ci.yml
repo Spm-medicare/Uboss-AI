@@ -49,7 +49,12 @@ jobs:
 
       - name: Ruff
         working-directory: backend
-        run: uv run ruff check .
+        # `../tests` is listed explicitly. The suite lives at the repository root, so for the
+        # first twenty-two migrations it was never linted at all — twenty-one findings had
+        # accumulated, including two async functions doing filesystem work inside the event loop.
+        # A gate that covers only half the Python is a gate that teaches people the other half
+        # does not matter.
+        run: uv run ruff check . ../tests
 
       - name: Mypy
         working-directory: backend

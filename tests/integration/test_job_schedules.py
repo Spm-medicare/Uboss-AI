@@ -105,7 +105,8 @@ def test_a_repeated_local_time_fires_once_by_default() -> None:
         daily, after=datetime(2026, 10, 31, 12, 0, tzinfo=UTC), count=2
     )
 
-    on_the_day = [m for m in moments if m.astimezone(ZoneInfo(NEW_YORK)).date() == date(2026, 11, 1)]
+    the_day = date(2026, 11, 1)
+    on_the_day = [m for m in moments if m.astimezone(ZoneInfo(NEW_YORK)).date() == the_day]
     assert len(on_the_day) == 1
     assert _local(on_the_day, NEW_YORK) == ["2026-11-01 01:30 EDT"]
 

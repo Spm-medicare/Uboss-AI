@@ -97,7 +97,9 @@ async def wording(owner_engine: AsyncEngine) -> dict[str, str]:
                         name=name,
                         if_clause="IF …",
                         then_clause="THEN …",
-                        pass_evidence="…",
+                        #  S106 reads the name: this is the gate's evidence column, not a
+                        #  credential.
+                        pass_evidence="…",  # noqa: S106
                         failure_state=failure_state,
                         position=position,
                     )
@@ -347,7 +349,9 @@ async def test_similarity_never_overrides_a_hard_gate(
         assert str(resolution.selected_skill_id) != top["skill_id"]
 
         refusal = next(
-            gate for gate in top["gates"] if gate["gate"] == "authority" and not gate["configurable"]
+            gate
+            for gate in top["gates"]
+            if gate["gate"] == "authority" and not gate["configurable"]
         )
         assert refusal["failure_state"] == "BLOCKED — authority unresolved"
         await session.rollback()

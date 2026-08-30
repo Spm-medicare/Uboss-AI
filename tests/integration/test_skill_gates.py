@@ -115,7 +115,7 @@ def test_a_retired_skill_is_refused_and_says_retirement_was_a_decision() -> None
     assert not lifecycle.configurable
 
 
-def test_an_unapproved_private_skill_quotes_E12() -> None:
+def test_an_unapproved_private_skill_quotes_gate_e12() -> None:
     """PLAN §39: *"Skills cannot self-publish."* The schema refuses it; this is the sentence."""
     verdict = gates.evaluate(
         catalogue_skill(tenant_id=TENANT, catalogue_id=None, status="ready_to_publish"),

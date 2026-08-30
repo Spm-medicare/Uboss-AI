@@ -31,9 +31,9 @@ from uboss.modules.agents.agent_models import (
     AgentStatus,
     AgentTest,
     AgentVersion,
-    Situation,
     SandboxTestKind,
     SandboxTestStatus,
+    Situation,
 )
 from uboss.modules.agents.agent_schemas import (
     AgentCreate,

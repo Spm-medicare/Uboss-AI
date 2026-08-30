@@ -79,7 +79,9 @@ async def test_nothing_is_visible_without_a_bound_tenant(
 
     for table in tables:
         count = (
-            await app_session.execute(text(f"SELECT count(*) FROM {table}"))
+            #  S608: `table` comes from this test's own list of tenant-owned tables, and an
+            #  identifier cannot be bound. There is no caller input anywhere near this.
+            await app_session.execute(text(f"SELECT count(*) FROM {table}"))  # noqa: S608
         ).scalar_one()
         assert count == 0, f"{table} returned {count} rows with no tenant bound"
 
@@ -250,7 +252,7 @@ async def test_the_isolation_checks_would_actually_catch_a_broken_policy(
     The restore is in a `finally`. A test that leaves security disabled after an unrelated
     failure would make every later test pass for the wrong reason too.
     """
-    left, _right = two_workspaces
+    _left, _right = two_workspaces
 
     async def rows_visible_with_no_tenant_bound() -> int:
         async with build_sessionmaker(app_engine)() as session:

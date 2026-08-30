@@ -32,7 +32,7 @@ from uboss.modules.jobs.schemas import (
     JobUpdate,
 )
 from uboss.modules.objectives import service as objectives
-from uboss.modules.objectives.schemas import ObjectiveCreate, ObjectiveUpdate
+from uboss.modules.objectives.schemas import ObjectiveCreate
 
 pytestmark = pytest.mark.anyio
 
@@ -471,7 +471,9 @@ async def test_a_tool_with_no_permission_is_refused(
     left, _ = two_workspaces
     async with build_sessionmaker(app_engine)() as session:
         context = await _context(session, left)
-        job = await service.create(session, context, JobCreate(name="Quotations"))
+        #  Created so the refusal below is shown against a real draft rather than nothing. The
+        #  object itself is not what is under test — the schema refuses before it is reached.
+        await service.create(session, context, JobCreate(name="Quotations"))
         await session.flush()
 
         with pytest.raises(ValidationError):

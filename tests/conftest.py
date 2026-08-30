@@ -22,12 +22,11 @@ from dataclasses import dataclass
 
 import pytest
 import pytest_asyncio
+from pydantic import SecretStr
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
 from uboss.core.runtime import configure_event_loop
-from pydantic import SecretStr
-
 from uboss.core.settings import Settings
 from uboss.db.base import build_sessionmaker
 
@@ -62,6 +61,11 @@ def _owner_test_url() -> str:
 
 def _app_test_url() -> str:
     return _swap_database(os.environ["UBOSS_DATABASE_URL"], TEST_DATABASE)
+
+
+#: The backend package, from this file's own location. Computed at import rather than inside the
+#: fixture that needs it: it is a constant, and filesystem work does not belong in an event loop.
+BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/backend"
 
 
 @pytest.fixture(scope="session")
@@ -110,9 +114,8 @@ async def database() -> AsyncIterator[None]:
         await connection.execute(text("CREATE EXTENSION IF NOT EXISTS btree_gist"))
     await owner.dispose()
 
-    backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/backend"
-    config = Config(backend + "/alembic.ini")
-    config.set_main_option("script_location", backend + "/migrations")
+    config = Config(f"{BACKEND}/alembic.ini")
+    config.set_main_option("script_location", f"{BACKEND}/migrations")
 
     previous = os.environ.get("UBOSS_MIGRATION_DATABASE_URL")
     os.environ["UBOSS_MIGRATION_DATABASE_URL"] = _owner_test_url()
@@ -386,7 +389,9 @@ async def two_workspaces(
                 "memberships",
             ):
                 await session.execute(
-                    text(f"DELETE FROM {table} WHERE tenant_id = :t"),
+                    #  S608: `table` comes from the literal tuple above, and an identifier
+                    #  cannot be a bind parameter in Postgres. The tenant id is bound.
+                    text(f"DELETE FROM {table} WHERE tenant_id = :t"),  # noqa: S608
                     {"t": workspace.tenant_id},
                 )
             await session.execute(

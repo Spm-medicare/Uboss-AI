@@ -649,11 +649,22 @@ the error envelope is published.
 
 20 tests, 267 total.
 
-**Worth raising: the test suite is not linted.** CI runs `ruff check .` with `working-directory:
-backend`, and `tests/` sits at the repository root — so no test file has ever been linted. Running
-ruff over it today reports 21 findings across the existing suite. Left alone rather than fixed
-mid-gate, because it touches files from every previous step and the clean-up is a decision worth
-taking deliberately.
+**The test suite was not linted — now it is.** CI ran `ruff check .` with `working-directory:
+backend`, and `tests/` sits at the repository root, so no test file had ever been linted through
+twenty-two migrations. Twenty-one findings had accumulated. The CI step is now
+`ruff check . ../tests`, and each finding was judged rather than blanket-silenced:
+
+- **Two async functions were doing filesystem work inside the event loop** (`ASYNC240`). Both were
+  moved rather than suppressed — the migrations' docstring check now reads its twenty-two files
+  from a plain synchronous helper, and the backend path is computed once at import.
+- **Three `S608` and one `S106`** are false positives on a test's own literal table list and on a
+  column called `pass_evidence`. Each carries a `# noqa` **with the reason written next to it**,
+  because a bare suppression is indistinguishable from a real one somebody stopped reading.
+- The rest — unused imports, two long lines, two discarded unpack targets, one uppercase test
+  name — were fixed outright.
+
+A gate that covers only half the Python is a gate that teaches people the other half does not
+matter.
 
 **5.5 — done.** `/agent-builder` and `/agent-builder/[id]`, on the same frame as the Objective and
 Job Builders — same section rail, same save states, same sticky footer, same autosave rules. §6

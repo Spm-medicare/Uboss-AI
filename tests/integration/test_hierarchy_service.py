@@ -22,7 +22,6 @@ from tests.conftest import Workspace
 from uboss.core.context import SecurityContext
 from uboss.core.errors import Conflict, PermissionDenied, ValidationFailed
 from uboss.db.base import build_sessionmaker
-from uboss.modules.audit.models import AuditEvent
 from uboss.modules.hierarchy import service
 from uboss.modules.hierarchy.models import UnitType
 from uboss.modules.hierarchy.schemas import (

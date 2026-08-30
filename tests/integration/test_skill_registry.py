@@ -14,7 +14,6 @@ nothing about the thing it is named after.
 from __future__ import annotations
 
 import uuid
-from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -26,7 +25,6 @@ from tests.conftest import Workspace
 from uboss.db.base import build_sessionmaker
 from uboss.modules.agents.models import (
     Skill,
-    SkillArchetype,
     SkillExactnessGate,
     SkillRule,
 )
