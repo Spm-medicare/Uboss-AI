@@ -51,6 +51,7 @@ export function BuilderLayout({
   activeSection,
   onSelectSection,
   aside,
+  asideOpen = true,
   footer,
   children,
 }: {
@@ -64,6 +65,8 @@ export function BuilderLayout({
   activeSection: string;
   onSelectSection: (id: string) => void;
   aside?: ReactNode;
+  /** False once somebody has put the guidance panel away. */
+  asideOpen?: boolean;
   footer: ReactNode;
   children: ReactNode;
 }) {
@@ -146,13 +149,16 @@ export function BuilderLayout({
               Wider than a reading column, because the forms are workbook sheets and Form 3's
               table has sixteen columns. 48rem forced a nine-column table to scroll on a monitor
               with room for it. Prose inside a section still sets its own `max-w-prose`. */}
-          <div className="max-w-6xl overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             {children}
           </div>
         </div>
 
-        {aside ? (
-          <aside className="hidden w-72 shrink-0 xl:block">
+        {/*  Closable, because it is guidance rather than form. Somebody who has read it once
+            wants the width back, and a panel that cannot be put away is one people learn to
+            ignore instead. Reopened from the button that takes its place. */}
+        {aside && asideOpen ? (
+          <aside className="hidden w-[19rem] shrink-0 xl:block">
             <div className="sticky top-[calc(var(--ub-topbar-height)+1.5rem)] space-y-4">
               {aside}
             </div>

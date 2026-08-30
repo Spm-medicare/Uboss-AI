@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {CheckCircle2, Save, Send, Undo2} from "lucide-react";
+import {CheckCircle2, Lightbulb, Save, Send, Undo2, X} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useRef } from "react";
@@ -136,6 +136,8 @@ function Editor({
   const format = contextFor(user?.timezone);
 
   const [draft, setDraft] = useState<Job>(initial);
+  //  Guidance starts open and can be put away — a sixteen-column table wants the width.
+  const [guidanceOpen, setGuidanceOpen] = useState(true);
   const [active, setActive] = useState<SectionId>("identity");
   const editable = draft.is_editable;
 
@@ -264,7 +266,8 @@ function Editor({
       sections={sections}
       activeSection={active}
       onSelectSection={goTo}
-      aside={<Guidance draft={draft} />}
+      asideOpen={guidanceOpen}
+      aside={<Guidance draft={draft} onClose={() => setGuidanceOpen(false)} />}
       footer={
         <>
           <Button
@@ -283,13 +286,22 @@ function Editor({
           >
             {t("reviewAndPublish")}
           </Button>
-          <Button
-            variant="ghost"
-            className="ml-auto"
-            onClick={() => router.push("/job-builder")}
-          >
-            {tCommon("close")}
-          </Button>
+          {/*  On the right of the footer, the one strip that never scrolls away. */}
+          <span className="ml-auto flex items-center gap-2">
+            {!guidanceOpen ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<Lightbulb className="size-3.5" />}
+                onClick={() => setGuidanceOpen(true)}
+              >
+                {t("guidanceTitle")}
+              </Button>
+            ) : null}
+            <Button variant="ghost" onClick={() => router.push("/job-builder")}>
+              {tCommon("close")}
+            </Button>
+          </span>
         </>
       }
     >
@@ -628,8 +640,9 @@ function StatusPill({ status }: { status: Job["status"] }) {
 }
 
 /** The right column. Every line derived from the form — no percentages, no invented figures. */
-function Guidance({ draft }: { draft: Job }) {
+function Guidance({ draft, onClose }: { draft: Job; onClose: () => void }) {
   const t = useTranslations("job");
+  const tCommonAside = useTranslations("common");
   const exposed = draft.inputs.filter((item) => (item.ai_access ?? "none") !== "none").length;
   const unguarded = draft.steps.filter(
     (step) =>
@@ -646,9 +659,23 @@ function Guidance({ draft }: { draft: Job }) {
   ].filter(Boolean) as string[];
 
   return (
-    <Card>
+    //  The same shape as the Objective Builder's panel — a named, closable fixture rather than a
+    //  paragraph that happens to sit on the right. Two builders drawing it differently is two
+    //  panels people learn separately.
+    <Card className="overflow-hidden border-primary/25 shadow-sm">
+      <div className="flex items-center gap-2 border-b border-primary/20 bg-primary/[0.06] px-3 py-2">
+        <Lightbulb aria-hidden className="size-4 shrink-0 text-primary" />
+        <p className="min-w-0 flex-1 text-sm font-semibold">{t("guidanceTitle")}</p>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={tCommonAside("close")}
+          className="-mr-1 grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground motion-reduce:transition-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ub-focus)]"
+        >
+          <X aria-hidden className="size-3.5" />
+        </button>
+      </div>
       <CardBody className="space-y-3">
-        <p className="text-sm font-semibold">{t("guidanceTitle")}</p>
         <p className="text-sm text-muted-foreground">{t("guidanceBody")}</p>
 
         {todo.length > 0 ? (

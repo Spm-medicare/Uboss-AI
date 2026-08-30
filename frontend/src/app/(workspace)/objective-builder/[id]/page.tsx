@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import {Lightbulb, Save, Send, Sparkles} from "lucide-react";
+import {Lightbulb, Save, Send, Sparkles, X} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useRef } from "react";
@@ -136,6 +136,9 @@ function Editor({
   //  The output drawer. Opened by a run and by the pinned panel's toggle, so it belongs to the
   //  screen rather than to whichever component happens to own the run.
   const [outputOpen, setOutputOpen] = useState(false);
+  //  The guidance panel starts open and can be put away. Somebody who has read it once wants the
+  //  width back for a sixteen-column table.
+  const [guidanceOpen, setGuidanceOpen] = useState(true);
   const editable = draft.is_editable;
 
   //  The version the server last confirmed, held in a ref rather than read off the queued draft.
@@ -271,13 +274,13 @@ function Editor({
       sections={sections}
       activeSection={active}
       onSelectSection={goTo}
+      asideOpen={guidanceOpen}
       aside={
         <Guidance
           steps={steps.length}
           hasResult={Boolean(draft.expected_result)}
           hasApprover={Boolean(draft.approver_membership_id)}
-          outputOpen={outputOpen}
-          onToggleOutput={() => setOutputOpen(!outputOpen)}
+          onClose={() => setGuidanceOpen(false)}
         />
       }
       footer={
@@ -309,9 +312,30 @@ function Editor({
           {steps.length === 0 ? (
             <span className="text-xs text-muted-foreground">{t("analyseNeedsSteps")}</span>
           ) : null}
-          <Button variant="ghost" className="ml-auto" onClick={() => router.push("/objective-builder")}>
-            {tCommon("close")}
-          </Button>
+          {/*  On the right of the footer, which is the one strip that never scrolls away. The
+              toggle used to sit in the guidance panel's header, where it fought the title for
+              the width and truncated it — and where it disappeared entirely once that panel
+              could be closed. */}
+          <span className="ml-auto flex items-center gap-2">
+            <OutputToggle
+              tone="plain"
+              open={outputOpen}
+              onToggle={() => setOutputOpen(!outputOpen)}
+            />
+            {!guidanceOpen ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<Lightbulb className="size-3.5" />}
+                onClick={() => setGuidanceOpen(true)}
+              >
+                {t("guidanceTitle")}
+              </Button>
+            ) : null}
+            <Button variant="ghost" onClick={() => router.push("/objective-builder")}>
+              {tCommon("close")}
+            </Button>
+          </span>
         </>
       }
     >
@@ -737,16 +761,15 @@ function Guidance({
   steps,
   hasResult,
   hasApprover,
-  outputOpen,
-  onToggleOutput,
+  onClose,
 }: {
   steps: number;
   hasResult: boolean;
   hasApprover: boolean;
-  outputOpen: boolean;
-  onToggleOutput: () => void;
+  onClose: () => void;
 }) {
   const t = useTranslations("objective");
+  const tCommonAside = useTranslations("common");
   const todo = [
     !hasResult ? t("todoResult") : null,
     steps === 0 ? t("todoSteps") : null,
@@ -759,11 +782,17 @@ function Guidance({
           scroll past it, so it reads as a fixture of the screen — and a fixture needs a name. */}
       <div className="flex items-center gap-2 border-b border-primary/20 bg-primary/[0.06] px-3 py-2">
         <Lightbulb aria-hidden className="size-4 shrink-0 text-primary" />
-        <p className="min-w-0 flex-1 truncate text-sm font-semibold">{t("guidanceTitle")}</p>
-        {/*  The drawer's toggle, top right of the one panel that stays put. Reachable from any
-            scroll position, which is the point — the alternative was scrolling to section nine
-            to look at what section nine produced. */}
-        <OutputToggle tone="plain" open={outputOpen} onToggle={onToggleOutput} />
+        {/*  Not truncated. The title and a button on one line left "Before you analy…", which is
+            a heading that has stopped being one. The button is a close, and it is small. */}
+        <p className="min-w-0 flex-1 text-sm font-semibold">{t("guidanceTitle")}</p>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={tCommonAside("close")}
+          className="-mr-1 grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground motion-reduce:transition-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ub-focus)]"
+        >
+          <X aria-hidden className="size-3.5" />
+        </button>
       </div>
       <CardBody className="space-y-3">
         <p className="text-sm leading-relaxed text-muted-foreground">{t("guidanceBody")}</p>

@@ -72,7 +72,10 @@ export function SheetSteps<Row>({
   const t = useTranslations("builder");
 
   const set = (index: number, next: Row) =>
-    onChange(rows.map((row, at) => (at === index ? next : row)));
+    //  Editing the ghost row creates it. Anything else replaces the row in place.
+    onChange(
+      rows.length === 0 ? [next] : rows.map((row, at) => (at === index ? next : row)),
+    );
 
   const add = () => onChange([...rows, blank(rows.length + 1)]);
 
@@ -87,18 +90,24 @@ export function SheetSteps<Row>({
     onChange(next);
   };
 
-  if (rows.length === 0) {
+  //  **Step 1 is always on screen.**
+  //
+  //  An empty section used to be a sentence and an Add button, so the first thing anybody did on
+  //  every form was press a button to make the thing they came to fill in appear. Now the table
+  //  draws row 1 whether or not it exists yet — the same blank row a spreadsheet gives you.
+  //
+  //  Nothing is created until somebody types. `rows` is still empty in state and in the payload;
+  //  the first edit to the ghost row is what calls `onChange` with a real row. A form that saved
+  //  an empty step on load would put a step nobody wrote into the plan the analysis reads.
+  const ghost = rows.length === 0 && !disabled;
+  const shown: readonly Row[] = ghost ? [blank(1)] : rows;
+
+  if (rows.length === 0 && disabled) {
     return (
-      //  No dashed box. The section card is already the frame, and drawing a second one inside
-      //  it put a card in a card with the button adrift underneath — which is what made an
-      //  empty section look like two loose things rather than one.
-      <div className="grid justify-items-center gap-4 px-5 py-10 text-center">
-        <p className="max-w-md text-sm leading-relaxed text-muted-foreground">{emptyLabel}</p>
-        {!disabled ? (
-          <Button variant="secondary" icon={<Plus className="size-3.5" />} onClick={add}>
-            {addLabel}
-          </Button>
-        ) : null}
+      <div className="px-5 py-10 text-center">
+        <p className="mx-auto max-w-md text-sm leading-relaxed text-muted-foreground">
+          {emptyLabel}
+        </p>
       </div>
     );
   }
@@ -112,7 +121,7 @@ export function SheetSteps<Row>({
           caption={caption}
           columns={[t("stepColumn"), ...columns.map((column) => column.label), null]}
         >
-          {rows.map((row, index) => (
+          {shown.map((row, index) => (
             <SheetRow key={index} number={index + 1} tone={tone}>
               {columns.map((column) => (
                 <SheetCellBox key={column.label} width={column.width ?? "normal"}>
@@ -122,7 +131,7 @@ export function SheetSteps<Row>({
               <SheetCellBox width="narrow">
                 <RowControls
                   index={index}
-                  total={rows.length}
+                  total={shown.length}
                   disabled={disabled}
                   onMove={(by) => move(index, by)}
                   onRemove={() => remove(index)}
@@ -144,7 +153,7 @@ export function SheetSteps<Row>({
       {/*  ── the same steps, stacked, on a phone ───────────────────────────── */}
       <div className="space-y-3 p-4 md:hidden">
         <ol className="space-y-3">
-          {rows.map((row, index) => (
+          {shown.map((row, index) => (
             <li key={index} className="rounded-lg border border-border bg-card p-3">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
@@ -152,7 +161,7 @@ export function SheetSteps<Row>({
                 </span>
                 <RowControls
                   index={index}
-                  total={rows.length}
+                  total={shown.length}
                   disabled={disabled}
                   onMove={(by) => move(index, by)}
                   onRemove={() => remove(index)}
@@ -288,15 +297,27 @@ export function CellInput({
       disabled={disabled}
       placeholder={placeholder}
       onChange={(event) => onChange(event.target.value)}
-      className={cn(
-        controlClass,
-        "h-9 border-transparent bg-transparent px-2 py-1.5",
-        "focus-visible:-outline-offset-1 focus-visible:bg-card",
-        "disabled:opacity-100 disabled:text-muted-foreground",
-      )}
+      className={cn(cellClass)}
     />
   );
 }
+
+/**
+ * How every cell in the sheet is drawn.
+ *
+ * A visible border, always. The first version drew cells borderless and only showed an outline on
+ * focus, on the reasoning that the table already has a grid — but the result was a row of blank
+ * space where somebody had to click to find out whether a cell was even editable. On a form
+ * people fill in from a paper sheet, a box that looks like a box is the whole affordance.
+ */
+const cellClass = cn(
+  controlClass,
+  "h-9 px-2 py-1.5",
+  "focus-visible:-outline-offset-1",
+  //  A read-only cell keeps its text at full contrast: it is a value somebody has to read, not a
+  //  control they are being told they cannot use.
+  "disabled:opacity-100 disabled:bg-muted/50 disabled:text-foreground",
+);
 
 /**
  * A cell that suggests without constraining.
@@ -332,12 +353,7 @@ export function CellSuggest({
         aria-label={label}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className={cn(
-          controlClass,
-          "h-9 border-transparent bg-transparent px-2 py-1.5",
-          "focus-visible:-outline-offset-1 focus-visible:bg-card",
-          "disabled:opacity-100 disabled:text-muted-foreground",
-        )}
+        className={cn(cellClass)}
       />
       {options.length > 0 ? (
         <datalist id={listId}>
@@ -372,12 +388,7 @@ export function CellSelect({
       aria-label={label}
       disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
-      className={cn(
-        controlClass,
-        "h-9 border-transparent bg-transparent px-2 py-1.5",
-        "focus-visible:-outline-offset-1 focus-visible:bg-card",
-        "disabled:opacity-100 disabled:text-muted-foreground",
-      )}
+      className={cn(cellClass)}
     >
       <option value="">{placeholder}</option>
       {options.map((option) => (
