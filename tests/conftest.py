@@ -286,6 +286,12 @@ async def two_workspaces(
         await session.execute(
             text("ALTER TABLE org_revisions DISABLE TRIGGER org_revisions_append_only")
         )
+        await session.execute(
+            text(
+                "ALTER TABLE objective_versions "
+                "DISABLE TRIGGER objective_versions_append_only"
+            )
+        )
         for workspace in (left, right):
             await session.execute(
                 text("SELECT set_config('app.tenant_id', :t, true)"),
@@ -295,6 +301,11 @@ async def two_workspaces(
             #  forgotten here shows up immediately as a foreign-key violation on the tenant
             #  delete — noisy, and better than a suite that leaks an organisation per run.
             for table in (
+                #  Objectives before the hierarchy: a published version is RESTRICT against its
+                #  objective, so the version has to go first, and the append-only trigger on it
+                #  is lifted alongside the other two below.
+                "objective_versions",
+                "objective_current_steps",
                 #  The hierarchy, deepest first. `org_revisions` is append-only like
                 #  `audit_events`, so its trigger is lifted alongside that one below.
                 "org_revisions",
@@ -318,6 +329,11 @@ async def two_workspaces(
                     text(f"DELETE FROM {table} WHERE tenant_id = :t"),
                     {"t": workspace.tenant_id},
                 )
+            await session.execute(
+                text("DELETE FROM objectives WHERE tenant_id = :t"),
+                {"t": workspace.tenant_id},
+            )
+
             #  `org_units` is a tree whose parent key is RESTRICT, so it empties from the
             #  leaves upward — one statement per level. A test tree is never deep, and the
             #  alternative (CASCADE) would mean deleting a division silently took its
@@ -342,6 +358,11 @@ async def two_workspaces(
         )
         await session.execute(
             text("ALTER TABLE org_revisions ENABLE TRIGGER org_revisions_append_only")
+        )
+        await session.execute(
+            text(
+                "ALTER TABLE objective_versions ENABLE TRIGGER objective_versions_append_only"
+            )
         )
         await session.commit()
 
