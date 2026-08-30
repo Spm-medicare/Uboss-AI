@@ -295,7 +295,8 @@
       "time": "Time",
       "constraints": "Constraints",
       "governance": "Governance",
-      "ai": "AI preferences"
+      "ai": "AI preferences",
+      "plan": "Proposed plan"
     },
     "status": {
       "draft": "Draft",
@@ -392,7 +393,6 @@
     "humanCheckpoints": "Human checkpoints",
     "saveDraft": "Save draft",
     "analyse": "Analyse",
-    "analyseComingSoon": "Analysis arrives with the next step of the build.",
     "guidanceTitle": "Before you analyse",
     "guidanceBody": "The analysis reads the steps you describe. The more exactly they match how the work really happens, the better the plan it proposes.",
     "stillNeeded": "Still needed",
@@ -407,6 +407,58 @@
     "notSavedTitle": "That did not save",
     "notSavedBody": "Nothing you typed has been lost — it will be sent again on your next edit, or press Save draft.",
     "readOnlyTitle": "This objective cannot be edited",
-    "readOnlyBody": "It is {status}."
+    "readOnlyBody": "It is {status}.",
+    "planHelp": "What UBOSS suggests doing instead, built from the steps you described. Everything here is editable.",
+    "analyseNeedsSteps": "Describe at least one step of the current process first."
+  },
+  "plan": {
+    "timelineTitle": "What happened",
+    "ranOn": "{model} · {tokens} tokens",
+    "notStarted": "Not started",
+    "modelNote": "A note from the analysis",
+    "stage": {
+      "validate": "Checked what you entered",
+      "context": "Gathered the context",
+      "workstreams": "Looked at the problems you recorded",
+      "propose": "Proposed a plan",
+      "policy": "Applied this objective’s policy",
+      "review": "Ready for your review"
+    },
+    "kind": {
+      "human": "Person",
+      "ai_agent": "Agent",
+      "hybrid": "Agent + person",
+      "approval": "Approval",
+      "output": "Output"
+    },
+    "kindLabel": "Who does it",
+    "title": "What happens",
+    "detail": "Detail",
+    "responsibleRole": "Responsible role",
+    "whyProposed": "Why this was proposed",
+    "note": "Note",
+    "aiEdited": "You changed this",
+    "yours": "Yours",
+    "waitsFor": "After {steps}",
+    "replacesStep": "Replaces current step {step}",
+    "dependsOnLabel": "Waits for",
+    "nothingToWaitFor": "There is nothing else in the plan yet.",
+    "duplicate": "Duplicate",
+    "mergeInto": "Merge into…",
+    "remove": "Remove",
+    "moveUp": "Move step {step} up",
+    "moveDown": "Move step {step} down",
+    "addStep": "Add a step",
+    "newStepTitle": "New step",
+    "analyse": "Analyse",
+    "analyseAgain": "Analyse again",
+    "rerunReplaces": "Analysing again replaces the whole plan.",
+    "emptyTitle": "No plan yet",
+    "emptyBody": "UBOSS reads the steps you described and proposes what a person should keep and what an agent can take on. Nothing is published — you edit it afterwards.",
+    "emptiedTitle": "The plan is empty",
+    "emptiedBody": "Every step has been removed. Add one, or analyse again to start from a fresh proposal.",
+    "proposedCount": "{count, plural, one {# proposed by UBOSS} other {# proposed by UBOSS}}",
+    "editedCount": "{count, plural, one {# you changed} other {# you changed}}",
+    "yoursCount": "{count, plural, one {# you added} other {# you added}}"
   }
 }

@@ -72,6 +72,16 @@ export type AiAssistance = Schemas["AiAssistance"];
 export type WorkbookLists = Schemas["WorkbookLists"];
 export type PersonRef = Schemas["PersonRef"];
 
+//  The analysis and the execution graph — PLAN §7.
+export type PlanRead = Schemas["PlanRead"];
+export type StepRead = Schemas["StepRead"];
+export type StepKind = Schemas["StepKind"];
+export type StepSource = Schemas["StepSource"];
+export type AnalysisRead = Schemas["AnalysisRead"];
+export type StageRead = Schemas["StageRead"];
+export type Stage = Schemas["Stage"];
+export type StageState = Schemas["StageState"];
+
 /** The shape of every failure, from `ErrorEnvelope` — PLAN §28. */
 export type ErrorEnvelope = Schemas["ErrorEnvelope"];
 export type FieldError = Schemas["FieldError"];

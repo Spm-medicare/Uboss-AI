@@ -34,6 +34,7 @@ import {
   BuilderSectionCard,
   type BuilderSection,
 } from "@/ui/builder/builder-layout";
+import { PlanSection } from "@/ui/builder/plan-section";
 import { StepCard } from "@/ui/builder/step-card";
 import { Suggest } from "@/ui/builder/suggest";
 import { AppShell } from "@/ui/shell/app-shell";
@@ -106,7 +107,8 @@ type SectionId =
   | "time"
   | "constraints"
   | "governance"
-  | "ai";
+  | "ai"
+  | "plan";
 
 function Editor({
   initial,
@@ -220,6 +222,7 @@ function Editor({
         complete: Boolean(draft.approver_membership_id),
       },
       { id: "ai", label: t("sections.ai"), complete: true },
+      { id: "plan", label: t("sections.plan") },
     ],
     [draft, steps.length, t],
   );
@@ -265,18 +268,18 @@ function Editor({
           >
             {t("saveDraft")}
           </Button>
-          {/*  Analyse is 3.2. Shown disabled and labelled rather than hidden: a person needs to
-              know the step exists and what unlocks it. `CLAUDE.md` — never show a control that
-              does not do what it says. */}
           <Button
             variant="primary"
             icon={<Sparkles className="size-4" />}
-            disabled
-            title={t("analyseComingSoon")}
+            disabled={!editable || steps.length === 0}
+            title={steps.length === 0 ? t("analyseNeedsSteps") : undefined}
+            onClick={() => goTo("plan")}
           >
             {t("analyse")}
           </Button>
-          <span className="text-xs text-muted-foreground">{t("analyseComingSoon")}</span>
+          {steps.length === 0 ? (
+            <span className="text-xs text-muted-foreground">{t("analyseNeedsSteps")}</span>
+          ) : null}
           <Button variant="ghost" className="ml-auto" onClick={() => router.push("/objective-builder")}>
             {tCommon("close")}
           </Button>
@@ -624,7 +627,7 @@ function Editor({
         ) : null}
       </BuilderSectionCard>
 
-      {/*  ── 8. AI preferences ───────────────────────────────────────────────────── */}
+      {/*  ── 9. The proposed plan ────────────────────────────────────────────────── */}
       <BuilderSectionCard
         id="ai"
         accent="ai"
@@ -644,6 +647,22 @@ function Editor({
           value={draft.human_checkpoints}
           disabled={!editable}
           onChange={(value) => edit({ human_checkpoints: value })}
+        />
+      </BuilderSectionCard>
+
+      {/*  ── 9. The plan the analysis proposed ───────────────────────────────────── */}
+      <BuilderSectionCard
+        id="plan"
+        accent="ai"
+        title={t("sections.plan")}
+        description={t("planHelp")}
+      >
+        <PlanSection
+          objectiveId={draft.id}
+          objectiveVersion={draft.version}
+          editable={editable}
+          timeZone={user?.timezone}
+          onReloadObjective={onReload}
         />
       </BuilderSectionCard>
     </BuilderLayout>
