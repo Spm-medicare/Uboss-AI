@@ -274,6 +274,13 @@ function Editor({
       sections={sections}
       activeSection={active}
       onSelectSection={goTo}
+      headerAction={
+        <OutputToggle
+          tone="plain"
+          open={outputOpen}
+          onToggle={() => setOutputOpen(!outputOpen)}
+        />
+      }
       asideOpen={guidanceOpen}
       aside={
         <Guidance
@@ -312,16 +319,7 @@ function Editor({
           {steps.length === 0 ? (
             <span className="text-xs text-muted-foreground">{t("analyseNeedsSteps")}</span>
           ) : null}
-          {/*  On the right of the footer, which is the one strip that never scrolls away. The
-              toggle used to sit in the guidance panel's header, where it fought the title for
-              the width and truncated it — and where it disappeared entirely once that panel
-              could be closed. */}
           <span className="ml-auto flex items-center gap-2">
-            <OutputToggle
-              tone="plain"
-              open={outputOpen}
-              onToggle={() => setOutputOpen(!outputOpen)}
-            />
             {!guidanceOpen ? (
               <Button
                 variant="ghost"

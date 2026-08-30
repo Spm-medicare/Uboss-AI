@@ -49,7 +49,9 @@ export default function AgentBuilderPage() {
         ) : undefined
       }
     >
-      <div className="mx-auto max-w-5xl space-y-6">
+      {/*  Wider than a reading column: the intro paragraph sets its own `max-w-prose`,
+          and a grid of cards should use the width the window actually has. */}
+      <div className="mx-auto max-w-7xl space-y-6">
         <PageHeader title={t("agents")} description={t("intro")} />
 
         <QueryStates
@@ -97,7 +99,11 @@ export default function AgentBuilderPage() {
                   </button>
                 </Alert>
               ) : (
-                <ul className="grid gap-3 sm:grid-cols-2">
+                <ul className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(21rem,1fr))]">
+                  {/*  Auto-fill on a minimum column width, not a fixed two: `sm:grid-cols-2`
+                      gave every list exactly two columns whatever the window, so one card sat in
+                      the left half with the right half empty and eight cards on a wide monitor
+                      left a third of the screen unused. A floor keeps a card readable. */}
                   {(agents.data?.agents ?? []).map((card) => (
                     <AgentTile key={card.id} card={card} />
                   ))}

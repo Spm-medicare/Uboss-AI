@@ -52,6 +52,7 @@ export function BuilderLayout({
   onSelectSection,
   aside,
   asideOpen = true,
+  headerAction,
   footer,
   children,
 }: {
@@ -67,6 +68,14 @@ export function BuilderLayout({
   aside?: ReactNode;
   /** False once somebody has put the guidance panel away. */
   asideOpen?: boolean;
+  /**
+   * A control at the right of the header — the output toggle.
+   *
+   * Up here rather than in the footer because it belongs to the screen rather than to the form's
+   * actions: "show me what that produced" is not a step in filling the form in, and putting it
+   * beside Save and Publish read as though it were.
+   */
+  headerAction?: ReactNode;
   footer: ReactNode;
   children: ReactNode;
 }) {
@@ -74,24 +83,36 @@ export function BuilderLayout({
 
   return (
     <div className="flex min-h-full flex-col">
-      {/*  The header sits above the columns, not inside them, so the title and save state stay
-          put while the form scrolls. */}
-      <header className="border-b border-border pb-5">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      {/*  **One line.**
+
+          It was three: the form's name, then the title and status, then the owner and version.
+          Three lines of chrome above every Builder, none of which anybody reads twice, pushing
+          the form itself down the screen. On one line the same facts read left to right in the
+          order somebody wants them — which form, which draft, whose, which version — and the
+          right-hand end holds the two things that change while you work: the save state and the
+          output toggle.
+
+          It wraps rather than truncating. On a narrow window the parts fall onto a second line,
+          which is what should happen to a line of facts; the alternative is an ellipsis over the
+          agent's name.
+
+          The header sits above the columns, not inside them, so it stays put while the form
+          scrolls. */}
+      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 border-b border-border pb-4">
+        <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {eyebrow}
         </p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
-          {status}
-          <span className="ml-auto">
-            <SaveStateBadge state={saveState} />
-          </span>
-        </div>
+        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+        {status}
         {meta ? (
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-muted-foreground">
             {meta}
           </div>
         ) : null}
+        <span className="ml-auto flex items-center gap-3 self-center">
+          <SaveStateBadge state={saveState} />
+          {headerAction}
+        </span>
       </header>
 
       <div className="flex min-h-0 flex-1 gap-8 pt-6">
