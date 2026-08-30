@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import datetime, time
 from typing import Any
 
 from sqlalchemy import (
@@ -26,6 +26,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Time,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -409,5 +410,95 @@ class JobVersion(Base, PrimaryKey, TenantOwned):
             ondelete="RESTRICT",
         ),
         UniqueConstraint("tenant_id", "job_id", "version_no", name="uq_job_versions_no"),
+        #: The target a pinned schedule points at — see migration 0017.
+        UniqueConstraint("tenant_id", "id", name="uq_job_versions_tenant_id"),
         Index("ix_job_versions_job", "tenant_id", "job_id", "version_no"),
+    )
+
+
+class JobSchedule(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion):
+    """When a job runs by itself — PLAN §8's auto-run and every question it says to ask.
+
+    One per job. §8 asks a job *whether* it auto-runs, not how many ways: several schedules on one
+    job would each claim the same `last_run_at`, and their missed-run policies would fight over
+    what to catch up.
+    """
+
+    __tablename__ = "job_schedules"
+
+    job_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    #: §8's "Auto-run Yes/No". False means the schedule is described and nothing fires — the only
+    #: honest way to save a half-built schedule without it going off.
+    auto_run: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+
+    #: IANA, never an offset. `+05:30` stops being true the moment a government changes its mind.
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False)
+    frequency: Mapped[str] = mapped_column(String(20), nullable=False)
+    interval: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    #: A local time of day, not a timestamp: "nine in the morning where the team is", on both
+    #: sides of a clock change.
+    at_time: Mapped[time] = mapped_column(Time, nullable=False)
+    weekdays: Mapped[list[int]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    monthday: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    dst_policy: Mapped[str] = mapped_column(String(10), nullable=False, server_default="shift")
+    ambiguous_policy: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default="first"
+    )
+
+    #: §8's calendar. A list of dates rather than a country code — every company's shutdown days
+    #: differ from every other's.
+    skip_dates: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    weekdays_only: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
+    )
+
+    overlap_policy: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default="skip"
+    )
+    missed_run_policy: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default="skip"
+    )
+    max_concurrent: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+
+    #: Null means "whatever is published now". Pinned means this exact version runs until
+    #: somebody moves it — right for anything regulated.
+    pinned_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=True
+    )
+    requires_approval_per_run: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
+    )
+
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: Shown, so a schedule that has quietly stopped working is visible rather than merely silent.
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_membership_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=True
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "job_id"],
+            ["jobs.tenant_id", "jobs.id"],
+            name="fk_job_schedules_tenant_job",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "pinned_version_id"],
+            ["job_versions.tenant_id", "job_versions.id"],
+            name="fk_job_schedules_tenant_version",
+            #: RESTRICT: a pinned version must not disappear from under a running schedule.
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint("tenant_id", "job_id", name="uq_job_schedules_one_per_job"),
+        CheckConstraint(
+            "frequency <> 'monthly' OR monthday IS NOT NULL",
+            name="ck_schedules_monthly_has_a_day",
+        ),
+        CheckConstraint(
+            "max_concurrent >= 1 AND max_concurrent <= 100",
+            name="ck_schedules_concurrency_sane",
+        ),
     )

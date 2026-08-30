@@ -705,6 +705,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/{job_id}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A job's schedule
+         * @description Null when there is none — a job that does not run by itself, which is most of them.
+         */
+        get: operations["read_api_v1_jobs__job_id__schedule_get"];
+        /**
+         * Set the schedule
+         * @description Create or replace it. The recurrence is validated before anything is written.
+         */
+        put: operations["set_schedule_api_v1_jobs__job_id__schedule_put"];
+        post?: never;
+        /**
+         * Stop running by itself
+         * @description The job stays; it simply no longer runs on its own.
+         */
+        delete: operations["remove_api_v1_jobs__job_id__schedule_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}/schedule/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * When this would actually run
+         * @description PLAN §8's recurrence preview.
+         *
+         *     Nobody can read `interval=2, weekdays=[1,3], dst=shift` and know when it fires. Ten instants
+         *     can be checked at a glance — and they come from the same function the runtime will use, so
+         *     what somebody approves is what happens.
+         */
+        get: operations["preview_api_v1_jobs__job_id__schedule_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/objectives": {
         parameters: {
             query?: never;
@@ -1179,6 +1231,12 @@ export interface components {
          * @enum {string}
          */
         AiAssistance: "none" | "propose_only" | "propose_and_draft";
+        /**
+         * AmbiguousPolicy
+         * @description Which of the two 02:30s to use when the clock goes back.
+         * @enum {string}
+         */
+        AmbiguousPolicy: "first" | "both";
         /** AnalysisRead */
         AnalysisRead: {
             /** Failure Detail */
@@ -1474,6 +1532,12 @@ export interface components {
             /** Ok */
             ok: boolean;
         };
+        /**
+         * DstPolicy
+         * @description What to do on the two days a local time is missing or repeated.
+         * @enum {string}
+         */
+        DstPolicy: "skip" | "shift";
         /** ErrorEnvelope */
         ErrorEnvelope: {
             /**
@@ -1508,6 +1572,11 @@ export interface components {
             /** Message */
             message: string;
         };
+        /**
+         * Frequency
+         * @enum {string}
+         */
+        Frequency: "hourly" | "daily" | "weekly" | "monthly";
         /**
          * ImportApply
          * @description The version the person was looking at when they decided.
@@ -2009,6 +2078,16 @@ export interface components {
             work_places?: string[];
         };
         /**
+         * MissedRunPolicy
+         * @description What to do about runs that should have happened while nothing was running.
+         *
+         *     A worker that was down for a weekend comes back to a decision, and it is not the code's to
+         *     make: a nightly report probably wants only the latest, and a nightly reconciliation probably
+         *     wants every one of them.
+         * @enum {string}
+         */
+        MissedRunPolicy: "skip" | "run_once" | "run_all";
+        /**
          * ObjectiveCard
          * @description A row in the list — PLAN §7's "Objective cards".
          */
@@ -2284,6 +2363,12 @@ export interface components {
             name?: string | null;
             unit_type?: components["schemas"]["UnitType"] | null;
         };
+        /**
+         * OverlapPolicy
+         * @description What to do when a run is still going and the next one is due.
+         * @enum {string}
+         */
+        OverlapPolicy: "skip" | "queue" | "allow";
         /**
          * PasswordStepUpRequest
          * @description Re-prove the current account's password before a high-risk action.
@@ -2602,6 +2687,144 @@ export interface components {
             revision_no: number;
             /** Summary */
             summary: string;
+        };
+        /**
+         * SchedulePreview
+         * @description The next few firings — PLAN §8's recurrence preview.
+         */
+        SchedulePreview: {
+            /** Notes */
+            notes?: string[];
+            /** Occurrences */
+            occurrences: string[];
+            /** Timezone */
+            timezone: string;
+        };
+        /** ScheduleRead */
+        ScheduleRead: {
+            /** @default first */
+            ambiguous_policy: components["schemas"]["AmbiguousPolicy"];
+            /**
+             * At Time
+             * Format: time
+             */
+            at_time: string;
+            /**
+             * Auto Run
+             * @default false
+             */
+            auto_run: boolean;
+            /** @default shift */
+            dst_policy: components["schemas"]["DstPolicy"];
+            /** Expected Version */
+            expected_version?: number | null;
+            frequency: components["schemas"]["Frequency"];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Interval
+             * @default 1
+             */
+            interval: number;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Last Error */
+            last_error?: string | null;
+            /** Last Run At */
+            last_run_at?: string | null;
+            /**
+             * Max Concurrent
+             * @default 1
+             */
+            max_concurrent: number;
+            /** @default skip */
+            missed_run_policy: components["schemas"]["MissedRunPolicy"];
+            /** Monthday */
+            monthday?: number | null;
+            /** Next Run At */
+            next_run_at?: string | null;
+            /** @default skip */
+            overlap_policy: components["schemas"]["OverlapPolicy"];
+            /** Pinned Version Id */
+            pinned_version_id?: string | null;
+            /**
+             * Requires Approval Per Run
+             * @default false
+             */
+            requires_approval_per_run: boolean;
+            /** Skip Dates */
+            skip_dates?: string[];
+            /** Timezone */
+            timezone: string;
+            /** Version */
+            version: number;
+            /** Weekdays */
+            weekdays?: number[];
+            /**
+             * Weekdays Only
+             * @default false
+             */
+            weekdays_only: boolean;
+        };
+        /** ScheduleWrite */
+        ScheduleWrite: {
+            /** @default first */
+            ambiguous_policy: components["schemas"]["AmbiguousPolicy"];
+            /**
+             * At Time
+             * Format: time
+             */
+            at_time: string;
+            /**
+             * Auto Run
+             * @default false
+             */
+            auto_run: boolean;
+            /** @default shift */
+            dst_policy: components["schemas"]["DstPolicy"];
+            /** Expected Version */
+            expected_version?: number | null;
+            frequency: components["schemas"]["Frequency"];
+            /**
+             * Interval
+             * @default 1
+             */
+            interval: number;
+            /**
+             * Max Concurrent
+             * @default 1
+             */
+            max_concurrent: number;
+            /** @default skip */
+            missed_run_policy: components["schemas"]["MissedRunPolicy"];
+            /** Monthday */
+            monthday?: number | null;
+            /** @default skip */
+            overlap_policy: components["schemas"]["OverlapPolicy"];
+            /** Pinned Version Id */
+            pinned_version_id?: string | null;
+            /**
+             * Requires Approval Per Run
+             * @default false
+             */
+            requires_approval_per_run: boolean;
+            /** Skip Dates */
+            skip_dates?: string[];
+            /** Timezone */
+            timezone: string;
+            /** Weekdays */
+            weekdays?: number[];
+            /**
+             * Weekdays Only
+             * @default false
+             */
+            weekdays_only: boolean;
         };
         /**
          * SessionSummary
@@ -5995,6 +6218,391 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    read_api_v1_jobs__job_id__schedule_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleRead"] | null;
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    set_schedule_api_v1_jobs__job_id__schedule_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleRead"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    remove_api_v1_jobs__job_id__schedule_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    preview_api_v1_jobs__job_id__schedule_preview_get: {
+        parameters: {
+            query?: {
+                count?: number;
+                from_time?: string | null;
+            };
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchedulePreview"];
                 };
             };
             /** @description Not signed in, or the session ended. */
