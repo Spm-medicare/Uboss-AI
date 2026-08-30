@@ -341,7 +341,9 @@ class SupervisorSchedule(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVe
     frequency: Mapped[str] = mapped_column(String(20), nullable=False)
     interval: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     at_time: Mapped[time] = mapped_column(Time, nullable=False)
-    weekdays: Mapped[list[str]] = mapped_column(
+    #: Monday is 0, matching `datetime.weekday()` and the Job's own column. Ints, not strings —
+    #: `recurrence.from_row` compares them numerically.
+    weekdays: Mapped[list[int]] = mapped_column(
         JSONB, nullable=False, server_default=text("'[]'::jsonb")
     )
     monthday: Mapped[int | None] = mapped_column(Integer, nullable=True)

@@ -2050,6 +2050,17 @@
         "title": "Body_archive_api_v1_objectives__objective_id__archive_post",
         "type": "object"
       },
+      "Body_archive_api_v1_supervisors__supervisor_id__archive_post": {
+        "properties": {
+          "expected_version": {
+            "default": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "title": "Body_archive_api_v1_supervisors__supervisor_id__archive_post",
+        "type": "object"
+      },
       "Body_archive_position_api_v1_hierarchy_positions__position_id__archive_post": {
         "properties": {
           "expected_version": {
@@ -2072,6 +2083,17 @@
           }
         },
         "title": "Body_archive_unit_api_v1_hierarchy_units__unit_id__archive_post",
+        "type": "object"
+      },
+      "Body_remove_handler_api_v1_supervisors__supervisor_id__handlers__membership_id__delete": {
+        "properties": {
+          "expected_version": {
+            "default": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "title": "Body_remove_handler_api_v1_supervisors__supervisor_id__handlers__membership_id__delete",
         "type": "object"
       },
       "Body_upload_api_v1_hierarchy_imports_post": {
@@ -2738,6 +2760,56 @@
         "title": "DecisionList",
         "type": "object"
       },
+      "DependencyInput": {
+        "additionalProperties": false,
+        "description": "Both sides are positions in the supervised list, so a dependency can only link two things\nthis Supervisor watches.",
+        "properties": {
+          "depends_on_position": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Depends On Position",
+            "type": "integer"
+          },
+          "supervised_position": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Supervised Position",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "supervised_position",
+          "depends_on_position"
+        ],
+        "title": "DependencyInput",
+        "type": "object"
+      },
+      "DependencyRead": {
+        "properties": {
+          "depends_on_id": {
+            "format": "uuid",
+            "title": "Depends On Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "supervised_id": {
+            "format": "uuid",
+            "title": "Supervised Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "supervised_id",
+          "depends_on_id"
+        ],
+        "title": "DependencyRead",
+        "type": "object"
+      },
       "DependencyStatus": {
         "properties": {
           "detail": {
@@ -2814,6 +2886,150 @@
           "message"
         ],
         "title": "ErrorEnvelope",
+        "type": "object"
+      },
+      "EscalationInput": {
+        "additionalProperties": false,
+        "properties": {
+          "after_minutes": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Minutes"
+          },
+          "escalate_to_label": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalate To Label"
+          },
+          "escalate_to_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalate To Membership Id"
+          },
+          "position": {
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Position",
+            "type": "integer"
+          },
+          "required_action": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Required Action",
+            "type": "string"
+          },
+          "situation": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Situation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "position",
+          "situation",
+          "required_action"
+        ],
+        "title": "EscalationInput",
+        "type": "object"
+      },
+      "EscalationRead": {
+        "properties": {
+          "after_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Minutes"
+          },
+          "escalate_to_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalate To Label"
+          },
+          "escalate_to_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalate To Membership Id"
+          },
+          "escalate_to_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalate To Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "required_action": {
+            "title": "Required Action",
+            "type": "string"
+          },
+          "situation": {
+            "title": "Situation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "situation",
+          "required_action",
+          "escalate_to_membership_id",
+          "escalate_to_name",
+          "escalate_to_label",
+          "after_minutes"
+        ],
+        "title": "EscalationRead",
         "type": "object"
       },
       "EscalationRuleInput": {
@@ -3009,6 +3225,99 @@
         ],
         "title": "GateOutcome",
         "type": "object"
+      },
+      "HandlerInput": {
+        "additionalProperties": false,
+        "description": "One row of scope 2. Sent to its own route \u2014 see the module docstring.",
+        "properties": {
+          "expected_version": {
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "membership_id": {
+            "format": "uuid",
+            "title": "Membership Id",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/HandlerRole"
+          }
+        },
+        "required": [
+          "membership_id",
+          "role",
+          "expected_version"
+        ],
+        "title": "HandlerInput",
+        "type": "object"
+      },
+      "HandlerRead": {
+        "properties": {
+          "granted_at": {
+            "format": "date-time",
+            "title": "Granted At",
+            "type": "string"
+          },
+          "granted_by_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Granted By Membership Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "membership_id": {
+            "format": "uuid",
+            "title": "Membership Id",
+            "type": "string"
+          },
+          "person_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Person Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/HandlerRole"
+          }
+        },
+        "required": [
+          "id",
+          "membership_id",
+          "person_name",
+          "role",
+          "granted_by_membership_id",
+          "granted_at"
+        ],
+        "title": "HandlerRead",
+        "type": "object"
+      },
+      "HandlerRole": {
+        "description": "\u00a710's six, in the order the plan lists them \u2014 which is increasing authority.\n\nThe order is load-bearing: 6.2 compares roles, and a list reordered for tidiness would quietly\nchange who may do what.",
+        "enum": [
+          "viewer",
+          "operator",
+          "reviewer",
+          "approver",
+          "manager",
+          "owner"
+        ],
+        "title": "HandlerRole",
+        "type": "string"
       },
       "ImportApply": {
         "additionalProperties": false,
@@ -5538,6 +5847,148 @@
         "title": "MissedRunPolicy",
         "type": "string"
       },
+      "NotificationInput": {
+        "additionalProperties": false,
+        "properties": {
+          "channel": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel"
+          },
+          "event": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Event",
+            "type": "string"
+          },
+          "position": {
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Position",
+            "type": "integer"
+          },
+          "recipient_label": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Label"
+          },
+          "recipient_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Membership Id"
+          },
+          "to_handlers": {
+            "default": true,
+            "title": "To Handlers",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "position",
+          "event"
+        ],
+        "title": "NotificationInput",
+        "type": "object"
+      },
+      "NotificationRead": {
+        "properties": {
+          "channel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel"
+          },
+          "event": {
+            "title": "Event",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "recipient_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Label"
+          },
+          "recipient_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Membership Id"
+          },
+          "recipient_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Name"
+          },
+          "to_handlers": {
+            "title": "To Handlers",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "event",
+          "channel",
+          "to_handlers",
+          "recipient_membership_id",
+          "recipient_name",
+          "recipient_label"
+        ],
+        "title": "NotificationRead",
+        "type": "object"
+      },
       "ObjectiveCard": {
         "description": "A row in the list \u2014 PLAN \u00a77's \"Objective cards\".",
         "properties": {
@@ -6397,6 +6848,16 @@
         ],
         "title": "ObjectiveUpdate",
         "type": "object"
+      },
+      "OnFailure": {
+        "description": "What a quality gate does when it does not hold.\n\n\u00a710 group 6 pairs quality with evidence, and a gate with no stated consequence is an\nobservation rather than a gate.",
+        "enum": [
+          "block",
+          "escalate",
+          "flag_and_continue"
+        ],
+        "title": "OnFailure",
+        "type": "string"
       },
       "OrgUnitCreate": {
         "additionalProperties": false,
@@ -7317,6 +7778,97 @@
           "version"
         ],
         "title": "PublishSummary",
+        "type": "object"
+      },
+      "QualityGateInput": {
+        "additionalProperties": false,
+        "properties": {
+          "condition": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Condition",
+            "type": "string"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "on_failure": {
+            "$ref": "#/components/schemas/OnFailure",
+            "default": "escalate"
+          },
+          "position": {
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Position",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "position",
+          "name",
+          "condition"
+        ],
+        "title": "QualityGateInput",
+        "type": "object"
+      },
+      "QualityGateRead": {
+        "properties": {
+          "condition": {
+            "title": "Condition",
+            "type": "string"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "on_failure": {
+            "$ref": "#/components/schemas/OnFailure"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "name",
+          "condition",
+          "evidence",
+          "on_failure"
+        ],
+        "title": "QualityGateRead",
         "type": "object"
       },
       "Readiness": {
@@ -8518,6 +9070,200 @@
         "title": "SignInResponse",
         "type": "object"
       },
+      "SimulationInput": {
+        "additionalProperties": false,
+        "description": "One failure scenario.\n\n`run_by` and `run_at` are deliberately absent \u2014 they are stamped by the server from the caller\nand the clock. A result somebody could backdate or attribute to a colleague is not evidence.",
+        "properties": {
+          "expected_response": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Expected Response",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "observed": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SimulationStatus",
+            "default": "not_run"
+          },
+          "what_fails": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "What Fails",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "what_fails",
+          "expected_response"
+        ],
+        "title": "SimulationInput",
+        "type": "object"
+      },
+      "SimulationList": {
+        "properties": {
+          "passed": {
+            "title": "Passed",
+            "type": "integer"
+          },
+          "simulations": {
+            "items": {
+              "$ref": "#/components/schemas/SimulationRead"
+            },
+            "title": "Simulations",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "simulations",
+          "passed",
+          "total"
+        ],
+        "title": "SimulationList",
+        "type": "object"
+      },
+      "SimulationRead": {
+        "properties": {
+          "expected_response": {
+            "title": "Expected Response",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "observed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "run_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run At"
+          },
+          "run_by_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run By Membership Id"
+          },
+          "run_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run By Name"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SimulationStatus"
+          },
+          "what_fails": {
+            "title": "What Fails",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "name",
+          "what_fails",
+          "expected_response",
+          "status",
+          "observed",
+          "run_by_membership_id",
+          "run_by_name",
+          "run_at"
+        ],
+        "title": "SimulationRead",
+        "type": "object"
+      },
+      "SimulationStatus": {
+        "description": "The same four the Agent's sandbox tests use \u2014 the approved workbook's \"Test Status\" list.\n\nOne vocabulary across the product, so somebody who has read one screen knows what the words\nmean on the next.",
+        "enum": [
+          "not_run",
+          "pass",
+          "fail",
+          "blocked"
+        ],
+        "title": "SimulationStatus",
+        "type": "string"
+      },
+      "SimulationsUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "simulations": {
+            "items": {
+              "$ref": "#/components/schemas/SimulationInput"
+            },
+            "maxItems": 30,
+            "title": "Simulations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "expected_version",
+          "simulations"
+        ],
+        "title": "SimulationsUpdate",
+        "type": "object"
+      },
       "Situation": {
         "description": "Form 4 section B's six rows, printed on the approved form.\n\nA closed set rather than a suggestion list, because the sheet prints all six and leaving one\nunanswered is not an omission somebody made \u2014 it is a decision nobody took.",
         "enum": [
@@ -9243,6 +9989,1488 @@
           "expected_version"
         ],
         "title": "StepUpdate",
+        "type": "object"
+      },
+      "SupervisedInput": {
+        "additionalProperties": false,
+        "description": "One row of scope 1 \u2014 whose Agents are watched.",
+        "properties": {
+          "agent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Id"
+          },
+          "agent_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Id"
+          },
+          "membership_id": {
+            "format": "uuid",
+            "title": "Membership Id",
+            "type": "string"
+          },
+          "position": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Position",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "position",
+          "membership_id"
+        ],
+        "title": "SupervisedInput",
+        "type": "object"
+      },
+      "SupervisedRead": {
+        "properties": {
+          "agent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Id"
+          },
+          "agent_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Name"
+          },
+          "agent_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "membership_id": {
+            "format": "uuid",
+            "title": "Membership Id",
+            "type": "string"
+          },
+          "person_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Person Name"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "membership_id",
+          "person_name",
+          "agent_id",
+          "agent_name",
+          "agent_version_id"
+        ],
+        "title": "SupervisedRead",
+        "type": "object"
+      },
+      "SupervisorCard": {
+        "properties": {
+          "handler_count": {
+            "title": "Handler Count",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SupervisorKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "owner_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Name"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SupervisorStatus"
+          },
+          "supervised_count": {
+            "title": "Supervised Count",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "status",
+          "owner_name",
+          "supervised_count",
+          "handler_count",
+          "updated_at"
+        ],
+        "title": "SupervisorCard",
+        "type": "object"
+      },
+      "SupervisorCreate": {
+        "additionalProperties": false,
+        "description": "A name and a kind. A department Supervisor names its department; a personal one cannot.",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/SupervisorKind",
+            "default": "personal"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "objective_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective Id"
+          },
+          "org_node_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Node Id"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "SupervisorCreate",
+        "type": "object"
+      },
+      "SupervisorGate": {
+        "description": "The one gate `PLAN.md` names. `reason` says what would clear it, not merely that it is\nclosed \u2014 a screen saying \"blocked\" alone sends somebody hunting.",
+        "properties": {
+          "gate": {
+            "title": "Gate",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "gate",
+          "name",
+          "passed",
+          "reason"
+        ],
+        "title": "SupervisorGate",
+        "type": "object"
+      },
+      "SupervisorKind": {
+        "description": "The two \u00a710 approves.\n\nWorkspace-wide is *\"restricted and may be added later\"*, so it is not here. A third value now\nwould be building against a decision nobody has taken.",
+        "enum": [
+          "personal",
+          "department"
+        ],
+        "title": "SupervisorKind",
+        "type": "string"
+      },
+      "SupervisorList": {
+        "description": "`is_empty` separates \"none yet\" from \"none match that filter\" \u2014 different words.",
+        "properties": {
+          "is_empty": {
+            "title": "Is Empty",
+            "type": "boolean"
+          },
+          "supervisors": {
+            "items": {
+              "$ref": "#/components/schemas/SupervisorCard"
+            },
+            "title": "Supervisors",
+            "type": "array"
+          }
+        },
+        "required": [
+          "supervisors",
+          "is_empty"
+        ],
+        "title": "SupervisorList",
+        "type": "object"
+      },
+      "SupervisorLists": {
+        "description": "The closed vocabularies a screen needs, served rather than copied into the frontend.",
+        "properties": {
+          "handler_roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Handler Roles",
+            "type": "array"
+          },
+          "kinds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Kinds",
+            "type": "array"
+          },
+          "on_failure": {
+            "items": {
+              "type": "string"
+            },
+            "title": "On Failure",
+            "type": "array"
+          },
+          "simulation_statuses": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Simulation Statuses",
+            "type": "array"
+          }
+        },
+        "title": "SupervisorLists",
+        "type": "object"
+      },
+      "SupervisorPublishRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "SupervisorPublishRequest",
+        "type": "object"
+      },
+      "SupervisorPublishSummary": {
+        "properties": {
+          "approver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Name"
+          },
+          "can_approve": {
+            "title": "Can Approve",
+            "type": "boolean"
+          },
+          "can_submit": {
+            "title": "Can Submit",
+            "type": "boolean"
+          },
+          "dependency_count": {
+            "title": "Dependency Count",
+            "type": "integer"
+          },
+          "escalation_count": {
+            "title": "Escalation Count",
+            "type": "integer"
+          },
+          "gates": {
+            "items": {
+              "$ref": "#/components/schemas/SupervisorGate"
+            },
+            "title": "Gates",
+            "type": "array"
+          },
+          "handler_count": {
+            "title": "Handler Count",
+            "type": "integer"
+          },
+          "has_schedule": {
+            "title": "Has Schedule",
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SupervisorKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "next_action": {
+            "title": "Next Action",
+            "type": "string"
+          },
+          "notification_count": {
+            "title": "Notification Count",
+            "type": "integer"
+          },
+          "owner_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Name"
+          },
+          "quality_gate_count": {
+            "title": "Quality Gate Count",
+            "type": "integer"
+          },
+          "schedule_auto_run": {
+            "title": "Schedule Auto Run",
+            "type": "boolean"
+          },
+          "simulations_passed": {
+            "title": "Simulations Passed",
+            "type": "integer"
+          },
+          "simulations_total": {
+            "title": "Simulations Total",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SupervisorStatus"
+          },
+          "submitted_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted By Name"
+          },
+          "supervised_count": {
+            "title": "Supervised Count",
+            "type": "integer"
+          },
+          "supervisor_id": {
+            "format": "uuid",
+            "title": "Supervisor Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/SupervisorWarning"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "supervisor_id",
+          "name",
+          "kind",
+          "status",
+          "owner_name",
+          "approver_name",
+          "submitted_by_name",
+          "supervised_count",
+          "handler_count",
+          "dependency_count",
+          "quality_gate_count",
+          "escalation_count",
+          "notification_count",
+          "has_schedule",
+          "schedule_auto_run",
+          "simulations_passed",
+          "simulations_total",
+          "gates",
+          "warnings",
+          "next_action",
+          "can_submit",
+          "can_approve",
+          "version"
+        ],
+        "title": "SupervisorPublishSummary",
+        "type": "object"
+      },
+      "SupervisorRead": {
+        "description": "One Supervisor in full, so a form renders from one request.",
+        "properties": {
+          "approver_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Label"
+          },
+          "approver_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Membership Id"
+          },
+          "approver_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Name"
+          },
+          "cost_cap_currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Cap Currency"
+          },
+          "cost_cap_minor_units": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Cap Minor Units"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "deadline_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline Minutes"
+          },
+          "dependencies": {
+            "items": {
+              "$ref": "#/components/schemas/DependencyRead"
+            },
+            "title": "Dependencies",
+            "type": "array"
+          },
+          "escalation_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Label"
+          },
+          "escalation_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Membership Id"
+          },
+          "escalation_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Name"
+          },
+          "escalations": {
+            "items": {
+              "$ref": "#/components/schemas/EscalationRead"
+            },
+            "title": "Escalations",
+            "type": "array"
+          },
+          "handlers": {
+            "items": {
+              "$ref": "#/components/schemas/HandlerRead"
+            },
+            "title": "Handlers",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_editable": {
+            "title": "Is Editable",
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SupervisorKind"
+          },
+          "max_concurrency": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Concurrency"
+          },
+          "max_retries": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Retries"
+          },
+          "my_actions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "My Actions",
+            "type": "array"
+          },
+          "my_role": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HandlerRole"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "notifications": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationRead"
+            },
+            "title": "Notifications",
+            "type": "array"
+          },
+          "objective_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective Id"
+          },
+          "objective_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective Name"
+          },
+          "org_node_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Node Id"
+          },
+          "org_node_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Node Name"
+          },
+          "owner_membership_id": {
+            "format": "uuid",
+            "title": "Owner Membership Id",
+            "type": "string"
+          },
+          "owner_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Name"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose"
+          },
+          "quality_gates": {
+            "items": {
+              "$ref": "#/components/schemas/QualityGateRead"
+            },
+            "title": "Quality Gates",
+            "type": "array"
+          },
+          "retry_backoff_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Backoff Seconds"
+          },
+          "routing_policy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Routing Policy"
+          },
+          "schedule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SupervisorScheduleRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sla_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sla Minutes"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SupervisorStatus"
+          },
+          "supervised": {
+            "items": {
+              "$ref": "#/components/schemas/SupervisedRead"
+            },
+            "title": "Supervised",
+            "type": "array"
+          },
+          "token_cap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Cap"
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "status",
+          "is_editable",
+          "name",
+          "kind",
+          "owner_membership_id",
+          "owner_name",
+          "org_node_id",
+          "org_node_name",
+          "objective_id",
+          "objective_name",
+          "purpose",
+          "trigger",
+          "routing_policy",
+          "max_concurrency",
+          "cost_cap_minor_units",
+          "cost_cap_currency",
+          "token_cap",
+          "sla_minutes",
+          "deadline_minutes",
+          "max_retries",
+          "retry_backoff_seconds",
+          "approver_membership_id",
+          "approver_name",
+          "approver_label",
+          "escalation_membership_id",
+          "escalation_name",
+          "escalation_label",
+          "supervised",
+          "handlers",
+          "dependencies",
+          "quality_gates",
+          "escalations",
+          "notifications",
+          "schedule",
+          "my_role",
+          "my_actions",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SupervisorRead",
+        "type": "object"
+      },
+      "SupervisorScheduleRead": {
+        "properties": {
+          "ambiguous_policy": {
+            "title": "Ambiguous Policy",
+            "type": "string"
+          },
+          "at_time": {
+            "format": "time",
+            "title": "At Time",
+            "type": "string"
+          },
+          "auto_run": {
+            "title": "Auto Run",
+            "type": "boolean"
+          },
+          "dst_policy": {
+            "title": "Dst Policy",
+            "type": "string"
+          },
+          "frequency": {
+            "title": "Frequency",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "interval": {
+            "title": "Interval",
+            "type": "integer"
+          },
+          "missed_run_policy": {
+            "title": "Missed Run Policy",
+            "type": "string"
+          },
+          "monthday": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthday"
+          },
+          "overlap_policy": {
+            "title": "Overlap Policy",
+            "type": "string"
+          },
+          "skip_dates": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skip Dates",
+            "type": "array"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "weekdays": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Weekdays",
+            "type": "array"
+          },
+          "weekdays_only": {
+            "title": "Weekdays Only",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "auto_run",
+          "timezone",
+          "frequency",
+          "interval",
+          "at_time",
+          "weekdays",
+          "monthday",
+          "dst_policy",
+          "ambiguous_policy",
+          "skip_dates",
+          "weekdays_only",
+          "missed_run_policy",
+          "overlap_policy",
+          "version"
+        ],
+        "title": "SupervisorScheduleRead",
+        "type": "object"
+      },
+      "SupervisorScheduleWrite": {
+        "additionalProperties": false,
+        "description": "The Job's schedule fields, because the Job's pure module reads them.\n\nPrefixed `Supervisor\u2026` because FastAPI names an OpenAPI component after the class, and the\nJob already has a `ScheduleWrite`. Two classes sharing a name make the generator fully qualify\n**both**, which breaks whichever frontend alias pointed at the other one \u2014\n`test_the_contract_has_no_fully_qualified_schema_names` caught exactly this.",
+        "properties": {
+          "ambiguous_policy": {
+            "default": "first",
+            "title": "Ambiguous Policy",
+            "type": "string"
+          },
+          "at_time": {
+            "format": "time",
+            "title": "At Time",
+            "type": "string"
+          },
+          "auto_run": {
+            "default": false,
+            "title": "Auto Run",
+            "type": "boolean"
+          },
+          "dst_policy": {
+            "default": "shift",
+            "title": "Dst Policy",
+            "type": "string"
+          },
+          "expected_version": {
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "frequency": {
+            "maxLength": 20,
+            "title": "Frequency",
+            "type": "string"
+          },
+          "interval": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Interval",
+            "type": "integer"
+          },
+          "missed_run_policy": {
+            "default": "skip",
+            "title": "Missed Run Policy",
+            "type": "string"
+          },
+          "monthday": {
+            "anyOf": [
+              {
+                "maximum": 31.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthday"
+          },
+          "overlap_policy": {
+            "default": "queue",
+            "title": "Overlap Policy",
+            "type": "string"
+          },
+          "skip_dates": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Skip Dates",
+            "type": "array"
+          },
+          "timezone": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          },
+          "weekdays": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 7,
+            "title": "Weekdays",
+            "type": "array"
+          },
+          "weekdays_only": {
+            "default": false,
+            "title": "Weekdays Only",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "expected_version",
+          "timezone",
+          "frequency",
+          "at_time"
+        ],
+        "title": "SupervisorScheduleWrite",
+        "type": "object"
+      },
+      "SupervisorStatus": {
+        "description": "The same lifecycle as every other designed object here.",
+        "enum": [
+          "draft",
+          "needs_review",
+          "ready_to_publish",
+          "published",
+          "active",
+          "paused",
+          "archived"
+        ],
+        "title": "SupervisorStatus",
+        "type": "string"
+      },
+      "SupervisorUpdate": {
+        "additionalProperties": false,
+        "description": "Save the draft. Every collection is replaced wholesale when sent, left alone when not.\n\nThere is no `handlers` field, deliberately \u2014 see the module docstring.",
+        "properties": {
+          "approver_label": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Label"
+          },
+          "approver_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approver Membership Id"
+          },
+          "cost_cap_currency": {
+            "anyOf": [
+              {
+                "maxLength": 3,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Cap Currency"
+          },
+          "cost_cap_minor_units": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Cap Minor Units"
+          },
+          "deadline_minutes": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline Minutes"
+          },
+          "dependencies": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DependencyInput"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dependencies"
+          },
+          "escalation_label": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Label"
+          },
+          "escalation_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Membership Id"
+          },
+          "escalations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EscalationInput"
+                },
+                "maxItems": 30,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalations"
+          },
+          "expected_version": {
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "max_concurrency": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Concurrency"
+          },
+          "max_retries": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Retries"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "notifications": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/NotificationInput"
+                },
+                "maxItems": 30,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notifications"
+          },
+          "objective_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective Id"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "maxLength": 8000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose"
+          },
+          "quality_gates": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/QualityGateInput"
+                },
+                "maxItems": 30,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality Gates"
+          },
+          "retry_backoff_seconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Backoff Seconds"
+          },
+          "routing_policy": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Routing Policy"
+          },
+          "sla_minutes": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sla Minutes"
+          },
+          "supervised": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SupervisedInput"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supervised"
+          },
+          "token_cap": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Cap"
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "SupervisorUpdate",
+        "type": "object"
+      },
+      "SupervisorVersionCard": {
+        "properties": {
+          "approved_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "published_at": {
+            "title": "Published At",
+            "type": "string"
+          },
+          "published_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published By Name"
+          },
+          "version_no": {
+            "title": "Version No",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version_no",
+          "name",
+          "published_by_name",
+          "approved_by_name",
+          "published_at"
+        ],
+        "title": "SupervisorVersionCard",
+        "type": "object"
+      },
+      "SupervisorVersionList": {
+        "properties": {
+          "is_empty": {
+            "title": "Is Empty",
+            "type": "boolean"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/SupervisorVersionCard"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "versions",
+          "is_empty"
+        ],
+        "title": "SupervisorVersionList",
+        "type": "object"
+      },
+      "SupervisorWarning": {
+        "description": "Worth saying, and not a gate. Shown, never hidden, never in the way.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "SupervisorWarning",
         "type": "object"
       },
       "ToolGrant": {
@@ -20417,6 +22645,2110 @@
         "summary": "One skill, in full",
         "tags": [
           "skills"
+        ]
+      }
+    },
+    "/api/v1/supervisors": {
+      "get": {
+        "description": "Narrowed by scope 2. A Supervisor somebody cannot control is not theirs to see, and\nlisting it would leak who supervises whom.",
+        "operationId": "list_supervisors_api_v1_supervisors_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Archived",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupervisorList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "The supervisors this person may control",
+        "tags": [
+          "supervisors"
+        ]
+      },
+      "post": {
+        "description": "The creator becomes the owner, which makes them Owner without a handler row.",
+        "operationId": "create_api_v1_supervisors_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupervisorCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Create Api V1 Supervisors Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Start a supervisor draft",
+        "tags": [
+          "supervisors"
+        ]
+      }
+    },
+    "/api/v1/supervisors/lists": {
+      "get": {
+        "description": "Kinds, handler roles, gate outcomes and simulation statuses.\n\nServed rather than kept in the frontend: a second copy of a closed set is a copy that drifts,\nand every one of these is closed because \u00a710 or the workbook closes it.",
+        "operationId": "supervisor_lists_api_v1_supervisors_lists_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupervisorLists"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "The closed vocabularies a supervisor screen needs",
+        "tags": [
+          "supervisors"
+        ]
+      }
+    },
+    "/api/v1/supervisors/{supervisor_id}": {
+      "get": {
+        "description": "Both scopes in one response, with what the caller may do on this one.",
+        "operationId": "read_api_v1_supervisors__supervisor_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "supervisor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Supervisor Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupervisorRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "One supervisor, in full",
+        "tags": [
+          "supervisors"
+        ]
+      },
+      "put": {
+        "description": "Saving clears every recorded simulation result \u2014 a pass against yesterday's design says\nnothing about today's.",
+        "operationId": "update_api_v1_supervisors__supervisor_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "supervisor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Supervisor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupervisorUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupervisorRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Save the supervisor draft",
+        "tags": [
+          "supervisors"
+        ]
+      }
+    },
+    "/api/v1/supervisors/{supervisor_id}/archive": {
+      "post": {
+        "description": "Archived, never deleted. What an organisation arranged is evidence of what it decided.",
+        "operationId": "archive_api_v1_supervisors__supervisor_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "supervisor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Supervisor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_archive_api_v1_supervisors__supervisor_id__archive_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Archive Api V1 Supervisors  Supervisor Id  Archive Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Archive a supervisor",
+        "tags": [
+          "supervisors"
+        ]
+      }
+    },
+    "/api/v1/supervisors/{supervisor_id}/handlers/{membership_id}": {
+      "delete": {
+        "description": "Removing yourself is allowed. Removing somebody who outranks you is not.",
+        "operationId": "remove_handler_api_v1_supervisors__supervisor_id__handlers__membership_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "supervisor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Supervisor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "membership_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Membership Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_remove_handler_api_v1_supervisors__supervisor_id__handlers__membership_id__delete"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Remove Handler Api V1 Supervisors  Supervisor Id  Handlers  Membership Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Remove a handler \u2014 scope 2",
+        "tags": [
+          "supervisors"
+        ]
+      },
+      "put": {
+        "description": "Its own route and its own permission. \u00a710's two scopes are independent, and a payload\ncarrying both would have made the looser permission decide the stricter one.",
+        "operationId": "set_handler_api_v1_supervisors__supervisor_id__handlers__membership_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "supervisor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Supervisor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "membership_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Membership Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandlerInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandlerRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Add or change a handler \u2014 scope 2",
+        "tags": [
+          "supervisors"
+        ]
+      }
+    },
+    "/api/v1/supervisors/{supervisor_id}/publish": {
+      "get": {
+        "operationId": "publish_summary_api_v1_supervisors__supervisor_id__publish_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "supervisor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Supervisor Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupervisorPublishSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "What publishing this would mean",
+        "tags": [
+          "supervisors"
+        ]
+      },
+      "post": {
+        "operationId": "route_api_v1_supervisors__supervisor_id__publish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "supervisor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Supervisor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupervisorPublishRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Route Api V1 Supervisors  Supervisor Id  Publish Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Approve and publish",
+        "tags": [
+          "supervisors"
+        ]
+      }
+    },
+    "/api/v1/supervisors/{supervisor_id}/schedule": {
+      "put": {
+        "description": "`schedule`, not `edit_draft`: deciding when something starts happening is its own verb.\n\nValidated by the Job's own recurrence module, so a Supervisor schedule cannot be accepted\nwhere the identical Job schedule would have been refused.",
+        "operationId": "set_schedule_api_v1_supervisors__supervisor_id__schedule_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "supervisor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Supervisor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupervisorScheduleWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupervisorScheduleRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "When this supervisor runs",
+        "tags": [
+          "supervisors"
+        ]
+      }
+    },
+    "/api/v1/supervisors/{supervisor_id}/simulations": {
+      "get": {
+        "operationId": "read_simulations_api_v1_supervisors__supervisor_id__simulations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "supervisor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Supervisor Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "The failure scenarios",
+        "tags": [
+          "supervisors"
+        ]
+      },
+      "put": {
+        "description": "Who ran it and when are stamped by the server, never accepted from the caller.",
+        "operationId": "write_simulations_api_v1_supervisors__supervisor_id__simulations_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "supervisor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Supervisor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulationsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Record the failure scenarios and what was observed",
+        "tags": [
+          "supervisors"
+        ]
+      }
+    },
+    "/api/v1/supervisors/{supervisor_id}/submit": {
+      "post": {
+        "operationId": "route_api_v1_supervisors__supervisor_id__submit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "supervisor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Supervisor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupervisorPublishRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Route Api V1 Supervisors  Supervisor Id  Submit Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Send for approval",
+        "tags": [
+          "supervisors"
+        ]
+      }
+    },
+    "/api/v1/supervisors/{supervisor_id}/versions": {
+      "get": {
+        "operationId": "versions_api_v1_supervisors__supervisor_id__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "supervisor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Supervisor Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupervisorVersionList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "What has been published",
+        "tags": [
+          "supervisors"
+        ]
+      }
+    },
+    "/api/v1/supervisors/{supervisor_id}/withdraw": {
+      "post": {
+        "operationId": "route_api_v1_supervisors__supervisor_id__withdraw_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "supervisor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Supervisor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupervisorPublishRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Route Api V1 Supervisors  Supervisor Id  Withdraw Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not signed in, or the session ended."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Refused. The reason is in the audit trail."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No such record, for this caller."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The record moved, or the key was reused."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Some field was not accepted."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many attempts. See Retry-After."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A fault on our side. Nothing was changed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A dependency did not answer. Retryable."
+          }
+        },
+        "summary": "Take it back out of the queue",
+        "tags": [
+          "supervisors"
         ]
       }
     },

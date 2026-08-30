@@ -1,0 +1,256 @@
+"use client";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowRight, Plus, UserCog } from "lucide-react";
+import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+import type { SupervisorCard as Card_ } from "@/lib/api/contract";
+import { can } from "@/lib/api/auth";
+import { createSupervisor, fetchSupervisors } from "@/lib/api/supervisors";
+import { useSession } from "@/lib/auth/use-session";
+import { cn } from "@/lib/cn";
+import { Alert, Badge, Button, Card, CardBody, Field, Input, QueryStates } from "@/ui";
+import { AppShell } from "@/ui/shell/app-shell";
+
+/**
+ * The Supervisors this person may control.
+ *
+ * **The list is narrowed by scope 2, and the empty state says which emptiness this is.** A
+ * Supervisor somebody cannot control is not theirs to see — listing it would leak who supervises
+ * whom. So "none exist in this workspace" and "none that you can control" are different messages,
+ * and the server sends `is_empty` precisely so the screen can tell them apart rather than guess.
+ */
+export default function SupervisorPage() {
+  const t = useTranslations("supervisor");
+  const { user } = useSession();
+  const router = useRouter();
+  const [filter, setFilter] = useState("");
+
+  const supervisors = useQuery({
+    queryKey: ["supervisors", filter],
+    queryFn: ({ signal }) =>
+      fetchSupervisors(filter ? { status: filter, signal } : { signal }),
+  });
+
+  const mayCreate = can(user, "edit_draft");
+  const cards = supervisors.data?.supervisors ?? [];
+  //  Nothing in the workspace at all, versus nothing this person may control.
+  const workspaceIsEmpty = supervisors.data?.is_empty ?? false;
+
+  return (
+    <AppShell
+      title={t("supervisors")}
+      action={
+        mayCreate ? (
+          <NewSupervisor onCreated={(id) => router.push(`/supervisor/${id}`)} />
+        ) : undefined
+      }
+    >
+      <div className="mx-auto max-w-5xl space-y-5">
+        <QueryStates
+          isPending={supervisors.isPending}
+          error={supervisors.error}
+          onRetry={() => void supervisors.refetch()}
+        >
+          {workspaceIsEmpty ? (
+            <Card>
+              <CardBody className="space-y-3 py-12 text-center">
+                <UserCog aria-hidden className="mx-auto size-8 text-muted-foreground" />
+                <p className="text-sm font-medium">{t("emptyTitle")}</p>
+                <p className="mx-auto max-w-md text-sm text-muted-foreground">
+                  {mayCreate ? t("emptyBody") : t("emptyBodyReadOnly")}
+                </p>
+              </CardBody>
+            </Card>
+          ) : cards.length === 0 && !filter ? (
+            /*  The workspace has some; this person controls none of them. A different sentence,
+                because "none exist" would be untrue and "no access" would be unhelpful. */
+            <Alert tone="info" title={t("noneYouControlTitle")}>
+              {t("noneYouControlBody")}
+            </Alert>
+          ) : (
+            <>
+              <Filters current={filter} onChange={setFilter} cards={cards} />
+
+              {cards.length === 0 ? (
+                <Alert tone="info">
+                  {t("noneMatching")}{" "}
+                  <button
+                    type="button"
+                    className="underline underline-offset-4"
+                    onClick={() => setFilter("")}
+                  >
+                    {t("clearFilter")}
+                  </button>
+                </Alert>
+              ) : (
+                <ul className="grid gap-3 sm:grid-cols-2">
+                  {cards.map((card) => (
+                    <SupervisorTile key={card.id} card={card} />
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </QueryStates>
+      </div>
+    </AppShell>
+  );
+}
+
+function Filters({
+  current,
+  onChange,
+  cards,
+}: {
+  current: string;
+  onChange: (value: string) => void;
+  cards: Card_[];
+}) {
+  const t = useTranslations("supervisor");
+  const present = Array.from(new Set(cards.map((card) => card.status)));
+  if (present.length < 2) return null;
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {["", ...present].map((option) => (
+        <button
+          key={option || "all"}
+          type="button"
+          aria-pressed={current === option}
+          onClick={() => onChange(option)}
+          className={cn(
+            "rounded-full border px-3 py-1 text-sm transition-colors duration-150",
+            "motion-reduce:transition-none",
+            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
+            current === option
+              ? "border-[var(--ub-brand)] bg-primary text-primary-foreground"
+              : "border-border bg-card hover:bg-accent",
+          )}
+        >
+          {option ? t(`status.${option}`) : t("allStatuses")}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const STATUS_TONE: Record<string, "neutral" | "human" | "approval" | "success"> = {
+  draft: "neutral",
+  needs_review: "approval",
+  ready_to_publish: "human",
+  published: "success",
+  active: "success",
+  paused: "approval",
+  archived: "neutral",
+};
+
+function SupervisorTile({ card }: { card: Card_ }) {
+  const t = useTranslations("supervisor");
+
+  return (
+    <li>
+      <Link
+        href={`/supervisor/${card.id}`}
+        className={cn(
+          "group flex h-full flex-col gap-3 rounded-lg border border-border bg-card p-4",
+          "transition-colors duration-150 hover:border-[var(--ub-brand)] motion-reduce:transition-none",
+          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
+        )}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <p className="min-w-0 flex-1 font-medium leading-snug">{card.name}</p>
+          <Badge tone={STATUS_TONE[card.status] ?? "neutral"}>
+            {t(`status.${card.status}`)}
+          </Badge>
+        </div>
+
+        <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <dd>{t(`kind.${card.kind}`)}</dd>
+          {card.owner_name ? <dd>{card.owner_name}</dd> : null}
+        </dl>
+
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-3 text-xs">
+          {/*  The two scopes, counted separately, because they are two separate questions. */}
+          <span className="text-muted-foreground">
+            {t("cardCounts", {
+              supervised: card.supervised_count ?? 0,
+              handlers: card.handler_count ?? 0,
+            })}
+          </span>
+          <span className="flex items-center gap-1 text-primary opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none">
+            {t("open")}
+            <ArrowRight aria-hidden className="size-3.5" />
+          </span>
+        </div>
+      </Link>
+    </li>
+  );
+}
+
+function NewSupervisor({ onCreated }: { onCreated: (id: string) => void }) {
+  const t = useTranslations("supervisor");
+  const tCommon = useTranslations("common");
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const queryClient = useQueryClient();
+
+  const create = useMutation({
+    mutationFn: () => createSupervisor({ name: name.trim(), kind: "personal" }),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ["supervisors"] });
+      onCreated(result.id);
+    },
+  });
+
+  if (!open) {
+    return (
+      <Button
+        variant="primary"
+        size="sm"
+        icon={<Plus className="size-3.5" />}
+        onClick={() => setOpen(true)}
+      >
+        {t("newSupervisor")}
+      </Button>
+    );
+  }
+
+  return (
+    <form
+      className="flex items-end gap-1.5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        create.mutate();
+      }}
+    >
+      <Field label={t("supervisorName")} htmlFor="new-supervisor" required>
+        {(field) => (
+          <Input
+            {...field}
+            value={name}
+            autoFocus
+            placeholder={t("newSupervisorPlaceholder")}
+            onChange={(event) => setName(event.target.value)}
+            className="h-8 w-64 text-sm"
+          />
+        )}
+      </Field>
+      <Button
+        type="submit"
+        variant="primary"
+        size="sm"
+        busy={create.isPending}
+        disabled={!name.trim()}
+      >
+        {t("start")}
+      </Button>
+      <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+        {tCommon("cancel")}
+      </Button>
+    </form>
+  );
+}

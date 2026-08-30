@@ -748,7 +748,7 @@ shown working.
 | 6.2 | Handler roles as a ceiling — six roles, granular permissions, no self-grant | ✅ |
 | 6.3 | §10's form groups 4–9 — order, dependency, quality gates, budget, SLA, escalation | ✅ |
 | 6.4 | Failure simulation and publish — immutable `SupervisorVersion` | ✅ |
-| 6.5 | The Supervisor screen | ⬜ |
+| 6.5 | The Supervisor screen | ✅ |
 
 **Passes when** the two scopes can be set to disjoint sets and both hold, a handler is refused an
 action above their role with the reason recorded, a Supervisor publishes only after its failure
@@ -916,6 +916,48 @@ the right refusal for the wrong reason, and a test that would have passed while 
 was broken.
 
 21 tests, 333 total.
+
+**6.5 — done.** `/supervisor` and `/supervisor/[id]`, plus the design service the whole gate was
+waiting on.
+
+**The 6.4 deferral is closed.** `clear_results` had no caller and that was said out loud; the
+caller is `service.update`, and `test_saving_the_design_clears_every_simulation_result` is where
+the promise stops being a promise. Without it somebody records a pass, changes what the Supervisor
+watches, and publishes on the strength of a result about a design that no longer exists — with
+the gate reporting green.
+
+**The two scopes never share a control, at any layer.** §10 makes them independent and this step
+had three chances to quietly join them, so each was closed deliberately:
+
+- **The contract.** `SupervisorUpdate` has no `handlers` field. A test asserts the payload cannot
+  even be constructed with one — the rule is unstatable rather than defended.
+- **The routes.** `PUT /supervisors/{id}` is `edit_draft`; `PUT
+  /supervisors/{id}/handlers/{membership_id}` is `manage_access`. One payload carrying both would
+  have let the looser permission decide the stricter one.
+- **The screen.** Two sections, no shared widget — no "add person" that asks which list
+  afterwards. An Operator is refused the design and a test proves it.
+
+**The list is narrowed by scope 2, and the empty state says which emptiness it is.** A Supervisor
+somebody cannot control is not theirs to see; listing it would leak who supervises whom. So *"no
+supervisors yet"* and *"none you can control"* are different messages, and `is_empty` exists on
+the response so the screen can tell them apart rather than guess.
+
+**What cannot act yet is disabled and labelled, not hidden.** §10 lists monitoring, pause, resume
+and safe retry; the runtime that performs them is Gate 7. Hiding them would read as *"you do not
+have access"*, which is a different and untrue statement. `my_actions` comes from the server, so
+the screen never works out for itself which role may do what — that would be a second copy of
+`roles.py`, and the copy on screen is the one people would trust.
+
+**The contract test earned its place again.** `ScheduleRead` and `ScheduleWrite` collided with the
+Job's, and `test_the_contract_has_no_fully_qualified_schema_names` caught it before the frontend
+did. Third collision this build; the test now pays for itself twice over.
+
+Two smaller things worth recording. `SupervisorSchedule.weekdays` was typed `list[str]` when the
+recurrence module compares ints — mypy caught it at the `from_row` boundary, which is exactly what
+that shared function was introduced for. And the sidebar test moved its "not built yet" assertion
+from Supervisor to the to-do list, with a new test asserting both Builders now link.
+
+9 backend tests, 342 total; 29 on the frontend. `tsc`, `eslint`, `vitest` and `next build` clean.
 | 7 | Temporal runtime, to-do, approvals, notifications, governed Copilot | 3–4 weeks |
 | 8.1 | Settings | |
 | 8.2 | Privacy / DPDP | |

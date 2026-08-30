@@ -1602,6 +1602,237 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/supervisors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The supervisors this person may control
+         * @description Narrowed by scope 2. A Supervisor somebody cannot control is not theirs to see, and
+         *     listing it would leak who supervises whom.
+         */
+        get: operations["list_supervisors_api_v1_supervisors_get"];
+        put?: never;
+        /**
+         * Start a supervisor draft
+         * @description The creator becomes the owner, which makes them Owner without a handler row.
+         */
+        post: operations["create_api_v1_supervisors_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supervisors/lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The closed vocabularies a supervisor screen needs
+         * @description Kinds, handler roles, gate outcomes and simulation statuses.
+         *
+         *     Served rather than kept in the frontend: a second copy of a closed set is a copy that drifts,
+         *     and every one of these is closed because §10 or the workbook closes it.
+         */
+        get: operations["supervisor_lists_api_v1_supervisors_lists_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supervisors/{supervisor_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One supervisor, in full
+         * @description Both scopes in one response, with what the caller may do on this one.
+         */
+        get: operations["read_api_v1_supervisors__supervisor_id__get"];
+        /**
+         * Save the supervisor draft
+         * @description Saving clears every recorded simulation result — a pass against yesterday's design says
+         *     nothing about today's.
+         */
+        put: operations["update_api_v1_supervisors__supervisor_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supervisors/{supervisor_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive a supervisor
+         * @description Archived, never deleted. What an organisation arranged is evidence of what it decided.
+         */
+        post: operations["archive_api_v1_supervisors__supervisor_id__archive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supervisors/{supervisor_id}/handlers/{membership_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Add or change a handler — scope 2
+         * @description Its own route and its own permission. §10's two scopes are independent, and a payload
+         *     carrying both would have made the looser permission decide the stricter one.
+         */
+        put: operations["set_handler_api_v1_supervisors__supervisor_id__handlers__membership_id__put"];
+        post?: never;
+        /**
+         * Remove a handler — scope 2
+         * @description Removing yourself is allowed. Removing somebody who outranks you is not.
+         */
+        delete: operations["remove_handler_api_v1_supervisors__supervisor_id__handlers__membership_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supervisors/{supervisor_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What publishing this would mean */
+        get: operations["publish_summary_api_v1_supervisors__supervisor_id__publish_get"];
+        put?: never;
+        /** Approve and publish */
+        post: operations["route_api_v1_supervisors__supervisor_id__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supervisors/{supervisor_id}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * When this supervisor runs
+         * @description `schedule`, not `edit_draft`: deciding when something starts happening is its own verb.
+         *
+         *     Validated by the Job's own recurrence module, so a Supervisor schedule cannot be accepted
+         *     where the identical Job schedule would have been refused.
+         */
+        put: operations["set_schedule_api_v1_supervisors__supervisor_id__schedule_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supervisors/{supervisor_id}/simulations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The failure scenarios */
+        get: operations["read_simulations_api_v1_supervisors__supervisor_id__simulations_get"];
+        /**
+         * Record the failure scenarios and what was observed
+         * @description Who ran it and when are stamped by the server, never accepted from the caller.
+         */
+        put: operations["write_simulations_api_v1_supervisors__supervisor_id__simulations_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supervisors/{supervisor_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send for approval */
+        post: operations["route_api_v1_supervisors__supervisor_id__submit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supervisors/{supervisor_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What has been published */
+        get: operations["versions_api_v1_supervisors__supervisor_id__versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supervisors/{supervisor_id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take it back out of the queue */
+        post: operations["route_api_v1_supervisors__supervisor_id__withdraw_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health/live": {
         parameters: {
             query?: never;
@@ -2264,6 +2495,14 @@ export interface components {
              */
             expected_version: number;
         };
+        /** Body_archive_api_v1_supervisors__supervisor_id__archive_post */
+        Body_archive_api_v1_supervisors__supervisor_id__archive_post: {
+            /**
+             * Expected Version
+             * @default 1
+             */
+            expected_version: number;
+        };
         /** Body_archive_position_api_v1_hierarchy_positions__position_id__archive_post */
         Body_archive_position_api_v1_hierarchy_positions__position_id__archive_post: {
             /**
@@ -2274,6 +2513,14 @@ export interface components {
         };
         /** Body_archive_unit_api_v1_hierarchy_units__unit_id__archive_post */
         Body_archive_unit_api_v1_hierarchy_units__unit_id__archive_post: {
+            /**
+             * Expected Version
+             * @default 1
+             */
+            expected_version: number;
+        };
+        /** Body_remove_handler_api_v1_supervisors__supervisor_id__handlers__membership_id__delete */
+        Body_remove_handler_api_v1_supervisors__supervisor_id__handlers__membership_id__delete: {
             /**
              * Expected Version
              * @default 1
@@ -2497,6 +2744,35 @@ export interface components {
             /** Is Empty */
             is_empty: boolean;
         };
+        /**
+         * DependencyInput
+         * @description Both sides are positions in the supervised list, so a dependency can only link two things
+         *     this Supervisor watches.
+         */
+        DependencyInput: {
+            /** Depends On Position */
+            depends_on_position: number;
+            /** Supervised Position */
+            supervised_position: number;
+        };
+        /** DependencyRead */
+        DependencyRead: {
+            /**
+             * Depends On Id
+             * Format: uuid
+             */
+            depends_on_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Supervised Id
+             * Format: uuid
+             */
+            supervised_id: string;
+        };
         /** DependencyStatus */
         DependencyStatus: {
             /**
@@ -2545,6 +2821,43 @@ export interface components {
              * @default false
              */
             retryable: boolean;
+        };
+        /** EscalationInput */
+        EscalationInput: {
+            /** After Minutes */
+            after_minutes?: number | null;
+            /** Escalate To Label */
+            escalate_to_label?: string | null;
+            /** Escalate To Membership Id */
+            escalate_to_membership_id?: string | null;
+            /** Position */
+            position: number;
+            /** Required Action */
+            required_action: string;
+            /** Situation */
+            situation: string;
+        };
+        /** EscalationRead */
+        EscalationRead: {
+            /** After Minutes */
+            after_minutes: number | null;
+            /** Escalate To Label */
+            escalate_to_label: string | null;
+            /** Escalate To Membership Id */
+            escalate_to_membership_id: string | null;
+            /** Escalate To Name */
+            escalate_to_name: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Position */
+            position: number;
+            /** Required Action */
+            required_action: string;
+            /** Situation */
+            situation: string;
         };
         /**
          * EscalationRuleInput
@@ -2615,6 +2928,52 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /**
+         * HandlerInput
+         * @description One row of scope 2. Sent to its own route — see the module docstring.
+         */
+        HandlerInput: {
+            /** Expected Version */
+            expected_version: number;
+            /**
+             * Membership Id
+             * Format: uuid
+             */
+            membership_id: string;
+            role: components["schemas"]["HandlerRole"];
+        };
+        /** HandlerRead */
+        HandlerRead: {
+            /**
+             * Granted At
+             * Format: date-time
+             */
+            granted_at: string;
+            /** Granted By Membership Id */
+            granted_by_membership_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Membership Id
+             * Format: uuid
+             */
+            membership_id: string;
+            /** Person Name */
+            person_name: string | null;
+            role: components["schemas"]["HandlerRole"];
+        };
+        /**
+         * HandlerRole
+         * @description §10's six, in the order the plan lists them — which is increasing authority.
+         *
+         *     The order is load-bearing: 6.2 compares roles, and a list reordered for tidiness would quietly
+         *     change who may do what.
+         * @enum {string}
+         */
+        HandlerRole: "viewer" | "operator" | "reviewer" | "approver" | "manager" | "owner";
         /**
          * ImportApply
          * @description The version the person was looking at when they decided.
@@ -3344,6 +3703,46 @@ export interface components {
          * @enum {string}
          */
         MissedRunPolicy: "skip" | "run_once" | "run_all";
+        /** NotificationInput */
+        NotificationInput: {
+            /** Channel */
+            channel?: string | null;
+            /** Event */
+            event: string;
+            /** Position */
+            position: number;
+            /** Recipient Label */
+            recipient_label?: string | null;
+            /** Recipient Membership Id */
+            recipient_membership_id?: string | null;
+            /**
+             * To Handlers
+             * @default true
+             */
+            to_handlers: boolean;
+        };
+        /** NotificationRead */
+        NotificationRead: {
+            /** Channel */
+            channel: string | null;
+            /** Event */
+            event: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Position */
+            position: number;
+            /** Recipient Label */
+            recipient_label: string | null;
+            /** Recipient Membership Id */
+            recipient_membership_id: string | null;
+            /** Recipient Name */
+            recipient_name: string | null;
+            /** To Handlers */
+            to_handlers: boolean;
+        };
         /**
          * ObjectiveCard
          * @description A row in the list — PLAN §7's "Objective cards".
@@ -3549,6 +3948,15 @@ export interface components {
             /** Workload Unit */
             workload_unit?: string | null;
         };
+        /**
+         * OnFailure
+         * @description What a quality gate does when it does not hold.
+         *
+         *     §10 group 6 pairs quality with evidence, and a gate with no stated consequence is an
+         *     observation rather than a gate.
+         * @enum {string}
+         */
+        OnFailure: "block" | "escalate" | "flag_and_continue";
         /** OrgUnitCreate */
         OrgUnitCreate: {
             /** External Ref */
@@ -3872,6 +4280,36 @@ export interface components {
             version: number;
             /** Warnings */
             warnings?: components["schemas"]["WarningRead"][];
+        };
+        /** QualityGateInput */
+        QualityGateInput: {
+            /** Condition */
+            condition: string;
+            /** Evidence */
+            evidence?: string | null;
+            /** Name */
+            name: string;
+            /** @default escalate */
+            on_failure: components["schemas"]["OnFailure"];
+            /** Position */
+            position: number;
+        };
+        /** QualityGateRead */
+        QualityGateRead: {
+            /** Condition */
+            condition: string;
+            /** Evidence */
+            evidence: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            on_failure: components["schemas"]["OnFailure"];
+            /** Position */
+            position: number;
         };
         /** Readiness */
         Readiness: {
@@ -4356,6 +4794,75 @@ export interface components {
             user: components["schemas"]["CurrentUser"];
         };
         /**
+         * SimulationInput
+         * @description One failure scenario.
+         *
+         *     `run_by` and `run_at` are deliberately absent — they are stamped by the server from the caller
+         *     and the clock. A result somebody could backdate or attribute to a colleague is not evidence.
+         */
+        SimulationInput: {
+            /** Expected Response */
+            expected_response: string;
+            /** Name */
+            name: string;
+            /** Observed */
+            observed?: string | null;
+            /** @default not_run */
+            status: components["schemas"]["SimulationStatus"];
+            /** What Fails */
+            what_fails: string;
+        };
+        /** SimulationList */
+        SimulationList: {
+            /** Passed */
+            passed: number;
+            /** Simulations */
+            simulations: components["schemas"]["SimulationRead"][];
+            /** Total */
+            total: number;
+        };
+        /** SimulationRead */
+        SimulationRead: {
+            /** Expected Response */
+            expected_response: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Observed */
+            observed: string | null;
+            /** Position */
+            position: number;
+            /** Run At */
+            run_at: string | null;
+            /** Run By Membership Id */
+            run_by_membership_id: string | null;
+            /** Run By Name */
+            run_by_name: string | null;
+            status: components["schemas"]["SimulationStatus"];
+            /** What Fails */
+            what_fails: string;
+        };
+        /**
+         * SimulationStatus
+         * @description The same four the Agent's sandbox tests use — the approved workbook's "Test Status" list.
+         *
+         *     One vocabulary across the product, so somebody who has read one screen knows what the words
+         *     mean on the next.
+         * @enum {string}
+         */
+        SimulationStatus: "not_run" | "pass" | "fail" | "blocked";
+        /** SimulationsUpdate */
+        SimulationsUpdate: {
+            /** Expected Version */
+            expected_version: number;
+            /** Simulations */
+            simulations: components["schemas"]["SimulationInput"][];
+        };
+        /**
          * Situation
          * @description Form 4 section B's six rows, printed on the approved form.
          *
@@ -4601,6 +5108,477 @@ export interface components {
             responsible_role?: string | null;
             /** Title */
             title?: string | null;
+        };
+        /**
+         * SupervisedInput
+         * @description One row of scope 1 — whose Agents are watched.
+         */
+        SupervisedInput: {
+            /** Agent Id */
+            agent_id?: string | null;
+            /** Agent Version Id */
+            agent_version_id?: string | null;
+            /**
+             * Membership Id
+             * Format: uuid
+             */
+            membership_id: string;
+            /** Position */
+            position: number;
+        };
+        /** SupervisedRead */
+        SupervisedRead: {
+            /** Agent Id */
+            agent_id: string | null;
+            /** Agent Name */
+            agent_name: string | null;
+            /** Agent Version Id */
+            agent_version_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Membership Id
+             * Format: uuid
+             */
+            membership_id: string;
+            /** Person Name */
+            person_name: string | null;
+            /** Position */
+            position: number;
+        };
+        /** SupervisorCard */
+        SupervisorCard: {
+            /** Handler Count */
+            handler_count: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            kind: components["schemas"]["SupervisorKind"];
+            /** Name */
+            name: string;
+            /** Owner Name */
+            owner_name: string | null;
+            status: components["schemas"]["SupervisorStatus"];
+            /** Supervised Count */
+            supervised_count: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * SupervisorCreate
+         * @description A name and a kind. A department Supervisor names its department; a personal one cannot.
+         */
+        SupervisorCreate: {
+            /** @default personal */
+            kind: components["schemas"]["SupervisorKind"];
+            /** Name */
+            name: string;
+            /** Objective Id */
+            objective_id?: string | null;
+            /** Org Node Id */
+            org_node_id?: string | null;
+        };
+        /**
+         * SupervisorGate
+         * @description The one gate `PLAN.md` names. `reason` says what would clear it, not merely that it is
+         *     closed — a screen saying "blocked" alone sends somebody hunting.
+         */
+        SupervisorGate: {
+            /** Gate */
+            gate: string;
+            /** Name */
+            name: string;
+            /** Passed */
+            passed: boolean;
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * SupervisorKind
+         * @description The two §10 approves.
+         *
+         *     Workspace-wide is *"restricted and may be added later"*, so it is not here. A third value now
+         *     would be building against a decision nobody has taken.
+         * @enum {string}
+         */
+        SupervisorKind: "personal" | "department";
+        /**
+         * SupervisorList
+         * @description `is_empty` separates "none yet" from "none match that filter" — different words.
+         */
+        SupervisorList: {
+            /** Is Empty */
+            is_empty: boolean;
+            /** Supervisors */
+            supervisors: components["schemas"]["SupervisorCard"][];
+        };
+        /**
+         * SupervisorLists
+         * @description The closed vocabularies a screen needs, served rather than copied into the frontend.
+         */
+        SupervisorLists: {
+            /** Handler Roles */
+            handler_roles?: string[];
+            /** Kinds */
+            kinds?: string[];
+            /** On Failure */
+            on_failure?: string[];
+            /** Simulation Statuses */
+            simulation_statuses?: string[];
+        };
+        /** SupervisorPublishRequest */
+        SupervisorPublishRequest: {
+            /** Expected Version */
+            expected_version: number;
+        };
+        /** SupervisorPublishSummary */
+        SupervisorPublishSummary: {
+            /** Approver Name */
+            approver_name: string | null;
+            /** Can Approve */
+            can_approve: boolean;
+            /** Can Submit */
+            can_submit: boolean;
+            /** Dependency Count */
+            dependency_count: number;
+            /** Escalation Count */
+            escalation_count: number;
+            /** Gates */
+            gates: components["schemas"]["SupervisorGate"][];
+            /** Handler Count */
+            handler_count: number;
+            /** Has Schedule */
+            has_schedule: boolean;
+            kind: components["schemas"]["SupervisorKind"];
+            /** Name */
+            name: string;
+            /** Next Action */
+            next_action: string;
+            /** Notification Count */
+            notification_count: number;
+            /** Owner Name */
+            owner_name: string | null;
+            /** Quality Gate Count */
+            quality_gate_count: number;
+            /** Schedule Auto Run */
+            schedule_auto_run: boolean;
+            /** Simulations Passed */
+            simulations_passed: number;
+            /** Simulations Total */
+            simulations_total: number;
+            status: components["schemas"]["SupervisorStatus"];
+            /** Submitted By Name */
+            submitted_by_name: string | null;
+            /** Supervised Count */
+            supervised_count: number;
+            /**
+             * Supervisor Id
+             * Format: uuid
+             */
+            supervisor_id: string;
+            /** Version */
+            version: number;
+            /** Warnings */
+            warnings: components["schemas"]["SupervisorWarning"][];
+        };
+        /**
+         * SupervisorRead
+         * @description One Supervisor in full, so a form renders from one request.
+         */
+        SupervisorRead: {
+            /** Approver Label */
+            approver_label: string | null;
+            /** Approver Membership Id */
+            approver_membership_id: string | null;
+            /** Approver Name */
+            approver_name: string | null;
+            /** Cost Cap Currency */
+            cost_cap_currency: string | null;
+            /** Cost Cap Minor Units */
+            cost_cap_minor_units: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Deadline Minutes */
+            deadline_minutes: number | null;
+            /** Dependencies */
+            dependencies: components["schemas"]["DependencyRead"][];
+            /** Escalation Label */
+            escalation_label: string | null;
+            /** Escalation Membership Id */
+            escalation_membership_id: string | null;
+            /** Escalation Name */
+            escalation_name: string | null;
+            /** Escalations */
+            escalations: components["schemas"]["EscalationRead"][];
+            /** Handlers */
+            handlers: components["schemas"]["HandlerRead"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Editable */
+            is_editable: boolean;
+            kind: components["schemas"]["SupervisorKind"];
+            /** Max Concurrency */
+            max_concurrency: number | null;
+            /** Max Retries */
+            max_retries: number | null;
+            /** My Actions */
+            my_actions: string[];
+            my_role: components["schemas"]["HandlerRole"] | null;
+            /** Name */
+            name: string;
+            /** Notifications */
+            notifications: components["schemas"]["NotificationRead"][];
+            /** Objective Id */
+            objective_id: string | null;
+            /** Objective Name */
+            objective_name: string | null;
+            /** Org Node Id */
+            org_node_id: string | null;
+            /** Org Node Name */
+            org_node_name: string | null;
+            /**
+             * Owner Membership Id
+             * Format: uuid
+             */
+            owner_membership_id: string;
+            /** Owner Name */
+            owner_name: string | null;
+            /** Purpose */
+            purpose: string | null;
+            /** Quality Gates */
+            quality_gates: components["schemas"]["QualityGateRead"][];
+            /** Retry Backoff Seconds */
+            retry_backoff_seconds: number | null;
+            /** Routing Policy */
+            routing_policy: string | null;
+            schedule: components["schemas"]["SupervisorScheduleRead"] | null;
+            /** Sla Minutes */
+            sla_minutes: number | null;
+            status: components["schemas"]["SupervisorStatus"];
+            /** Supervised */
+            supervised: components["schemas"]["SupervisedRead"][];
+            /** Token Cap */
+            token_cap: number | null;
+            /** Trigger */
+            trigger: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** SupervisorScheduleRead */
+        SupervisorScheduleRead: {
+            /** Ambiguous Policy */
+            ambiguous_policy: string;
+            /**
+             * At Time
+             * Format: time
+             */
+            at_time: string;
+            /** Auto Run */
+            auto_run: boolean;
+            /** Dst Policy */
+            dst_policy: string;
+            /** Frequency */
+            frequency: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Interval */
+            interval: number;
+            /** Missed Run Policy */
+            missed_run_policy: string;
+            /** Monthday */
+            monthday: number | null;
+            /** Overlap Policy */
+            overlap_policy: string;
+            /** Skip Dates */
+            skip_dates: string[];
+            /** Timezone */
+            timezone: string;
+            /** Version */
+            version: number;
+            /** Weekdays */
+            weekdays: number[];
+            /** Weekdays Only */
+            weekdays_only: boolean;
+        };
+        /**
+         * SupervisorScheduleWrite
+         * @description The Job's schedule fields, because the Job's pure module reads them.
+         *
+         *     Prefixed `Supervisor…` because FastAPI names an OpenAPI component after the class, and the
+         *     Job already has a `ScheduleWrite`. Two classes sharing a name make the generator fully qualify
+         *     **both**, which breaks whichever frontend alias pointed at the other one —
+         *     `test_the_contract_has_no_fully_qualified_schema_names` caught exactly this.
+         */
+        SupervisorScheduleWrite: {
+            /**
+             * Ambiguous Policy
+             * @default first
+             */
+            ambiguous_policy: string;
+            /**
+             * At Time
+             * Format: time
+             */
+            at_time: string;
+            /**
+             * Auto Run
+             * @default false
+             */
+            auto_run: boolean;
+            /**
+             * Dst Policy
+             * @default shift
+             */
+            dst_policy: string;
+            /** Expected Version */
+            expected_version: number;
+            /** Frequency */
+            frequency: string;
+            /**
+             * Interval
+             * @default 1
+             */
+            interval: number;
+            /**
+             * Missed Run Policy
+             * @default skip
+             */
+            missed_run_policy: string;
+            /** Monthday */
+            monthday?: number | null;
+            /**
+             * Overlap Policy
+             * @default queue
+             */
+            overlap_policy: string;
+            /** Skip Dates */
+            skip_dates?: string[];
+            /** Timezone */
+            timezone: string;
+            /** Weekdays */
+            weekdays?: number[];
+            /**
+             * Weekdays Only
+             * @default false
+             */
+            weekdays_only: boolean;
+        };
+        /**
+         * SupervisorStatus
+         * @description The same lifecycle as every other designed object here.
+         * @enum {string}
+         */
+        SupervisorStatus: "draft" | "needs_review" | "ready_to_publish" | "published" | "active" | "paused" | "archived";
+        /**
+         * SupervisorUpdate
+         * @description Save the draft. Every collection is replaced wholesale when sent, left alone when not.
+         *
+         *     There is no `handlers` field, deliberately — see the module docstring.
+         */
+        SupervisorUpdate: {
+            /** Approver Label */
+            approver_label?: string | null;
+            /** Approver Membership Id */
+            approver_membership_id?: string | null;
+            /** Cost Cap Currency */
+            cost_cap_currency?: string | null;
+            /** Cost Cap Minor Units */
+            cost_cap_minor_units?: number | null;
+            /** Deadline Minutes */
+            deadline_minutes?: number | null;
+            /** Dependencies */
+            dependencies?: components["schemas"]["DependencyInput"][] | null;
+            /** Escalation Label */
+            escalation_label?: string | null;
+            /** Escalation Membership Id */
+            escalation_membership_id?: string | null;
+            /** Escalations */
+            escalations?: components["schemas"]["EscalationInput"][] | null;
+            /** Expected Version */
+            expected_version: number;
+            /** Max Concurrency */
+            max_concurrency?: number | null;
+            /** Max Retries */
+            max_retries?: number | null;
+            /** Name */
+            name?: string | null;
+            /** Notifications */
+            notifications?: components["schemas"]["NotificationInput"][] | null;
+            /** Objective Id */
+            objective_id?: string | null;
+            /** Purpose */
+            purpose?: string | null;
+            /** Quality Gates */
+            quality_gates?: components["schemas"]["QualityGateInput"][] | null;
+            /** Retry Backoff Seconds */
+            retry_backoff_seconds?: number | null;
+            /** Routing Policy */
+            routing_policy?: string | null;
+            /** Sla Minutes */
+            sla_minutes?: number | null;
+            /** Supervised */
+            supervised?: components["schemas"]["SupervisedInput"][] | null;
+            /** Token Cap */
+            token_cap?: number | null;
+            /** Trigger */
+            trigger?: string | null;
+        };
+        /** SupervisorVersionCard */
+        SupervisorVersionCard: {
+            /** Approved By Name */
+            approved_by_name: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Published At */
+            published_at: string;
+            /** Published By Name */
+            published_by_name: string | null;
+            /** Version No */
+            version_no: number;
+        };
+        /** SupervisorVersionList */
+        SupervisorVersionList: {
+            /** Is Empty */
+            is_empty: boolean;
+            /** Versions */
+            versions: components["schemas"]["SupervisorVersionCard"][];
+        };
+        /**
+         * SupervisorWarning
+         * @description Worth saying, and not a gate. Shown, never hidden, never in the way.
+         */
+        SupervisorWarning: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
         };
         /**
          * ToolGrant
@@ -12754,6 +13732,1581 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SkillCard"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_supervisors_api_v1_supervisors_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                include_archived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupervisorList"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    create_api_v1_supervisors_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupervisorCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    supervisor_lists_api_v1_supervisors_lists_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupervisorLists"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    read_api_v1_supervisors__supervisor_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supervisor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupervisorRead"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    update_api_v1_supervisors__supervisor_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                supervisor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupervisorUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupervisorRead"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    archive_api_v1_supervisors__supervisor_id__archive_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                supervisor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Body_archive_api_v1_supervisors__supervisor_id__archive_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    set_handler_api_v1_supervisors__supervisor_id__handlers__membership_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                supervisor_id: string;
+                membership_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HandlerInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandlerRead"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    remove_handler_api_v1_supervisors__supervisor_id__handlers__membership_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                supervisor_id: string;
+                membership_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Body_remove_handler_api_v1_supervisors__supervisor_id__handlers__membership_id__delete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    publish_summary_api_v1_supervisors__supervisor_id__publish_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supervisor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupervisorPublishSummary"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    route_api_v1_supervisors__supervisor_id__publish_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                supervisor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupervisorPublishRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    set_schedule_api_v1_supervisors__supervisor_id__schedule_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                supervisor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupervisorScheduleWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupervisorScheduleRead"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    read_simulations_api_v1_supervisors__supervisor_id__simulations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supervisor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationList"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    write_simulations_api_v1_supervisors__supervisor_id__simulations_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                supervisor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimulationsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationList"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    route_api_v1_supervisors__supervisor_id__submit_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                supervisor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupervisorPublishRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    versions_api_v1_supervisors__supervisor_id__versions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supervisor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupervisorVersionList"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    route_api_v1_supervisors__supervisor_id__withdraw_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                supervisor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupervisorPublishRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
             /** @description Not signed in, or the session ended. */

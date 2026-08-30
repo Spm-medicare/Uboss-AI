@@ -167,3 +167,40 @@ export type CandidateOutcome = Schemas["CandidateOutcome"];
 export type GateOutcome = Schemas["GateOutcome"];
 export type DecisionCard = Schemas["DecisionCard"];
 export type DecisionList = Schemas["DecisionList"];
+
+//  Supervisors — PLAN §10. Two independent scopes: what is watched, and who may control it.
+export type SupervisorCard = Schemas["SupervisorCard"];
+export type SupervisorList = Schemas["SupervisorList"];
+export type SupervisorRead = Schemas["SupervisorRead"];
+export type SupervisorCreate = Schemas["SupervisorCreate"];
+export type SupervisorUpdate = Schemas["SupervisorUpdate"];
+export type SupervisorLists = Schemas["SupervisorLists"];
+export type SupervisorKind = Schemas["SupervisorKind"];
+export type SupervisorStatus = Schemas["SupervisorStatus"];
+export type HandlerRole = Schemas["HandlerRole"];
+export type HandlerInput = Schemas["HandlerInput"];
+export type HandlerRead = Schemas["HandlerRead"];
+export type SupervisedInput = Schemas["SupervisedInput"];
+export type SupervisedRead = Schemas["SupervisedRead"];
+export type DependencyInput = Schemas["DependencyInput"];
+export type DependencyRead = Schemas["DependencyRead"];
+export type QualityGateInput = Schemas["QualityGateInput"];
+export type QualityGateRead = Schemas["QualityGateRead"];
+export type OnFailure = Schemas["OnFailure"];
+export type SupervisorEscalationInput = Schemas["EscalationInput"];
+export type SupervisorEscalationRead = Schemas["EscalationRead"];
+export type NotificationInput = Schemas["NotificationInput"];
+export type NotificationRead = Schemas["NotificationRead"];
+export type SupervisorScheduleRead = Schemas["SupervisorScheduleRead"];
+export type SupervisorScheduleWrite = Schemas["SupervisorScheduleWrite"];
+
+//  §10 group 10 — failure simulation, and the gate PLAN.md names for Gate 6.
+export type SimulationInput = Schemas["SimulationInput"];
+export type SimulationRead = Schemas["SimulationRead"];
+export type SimulationList = Schemas["SimulationList"];
+export type SimulationStatus = Schemas["SimulationStatus"];
+export type SupervisorPublishSummary = Schemas["SupervisorPublishSummary"];
+export type SupervisorGate = Schemas["SupervisorGate"];
+export type SupervisorWarning = Schemas["SupervisorWarning"];
+export type SupervisorVersionCard = Schemas["SupervisorVersionCard"];
+export type SupervisorVersionList = Schemas["SupervisorVersionList"];

@@ -126,8 +126,11 @@ export const NAVIGATION: NavGroup[] = [
         ordinal: "04",
         href: "/supervisor",
         icon: UserCog,
+        //  `run` because §10's Operator — pause, resume and safe retry — is the lowest handler
+        //  role that does anything, and somebody with no `run` anywhere has nothing to open it
+        //  for. The handler scope narrows it further; this only decides whether the row appears.
         requires: "run",
-        buildsIn: "Gate 6",
+        buildsIn: null,
       },
     ],
   },

@@ -25,6 +25,8 @@ from uboss.modules.jobs.schedule_api import router as job_schedule_router
 from uboss.modules.objectives.api import router as objectives_router
 from uboss.modules.objectives.proposal_api import router as objective_plan_router
 from uboss.modules.objectives.publish_api import router as objective_publish_router
+from uboss.modules.supervisors.api import router as supervisors_router
+from uboss.modules.supervisors.publish_api import router as supervisor_publish_router
 
 #: Every failure any route can produce, declared once.
 #
@@ -64,5 +66,7 @@ def build_v1_router() -> APIRouter:
     router.include_router(skills_router)
     router.include_router(agents_router)
     router.include_router(agent_publish_router)
+    router.include_router(supervisors_router)
+    router.include_router(supervisor_publish_router)
 
     return router
