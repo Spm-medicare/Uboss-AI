@@ -223,6 +223,132 @@ export interface paths {
         patch: operations["end_assignment_api_v1_hierarchy_assignments__assignment_id__patch"];
         trace?: never;
     };
+    "/api/v1/hierarchy/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload a structure file
+         * @description PLAN §5 steps 1 and 2 — quarantine, then parse deterministically.
+         *
+         *     Nothing is created in the live tree. The file is stored `pending` and stays that way: an
+         *     import source is never served back to a browser, so it never needs to leave quarantine.
+         *
+         *     The response says which columns were understood and which were not. The ones that were not
+         *     are what step 3 may ask a model about.
+         */
+        post: operations["upload_api_v1_hierarchy_imports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hierarchy/imports/{import_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The staged rows and the tree they would build
+         * @description PLAN §5 step 5 — row errors, warnings, and the proposed tree.
+         *
+         *     The tree is derived from the staged rows on every read rather than stored. Two copies of one
+         *     fact drift, and the copy on screen is the one somebody would act on.
+         */
+        get: operations["preview_api_v1_hierarchy_imports__import_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hierarchy/imports/{import_id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply the import
+         * @description PLAN §5 step 7 — *"Backend applies atomically and records source/mapping/audit."*
+         *
+         *     One transaction: either the whole staged tree exists afterwards or none of it does. A
+         *     half-applied org chart is worse than a failed one, because nobody can tell which half is real.
+         *
+         *     Refused while any row has an error. An import applied with known bad rows puts known bad data
+         *     into the thing every permission scope reads from.
+         */
+        post: operations["apply_api_v1_hierarchy_imports__import_id__apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hierarchy/imports/{import_id}/mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Confirm what the columns mean
+         * @description PLAN §5 step 4 — the person's decision, and the only one that counts.
+         *
+         *     Every row is restaged against the confirmed mapping, so what the preview shows is produced by
+         *     the same code that will apply it. Anything not mapped becomes an ignored column, stated
+         *     rather than silently dropped.
+         */
+        put: operations["set_mapping_api_v1_hierarchy_imports__import_id__mapping_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hierarchy/imports/{import_id}/propose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask a model about the unmatched columns
+         * @description PLAN §5 step 3 — *"Claude proposes only ambiguous column mappings."*
+         *
+         *     Only the headings the deterministic pass could not place, and only headings: the model never
+         *     sees the tree, is never asked what to create, and its answer is a suggestion until a person
+         *     accepts it.
+         *
+         *     Returns 200 whether or not a model was reachable. `proposal.consulted` says which happened,
+         *     so the screen can state it rather than leaving a person to infer it from an empty list.
+         */
+        post: operations["propose_api_v1_hierarchy_imports__import_id__propose_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/hierarchy/issues": {
         parameters: {
             query?: never;
@@ -586,6 +712,16 @@ export interface components {
              */
             expected_version: number;
         };
+        /** Body_upload_api_v1_hierarchy_imports_post */
+        Body_upload_api_v1_hierarchy_imports_post: {
+            /**
+             * File
+             * @description A .csv or .xlsx of the structure.
+             */
+            file: string;
+            /** Sheet Name */
+            sheet_name?: string | null;
+        };
         /**
          * ChooseWorkspaceResponse
          * @description The password was right, but the person belongs to more than one organisation.
@@ -697,6 +833,121 @@ export interface components {
             field: string;
             /** Message */
             message: string;
+        };
+        /**
+         * ImportApply
+         * @description The version the person was looking at when they decided.
+         *
+         *     Not decoration: between reading the preview and pressing apply, somebody else may have
+         *     re-mapped the columns. Applying a tree the person never saw is the failure this prevents.
+         */
+        ImportApply: {
+            /** Expected Version */
+            expected_version: number;
+        };
+        /**
+         * ImportMappingUpdate
+         * @description `{"Cost Centre": "unit_ref", ...}` — the mapping a person confirmed.
+         */
+        ImportMappingUpdate: {
+            /** Expected Version */
+            expected_version: number;
+            /** Mapping */
+            mapping: {
+                [key: string]: string;
+            };
+        };
+        /**
+         * ImportPreview
+         * @description Everything a person needs before deciding — PLAN §5 steps 5 and 6.
+         */
+        ImportPreview: {
+            /** Can Apply */
+            can_apply: boolean;
+            /** Column Mapping */
+            column_mapping: {
+                [key: string]: unknown;
+            };
+            /** Error Count */
+            error_count: number;
+            /** Ignored Columns */
+            ignored_columns: string[];
+            /**
+             * Import Id
+             * Format: uuid
+             */
+            import_id: string;
+            /** Proposal */
+            proposal: {
+                [key: string]: unknown;
+            } | null;
+            /** Proposed Tree */
+            proposed_tree: components["schemas"]["ProposedUnit"][];
+            /** Row Count */
+            row_count: number;
+            /** Rows */
+            rows: components["schemas"]["ImportRowRead"][];
+            /** Source Columns */
+            source_columns: string[];
+            /** Status */
+            status: string;
+            /** Warning Count */
+            warning_count: number;
+        };
+        /**
+         * ImportRowRead
+         * @description One staged row, and what is wrong with it.
+         */
+        ImportRowRead: {
+            /** Errors */
+            errors: string[];
+            /** Kind */
+            kind: string;
+            /** Parsed */
+            parsed: {
+                [key: string]: unknown;
+            };
+            /** Row Number */
+            row_number: number;
+            /** Warnings */
+            warnings: string[];
+        };
+        /**
+         * ImportSummary
+         * @description Where an import has got to, and what it made of the file.
+         */
+        ImportSummary: {
+            /** Applied At */
+            applied_at: string | null;
+            /** Column Mapping */
+            column_mapping: {
+                [key: string]: unknown;
+            };
+            /** Error Count */
+            error_count: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Ignored Columns */
+            ignored_columns: string[];
+            /** Proposal */
+            proposal: {
+                [key: string]: unknown;
+            } | null;
+            /** Row Count */
+            row_count: number;
+            /** Sheet Name */
+            sheet_name: string | null;
+            /** Source Columns */
+            source_columns: string[];
+            /** Status */
+            status: string;
+            /** Version */
+            version: number;
+            /** Warning Count */
+            warning_count: number;
         };
         /** OrgUnitCreate */
         OrgUnitCreate: {
@@ -866,6 +1117,24 @@ export interface components {
             org_unit_id?: string | null;
             /** Title */
             title?: string | null;
+        };
+        /**
+         * ProposedUnit
+         * @description A department as the file describes it, before it exists.
+         */
+        ProposedUnit: {
+            /** External Ref */
+            external_ref: string | null;
+            /** Name */
+            name: string;
+            /** Parent Name */
+            parent_name: string | null;
+            /** Positions */
+            positions: {
+                [key: string]: unknown;
+            }[];
+            /** Unit Type */
+            unit_type: string;
         };
         /** Readiness */
         Readiness: {
@@ -1867,6 +2136,496 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    upload_api_v1_hierarchy_imports_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_api_v1_hierarchy_imports_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportSummary"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    preview_api_v1_hierarchy_imports__import_id__get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                import_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreview"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    apply_api_v1_hierarchy_imports__import_id__apply_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                import_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportApply"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportSummary"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    set_mapping_api_v1_hierarchy_imports__import_id__mapping_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                import_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportMappingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportSummary"];
+                };
+            };
+            /** @description Not signed in, or the session ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Refused. The reason is in the audit trail. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No such record, for this caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The record moved, or the key was reused. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Some field was not accepted. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many attempts. See Retry-After. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fault on our side. Nothing was changed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A dependency did not answer. Retryable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    propose_api_v1_hierarchy_imports__import_id__propose_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                import_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportSummary"];
                 };
             };
             /** @description Not signed in, or the session ended. */

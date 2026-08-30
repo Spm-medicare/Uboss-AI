@@ -258,9 +258,7 @@ class OrgRevision(Base, PrimaryKey, TenantOwned):
     #:
     #: `FetchedValue` tells SQLAlchemy the database produces this, so the number is read back
     #: after the insert rather than left as the `None` that was sent.
-    revision_no: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=FetchedValue()
-    )
+    revision_no: Mapped[int] = mapped_column(Integer, nullable=False, server_default=FetchedValue())
 
     #: What changed: `unit.created`, `position.moved`, `assignment.ended`, and so on.
     change_type: Mapped[str] = mapped_column(String(60), nullable=False)

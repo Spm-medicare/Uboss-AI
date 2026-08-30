@@ -20,6 +20,7 @@ from uboss.core.logging import actor_id, tenant_id
 from uboss.core.permissions import Action
 from uboss.core.settings import Settings, get_settings
 from uboss.db.session import db_session
+from uboss.modules.files.storage import Storage
 from uboss.modules.identity import guard, tokens
 from uboss.modules.identity import service as identity
 
@@ -37,6 +38,19 @@ def redis_dep(request: Request) -> Redis:
 
 
 RedisDep = Annotated[Redis, Depends(redis_dep)]
+
+
+def storage_dep(settings: SettingsDep) -> Storage:
+    """Object storage, built per request.
+
+    Cheap to construct — `aioboto3.Session` holds configuration, not a connection — and building
+    it here rather than at import time means a settings change is picked up without a restart in
+    development.
+    """
+    return Storage(settings)
+
+
+StorageDep = Annotated[Storage, Depends(storage_dep)]
 
 
 async def current_context(
@@ -102,9 +116,7 @@ def requires(action: Action):  # type: ignore[no-untyped-def]
     the whole of it.
     """
 
-    async def check(
-        context: CurrentContext, session: SessionDep, request: Request
-    ) -> None:
+    async def check(context: CurrentContext, session: SessionDep, request: Request) -> None:
         await guard.authorise(
             session,
             context,

@@ -70,6 +70,17 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr = SecretStr("")
     ai_timeout_seconds: int = Field(default=60, ge=5, le=600)
     ai_max_output_tokens: int = Field(default=8000, ge=256, le=64000)
+    ai_base_url: str = "https://api.anthropic.com"
+
+    #: Which model serves which kind of task. Settings, never a literal in domain code or in the
+    #: interface — PLAN's forbidden shortcuts name hard-coding a model name specifically, and the
+    #: reason is that the next model change would have to find every one of them.
+    #:
+    #: Column mapping is small, structured and reviewed by a person before anything happens, so
+    #: it is served by a fast model. Proposal work is reasoning-heavy and reviewed before it is
+    #: published, so it is served by a capable one.
+    ai_model_column_mapping: str = "claude-haiku-4-5-20251001"
+    ai_model_proposal: str = "claude-sonnet-5"
 
     # ── object storage ───────────────────────────────────────────────────────────────────
     #: S3-compatible (PLAN §26). MinIO locally, whatever the deployment provides in production —
@@ -150,9 +161,7 @@ class Settings(BaseSettings):
         """
         url = value.get_secret_value()
         if not url.startswith("postgresql+psycopg://"):
-            raise ValueError(
-                "database_url must use the async driver: postgresql+psycopg://…"
-            )
+            raise ValueError("database_url must use the async driver: postgresql+psycopg://…")
         return value
 
     @field_validator("cors_origins")

@@ -33,6 +33,10 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi>=0.48b0",
     "opentelemetry-instrumentation-sqlalchemy>=0.48b0",
     "opentelemetry-instrumentation-httpx>=0.48b0",
+    # Reading .xlsx for the hierarchy import (PLAN §5). Opened read-only and values-only, so no
+    # formula is evaluated and no linked workbook is fetched — a spreadsheet from a customer is
+    # untrusted input like any other upload. CSV needs nothing: it is in the standard library.
+    "openpyxl>=3.1",
 ]
 
 [dependency-groups]
@@ -86,7 +90,7 @@ plugins = ["pydantic.mypy"]
 #  loosening `strict` — everything this project writes stays fully typed, and modules/files wraps
 #  the untyped client behind an interface that is.
 [[tool.mypy.overrides]]
-module = ["aioboto3.*", "botocore.*", "aiobotocore.*", "boto3.*"]
+module = ["aioboto3.*", "botocore.*", "aiobotocore.*", "boto3.*", "openpyxl.*"]
 ignore_missing_imports = true
 
 #  Pytest is configured in the repository root pytest.ini, because the suite exercises the

@@ -65,9 +65,7 @@ async def read_tree(
     `is_empty` distinguishes "this organisation has no tree yet" from "the request failed" — two
     states that look identical on screen and mean opposite things.
     """
-    return await service.read_tree(
-        session, context, as_at=as_at, include_archived=include_archived
-    )
+    return await service.read_tree(session, context, as_at=as_at, include_archived=include_archived)
 
 
 @router.get("/issues", summary="Problems worth someone's attention")
@@ -288,9 +286,7 @@ async def archive_position(
         if execution.is_replay:
             return cast(dict[str, str], execution.replay_body)
 
-        position = await service.archive_position(
-            session, context, position_id, expected_version
-        )
+        position = await service.archive_position(session, context, position_id, expected_version)
         result = {"id": str(position.id), "version": str(position.version)}
         execution.complete_json(status_code=200, body=result)
         return result

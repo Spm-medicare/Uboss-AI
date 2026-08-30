@@ -26,6 +26,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
 from uboss.core.runtime import configure_event_loop
+from pydantic import SecretStr
+
+from uboss.core.settings import Settings
 from uboss.db.base import build_sessionmaker
 
 #  Before pytest-asyncio creates its loop. Windows defaults to one the database driver cannot
@@ -341,3 +344,15 @@ async def two_workspaces(
             text("ALTER TABLE org_revisions ENABLE TRIGGER org_revisions_append_only")
         )
         await session.commit()
+
+
+@pytest.fixture(scope="session")
+def settings_for_tests() -> Settings:
+    """Settings as the suite sees them.
+
+    Deliberately built without an Anthropic key, whatever the developer has in their `.env`.
+    "No model configured" is a supported state the product must handle, and a suite that only
+    ever runs with a key would never exercise it — nor would it be reproducible, since the answer
+    would depend on whose machine it ran on.
+    """
+    return Settings(anthropic_api_key=SecretStr(""))
