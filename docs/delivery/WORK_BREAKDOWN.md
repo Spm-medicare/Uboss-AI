@@ -394,7 +394,7 @@ invented, and the seventeen dropdown lists come from the workbook's own "Dropdow
 | 4.1 | ✅ Job schema, Form 3's header, and the sixteen-field step card |  |
 | 4.2 | ✅ WHO assignment rules (§8's six types) and typed INPUT definitions |  |
 | 4.3 | ✅ Schedules — auto-run, timezone, recurrence, DST, overlap, missed runs, concurrency |  |
-| 4.4 | Publish — immutable `JobVersion`, approval route, reusing Gate 3.3's separation of duty | ⬜ |
+| 4.4 | ✅ Publish — immutable `JobVersion`, approval route, reusing Gate 3.3's separation of duty |  |
 | 4.5 | The Job Builder screen, on the shared Builder frame | ⬜ |
 
 **Passes when** a Job publishes an immutable version, its schedule previews correctly across a
