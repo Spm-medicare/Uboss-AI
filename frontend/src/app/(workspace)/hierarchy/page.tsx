@@ -1,7 +1,16 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, ChevronRight, Plus, Undo2, Upload, UserPlus } from "lucide-react";
+import {
+  Building2,
+  ChevronRight,
+  LayoutGrid,
+  List,
+  Plus,
+  Undo2,
+  Upload,
+  UserPlus,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,6 +28,7 @@ import {
   undoRevision,
 } from "@/lib/api/hierarchy";
 import { can } from "@/lib/api/auth";
+import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/auth/use-session";
 import { contextFor, formatDateTime } from "@/lib/format";
 import {
@@ -33,6 +43,7 @@ import {
   QueryStates,
 } from "@/ui";
 import { useStepUp } from "@/ui/auth/step-up";
+import { OrgChart } from "@/ui/hierarchy/org-chart";
 import { AppShell } from "@/ui/shell/app-shell";
 
 /**
@@ -60,6 +71,11 @@ export default function HierarchyPage() {
   //  One date for the whole page. Held here rather than in each panel so the tree, the issues
   //  and the chart can never disagree about which day they are describing.
   const [asAt, setAsAt] = useState(() => new Date().toISOString().slice(0, 10));
+
+  //  Chart or list. The chart answers "what shape is this organisation"; the list is where the
+  //  work is done, because it holds the controls and stays readable at four hundred nodes.
+  //  Chart first: somebody opening this screen is nearly always asking the first question.
+  const [view, setView] = useState<"chart" | "list">("chart");
 
   const tree = useQuery({
     queryKey: ["hierarchy", "tree", asAt],
@@ -117,17 +133,24 @@ export default function HierarchyPage() {
               {t("intro")}
             </p>
           </div>
-          <div className="w-44 shrink-0">
-            <Field label={t("asAt")} htmlFor="as-at" required>
-              {(field) => (
-                <Input
-                  {...field}
-                  type="date"
-                  value={asAt}
-                  onChange={(event) => setAsAt(event.target.value)}
-                />
-              )}
-            </Field>
+          <div className="flex shrink-0 items-end gap-3">
+            {/*  Only offered once there is something to look at. A view switch above an empty
+                state is two ways to see nothing. */}
+            {tree.data && !tree.data.is_empty ? (
+              <ViewSwitch value={view} onChange={setView} />
+            ) : null}
+            <div className="w-44">
+              <Field label={t("asAt")} htmlFor="as-at" required>
+                {(field) => (
+                  <Input
+                    {...field}
+                    type="date"
+                    value={asAt}
+                    onChange={(event) => setAsAt(event.target.value)}
+                  />
+                )}
+              </Field>
+            </div>
           </div>
         </div>
 
@@ -141,21 +164,33 @@ export default function HierarchyPage() {
           ) : (
             <>
               {issues.data && issues.data.length > 0 ? (
-                <Alert tone="warning" title={t("issuesTitle")}>
-                  <ul className="mt-1 space-y-0.5">
-                    {issues.data.map((issue) => (
-                      <li key={`${issue.kind}:${issue.entity_id}`}>{issue.detail}</li>
-                    ))}
-                  </ul>
-                </Alert>
+                <Issues issues={issues.data} />
               ) : null}
 
-              <Tree
-                units={tree.data?.units ?? []}
-                mayEdit={mayEdit}
-                mayAssign={mayAssign}
-                onDone={refresh}
-              />
+              {view === "chart" ? (
+                <OrgChart
+                  units={tree.data?.units ?? []}
+                  //  The chart gets the same two buttons the list has, not its own. Passed only
+                  //  when this person may edit, so the chart never has to decide.
+                  {...(mayEdit
+                    ? {
+                        actions: (unit: OrgUnitRead) => (
+                          <>
+                            <AddUnitButton parentId={unit.id} onDone={refresh} />
+                            <AddPositionButton unitId={unit.id} onDone={refresh} />
+                          </>
+                        ),
+                      }
+                    : {})}
+                />
+              ) : (
+                <Tree
+                  units={tree.data?.units ?? []}
+                  mayEdit={mayEdit}
+                  mayAssign={mayAssign}
+                  onDone={refresh}
+                />
+              )}
             </>
           )}
         </QueryStates>
@@ -170,6 +205,96 @@ export default function HierarchyPage() {
         />
       </div>
     </AppShell>
+  );
+}
+
+/**
+ * Chart or list.
+ *
+ * A segmented control rather than two buttons: they are one choice with two answers, and the
+ * shape says so. `aria-pressed` carries the state, and each has a `title` because the labels are
+ * icons — `ui/README.md` requires an icon-only control to have one.
+ */
+function ViewSwitch({
+  value,
+  onChange,
+}: {
+  value: "chart" | "list";
+  onChange: (next: "chart" | "list") => void;
+}) {
+  const t = useTranslations("hierarchy");
+
+  return (
+    <div
+      role="group"
+      aria-label={t("viewLabel")}
+      className="flex gap-1 rounded-lg border border-border bg-muted p-1"
+    >
+      {(
+        [
+          ["chart", LayoutGrid],
+          ["list", List],
+        ] as const
+      ).map(([option, Icon]) => (
+        <button
+          key={option}
+          type="button"
+          aria-pressed={value === option}
+          title={t(`view.${option}`)}
+          onClick={() => onChange(option)}
+          className={cn(
+            "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium",
+            "transition-colors duration-150 motion-reduce:transition-none",
+            "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
+            value === option
+              ? "bg-card text-foreground shadow-sm ring-1 ring-inset ring-border"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Icon aria-hidden className="size-3.5" />
+          {t(`view.${option}`)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * What is worth looking at, without burying the chart it is about.
+ *
+ * Every vacant seat is an issue, correctly — a vacancy is the thing somebody scanning a structure
+ * is looking for. But a new company is *all* vacancies, so the banner listing them was ten lines
+ * tall and sat above the chart that shows the same thing in colour. It now shows the first few
+ * and counts the rest.
+ *
+ * The count is never rounded and the list is never truncated silently: "and 7 more" is a fact,
+ * and the button that reveals them is right there.
+ */
+function Issues({ issues }: { issues: { kind: string; entity_id: string; detail: string }[] }) {
+  const t = useTranslations("hierarchy");
+  const [all, setAll] = useState(false);
+  const SHOWN = 3;
+  const visible = all ? issues : issues.slice(0, SHOWN);
+  const hidden = issues.length - visible.length;
+
+  return (
+    <Alert tone="warning" title={t("issuesTitle", { count: issues.length })}>
+      <ul className="mt-1 space-y-0.5">
+        {visible.map((issue) => (
+          <li key={`${issue.kind}:${issue.entity_id}`}>{issue.detail}</li>
+        ))}
+      </ul>
+      {hidden > 0 || all ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="mt-1.5 px-0 underline underline-offset-4 hover:bg-transparent"
+          onClick={() => setAll(!all)}
+        >
+          {all ? t("issuesFewer") : t("issuesMore", { count: hidden })}
+        </Button>
+      ) : null}
+    </Alert>
   );
 }
 

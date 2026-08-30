@@ -258,7 +258,7 @@
     "filled": "Filled",
     "assignMe": "Take this seat",
     "assignMeHint": "Assigns you to this position from today. Choosing a colleague needs the people directory, which arrives with company onboarding.",
-    "issuesTitle": "Worth a look",
+    "issuesTitle": "Worth a look ({count})",
     "historyTitle": "History",
     "historySubtitle": "Every change to the structure, newest first.",
     "historyEmpty": "Nothing has changed yet.",
@@ -273,7 +273,14 @@
     "import": "Import",
     "orImport": "Or, if you already have it in a spreadsheet,",
     "importOne": "import a file",
-    "heading": "Company structure"
+    "heading": "Company structure",
+    "viewLabel": "How to show the structure",
+    "view": {
+      "chart": "Chart",
+      "list": "List"
+    },
+    "issuesMore": "Show {count} more",
+    "issuesFewer": "Show fewer"
   },
   "import": {
     "title": "Import a structure",

@@ -54,6 +54,18 @@
   --ub-auth-panel-from: #142a4d;
   --ub-auth-panel-to: #060d19;
 
+  /* The org chart's depth ramp — one colour per level of the tree.
+     Structural, never a status: `ui/README.md` forbids colour-only meaning, and a node's level
+     is already given by its position, its connector and the unit-type badge on it. The colour
+     only makes a wide chart scannable, which is the job it does in every org chart ever printed.
+     Cool to warm as you go down, so the top of the tree is the calmest thing on the page. */
+  --ub-level-0: #1d4ed8;
+  --ub-level-1: #0891b2;
+  --ub-level-2: #0f8f5f;
+  --ub-level-3: #b45309;
+  --ub-level-4: #7c3aed;
+  --ub-level-5: #be185d;
+
   --ub-radius-control: 0.5rem;
   --ub-radius-card: 0.75rem;
   --ub-radius-dialog: 0.75rem;
@@ -98,6 +110,15 @@
   --ub-auth-panel-from: #0f2140;
   --ub-auth-panel-to: #04080f;
 
+  /* Lifted for the dark ground. The light ramp is chosen against white and goes muddy on a
+     dark surface; these are the same hues at a brightness that still reads. */
+  --ub-level-0: #60a5fa;
+  --ub-level-1: #22d3ee;
+  --ub-level-2: #34d399;
+  --ub-level-3: #fbbf24;
+  --ub-level-4: #a78bfa;
+  --ub-level-5: #f472b6;
+
   --ub-human-soft: #082f49;
   --ub-ai-soft: #2e1065;
   --ub-hybrid-soft: #042f2e;
@@ -128,6 +149,13 @@
   --color-border: var(--ub-border);
   --color-input: var(--ub-border);
   --color-ring: var(--ub-focus);
+
+  --color-level-0: var(--ub-level-0);
+  --color-level-1: var(--ub-level-1);
+  --color-level-2: var(--ub-level-2);
+  --color-level-3: var(--ub-level-3);
+  --color-level-4: var(--ub-level-4);
+  --color-level-5: var(--ub-level-5);
 
   --color-sidebar: var(--ub-sidebar);
   --color-sidebar-surface: var(--ub-sidebar-surface);
