@@ -745,7 +745,7 @@ shown working.
 | | | |
 |---|---|---|
 | 6.1 | Supervisor schema and the two independent scopes — supervised set, handler set | ✅ |
-| 6.2 | Handler roles as a ceiling — six roles, granular permissions, no self-grant | ⬜ |
+| 6.2 | Handler roles as a ceiling — six roles, granular permissions, no self-grant | ✅ |
 | 6.3 | §10's form groups 4–9 — order, dependency, quality gates, budget, SLA, escalation | ⬜ |
 | 6.4 | Failure simulation and publish — immutable `SupervisorVersion` | ⬜ |
 | 6.5 | The Supervisor screen | ⬜ |
@@ -782,6 +782,48 @@ decision rather than a cascade — the opposite choice from `agent_versions`, an
 reason: that column is history, this one is responsibility.
 
 10 tests, 277 total.
+
+**6.2 — done.** `supervisors/roles.py`, `supervisors/guard.py`, `supervisors/handlers.py`.
+
+**A role narrows; it never grants.** Every Supervisor action goes through two independent checks
+and neither substitutes for the other — the workspace guard first (does this person hold the verb
+at all, after the company → department → resource chain), then the handler role. The workspace
+check runs first deliberately: somebody who holds `run` nowhere is told that, rather than being
+told they are not a handler, which would have implied they would be fine if only somebody added
+them.
+
+Two tests state the rule from both sides. `test_a_role_never_widens_what_the_workspace_withheld`
+makes somebody **Owner** of a Supervisor, removes `publish` from their workspace role, and asserts
+they are still refused. `test_the_workspace_grant_alone_is_not_enough` gives somebody `view`
+across the workspace and no handler row, and asserts the same.
+
+**The mapping onto §14's verbs is a reading, and it is written down.** §10 names six roles and
+describes four of them; `roles.py` derives each role's verbs from those words and nothing more —
+Operator gets `run` because §10 says *"pause/resume and safe retry"*, Reviewer gets `comment`
+because it says *"review output/request changes"*, Manager gets `manage_access` because it says
+*"manage scope/policy"*. The list is treated as **cumulative** because §10 gives it in increasing
+authority and ends with Owner; the alternative would mean an Approver who cannot read what they
+are approving.
+
+**No role confers a workspace-wide verb.** `administer`, `audit`, `export` and `integrate` are
+refused for every role including Owner. A Supervisor's Owner is not a workspace administrator, and
+without this a Supervisor would be a route to becoming one.
+
+**"Claude cannot grant permission"** — §10's own words, and a handler list is one bad rule away
+from being exactly that. Four refusals close it: nobody grants a role above their own, nobody
+changes their own role, nobody removes somebody who outranks them, and the owner has no row to
+remove at all. Removing *yourself* is allowed — walking away from a responsibility is not an
+escalation, and refusing it would strand somebody who no longer wants it.
+
+**The owner is Owner without a row.** Requiring them in their own handler list would mean a
+Supervisor could be locked out of by deleting one row, and would make the row the source of truth
+for something `owner_membership_id` already says.
+
+Every refusal is written to the audit trail with the layer that caused it, before it is raised.
+The caller gets one message either way — *"you are not a handler"* and *"your role does not go
+that far"* describe an organisation's arrangements to somebody outside them.
+
+13 tests, 290 total.
 | 7 | Temporal runtime, to-do, approvals, notifications, governed Copilot | 3–4 weeks |
 | 8.1 | Settings | |
 | 8.2 | Privacy / DPDP | |
