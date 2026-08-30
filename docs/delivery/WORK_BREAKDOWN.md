@@ -746,7 +746,7 @@ shown working.
 |---|---|---|
 | 6.1 | Supervisor schema and the two independent scopes — supervised set, handler set | ✅ |
 | 6.2 | Handler roles as a ceiling — six roles, granular permissions, no self-grant | ✅ |
-| 6.3 | §10's form groups 4–9 — order, dependency, quality gates, budget, SLA, escalation | ⬜ |
+| 6.3 | §10's form groups 4–9 — order, dependency, quality gates, budget, SLA, escalation | ✅ |
 | 6.4 | Failure simulation and publish — immutable `SupervisorVersion` | ⬜ |
 | 6.5 | The Supervisor screen | ⬜ |
 
@@ -824,6 +824,43 @@ The caller gets one message either way — *"you are not a handler"* and *"your 
 that far"* describe an organisation's arrangements to somebody outside them.
 
 13 tests, 290 total.
+
+**6.3 — done.** Migration 0024: five tables and thirteen columns, covering §10's groups 4 to 9.
+§10's capability list corroborates every one — *"start eligible dependency-ready work … track SLA,
+deadline, cost, tokens and concurrency … detect quality/policy problems … escalate to configured
+people … notify handlers and stakeholders."*
+
+**Execution order needed no column.** §10 group 4 asks for it and `supervisor_supervised.position`
+already is it. A second column would have been a second answer to one question.
+
+**Two things a run could otherwise contradict itself over are refused by the schema.** A
+dependency cycle — proved three deep, so the test exercises the recursive walk rather than a
+self-reference the check constraint would have caught anyway — and a deadline falling inside its
+own SLA, which would make every run late the moment it started.
+
+**A real defect, caught by writing the test after the migration.** The migration claimed
+`supervisor_schedules` carries *"the same columns as `job_schedules`, so the same code reads
+them"* — and then allowed `yearly`, `strict`, `second` and `queue_one`, four values
+`jobs/recurrence.py` cannot parse. A column that can hold a value its reader chokes on is worse
+than a separate implementation, because it fails at the clock change rather than at the point
+somebody wrote it. Corrected, and `test_the_schedule_columns_admit_exactly_what_recurrence_parses`
+now asks **the constraint** rather than comparing two Python constants — which would have passed
+while the column stayed wrong.
+
+**The row → `Recurrence` conversion now has one home.** It was private to the Job's schedule
+service; a second copy in the Supervisor's would have been a second copy of the field names, and
+they drift the first time somebody renames one. It moved into the pure module as
+`recurrence.from_row`, typed against a `Protocol` so both tables satisfy it and neither is named.
+
+**One divergence worth raising.** The plan's decision table recommends *"Schedule overlap | Queue
+one run."* `supervisor_schedules` defaults to `queue`, which is that. `job_schedules` defaults to
+`skip`, which is not — a pre-existing difference from the plan's recommendation, left alone here
+because changing a shipped default is a decision rather than a tidy-up.
+
+**Nothing here executes anything.** The runtime is Gate 7. These are the settings a run will be
+bound by; 6.5 shows every control that cannot act yet as disabled and labelled.
+
+23 tests, 313 total.
 | 7 | Temporal runtime, to-do, approvals, notifications, governed Copilot | 3–4 weeks |
 | 8.1 | Settings | |
 | 8.2 | Privacy / DPDP | |

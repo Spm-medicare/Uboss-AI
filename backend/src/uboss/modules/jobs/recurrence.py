@@ -30,6 +30,7 @@ import calendar
 import enum
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
+from typing import Protocol
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from uboss.core.errors import ValidationFailed
@@ -129,6 +130,43 @@ class Recurrence:
                 f"“{self.timezone}” is not a timezone this system knows. Use an IANA name such "
                 "as Asia/Kolkata."
             ) from cause
+
+
+class ScheduleRow(Protocol):
+    """Any row carrying a schedule's columns.
+
+    A protocol rather than a concrete type because two tables now hold these columns —
+    `job_schedules` and `supervisor_schedules` — and a converter that named one of them would
+    have forced the other to keep a copy. A copy of this function is a copy of the field names,
+    and they drift the first time somebody renames one.
+    """
+
+    timezone: str
+    frequency: str
+    interval: int
+    at_time: time
+    weekdays: list[int]
+    monthday: int | None
+    dst_policy: str
+    ambiguous_policy: str
+    skip_dates: list[str]
+    weekdays_only: bool
+
+
+def from_row(row: ScheduleRow) -> Recurrence:
+    """One conversion, so a schedule cannot mean two different things depending on who asked."""
+    return Recurrence(
+        frequency=Frequency(row.frequency),
+        interval=row.interval,
+        at_time=row.at_time,
+        timezone=row.timezone,
+        weekdays=tuple(row.weekdays or ()),
+        monthday=row.monthday,
+        dst=DstPolicy(row.dst_policy),
+        ambiguous=AmbiguousPolicy(row.ambiguous_policy),
+        skip_dates=tuple(date.fromisoformat(value) for value in (row.skip_dates or [])),
+        weekdays_only=row.weekdays_only,
+    )
 
 
 def validate(recurrence: Recurrence) -> None:

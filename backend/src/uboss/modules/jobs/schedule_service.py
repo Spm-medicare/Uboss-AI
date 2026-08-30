@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time
+from datetime import UTC, datetime, time
 from typing import Any
 
 from sqlalchemy import select
@@ -49,18 +49,7 @@ def to_recurrence(schedule: JobSchedule) -> rec.Recurrence:
     One conversion, used by the preview and by whatever fires it, so a schedule cannot mean two
     different things depending on who asked.
     """
-    return rec.Recurrence(
-        frequency=rec.Frequency(schedule.frequency),
-        interval=schedule.interval,
-        at_time=schedule.at_time,
-        timezone=schedule.timezone,
-        weekdays=tuple(schedule.weekdays or ()),
-        monthday=schedule.monthday,
-        dst=rec.DstPolicy(schedule.dst_policy),
-        ambiguous=rec.AmbiguousPolicy(schedule.ambiguous_policy),
-        skip_dates=tuple(date.fromisoformat(value) for value in (schedule.skip_dates or [])),
-        weekdays_only=schedule.weekdays_only,
-    )
+    return rec.from_row(schedule)
 
 
 async def read(
