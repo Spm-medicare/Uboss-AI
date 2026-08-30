@@ -318,6 +318,16 @@ async def two_workspaces(
             for table in (
                 #  Jobs before objectives: a job references the objective it serves, and a
                 #  published job version is RESTRICT against its job.
+                #  Agents before the registry: an agent_skills row is RESTRICT against both the
+                #  skill it names and the decision that chose it.
+                "agent_shares",
+                "agent_skills",
+                "agent_tools",
+                "agent_knowledge_sources",
+                "agent_io_schemas",
+                "agent_escalation_rules",
+                "agent_steps",
+                "agents",
                 #  A decision points at the skill it chose with RESTRICT, so it goes first.
                 "skill_resolver_decisions",
                 "skills",

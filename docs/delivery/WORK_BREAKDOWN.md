@@ -421,7 +421,7 @@ Agent requirement → Search Skill Registry → Deterministic compatibility gate
 |---|---|---|
 | 5.1 | Skill Registry schema and the seed import — archetypes, skills, rules, gates | ✅ |
 | 5.2 | Search and the deterministic gates — similarity discovers, gates decide | ✅ |
-| 5.3 | Agent schema and §9's ten form groups, with skill selection | ⬜ |
+| 5.3 | Agent schema and §9's ten form groups, with skill selection | ✅ |
 | 5.4 | Sandbox tests and publish — immutable `AgentVersion`, tests as a publish gate | ⬜ |
 | 5.5 | The Agent Builder screen, with the Registry inside it | ⬜ |
 
@@ -536,6 +536,59 @@ Agent Builder and §3 forbids a menu entry.
 overrides a hard gate* is proved directly rather than inferred from an HTTP response;
 `test_skill_resolver.py` proves it again end to end, against a catalogue row deliberately built to
 outrank everything and fail E03.
+
+**5.3 — done.** Migration 0021, eight tables, and `docs/architecture/AGENT_FIELDS.md` recording
+which field came from where.
+
+**Two sources, both kept whole.** The approved workbook's **Form 4** — read directly from
+`UBOSS_Agent_Builder_Forms.xlsx` — is the business form: a header, twelve design rows of nine
+columns, six printed error situations and five sandbox tests. §9 adds what a governed runtime
+needs and a paper form has no column for: model policy, knowledge retention, explicit tool scopes,
+cost and concurrency limits, an audience. Neither is a superset of the other, so neither was
+trimmed. Nine of §9's ten groups are here; group 10 is the publish gate and belongs with 5.4.
+
+Form 4 section A's nine columns are `agent_steps`, in the sheet's own order and none merged.
+`test_every_column_of_form_4_section_a_survives_a_round_trip` names all of them, so a column
+dropped from the schema fails a test rather than disappearing from a form nobody re-read.
+
+**Section B is closed; everything else from the sheet is a suggestion.** Every workbook dropdown
+ends in `Other`, so a value outside one is something the approved form itself allows — they are
+published by `GET /agents/lists` and never validated against. Section B is different: the sheet
+*prints* all six situations, so an unanswered one is not a value outside a list, it is a decision
+nobody took. It is an enum, one answer per situation, and `situations_unanswered` reports what is
+left rather than refusing the save — a form is filled in over time.
+
+**§9's three extra sentences, each held somewhere a form cannot get around:**
+
+- *"Tool suggestions never grant access."* There is no `granted` field on the tool input at all,
+  so it is not a rule the service defends against a hostile payload — it is one the contract makes
+  unstatable. Granting is a separate call behind `manage_access`, not `edit_draft`: designing an
+  agent and deciding what it may reach are different authorities. A grant survives an ordinary
+  edit and is dropped when the scopes widen, so editing a form can neither revoke access by
+  accident nor expand it on purpose.
+- *"Access choices: Only me, selected users, teams, department, role/subtree or workspace."* Six,
+  exactly, defaulting to `only_me` because the plan's decision table says so. `only_me` sent with
+  a share list is refused rather than half-applied — two answers to one question, and preferring
+  either would discard somebody's intention without telling them.
+- **An Agent runs an approved version.** `job_version_id` points at the immutable `job_versions`
+  row, and a check constraint refuses a published, active or paused Agent that names none.
+
+**A skill is attached with the decision that chose it.** `agent_skills.resolver_decision_id` links
+5.2's record, and the route is copied *from* the decision rather than supplied by the caller — a
+caller who could name the route could record a candidate as reused when the resolver had blocked
+it. A decision that blocked is refused as a reason to use a skill at all.
+
+**Model policy is a key, and its vocabulary is not invented.** v3.2 approves *"Claude first through
+provider-neutral Gateway"* and names no policy catalogue, so `model_policy_key` is free text until
+one is approved. Recorded as an open question in `AGENT_FIELDS.md` rather than filled with guesses.
+
+Two real defects were caught rather than argued about. The submission check was first written as
+*"status = 'draft' OR an approver is named"*, which made an abandoned draft impossible to archive;
+it now applies from `ready_to_publish` onward. And the new tables were missing the `tenant_id`
+index every other tenant-owned table has — the mixin declares it, so the models and the schema
+genuinely disagreed, and every RLS policy on them would have been a sequential scan.
+
+23 tests, 247 total.
 | 6 | Supervisor — personal and department scopes, handler grants | 4–5 weeks |
 | 7 | Temporal runtime, to-do, approvals, notifications, governed Copilot | 3–4 weeks |
 | 8.1 | Settings | |

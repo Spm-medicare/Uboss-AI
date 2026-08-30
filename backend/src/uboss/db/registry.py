@@ -28,6 +28,7 @@ def import_all() -> None:
     """
     #  Ordered by the layer they belong to rather than alphabetically, so a reader can see the
     #  shape of the product from the list.
+    from uboss.modules.agents import agent_models  # noqa: F401
     from uboss.modules.agents import models as agents_models  # noqa: F401
     from uboss.modules.audit import models as audit_models  # noqa: F401
     from uboss.modules.files import models as files_models  # noqa: F401
