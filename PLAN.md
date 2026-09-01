@@ -54,29 +54,42 @@ The approved canonical field dictionary is the implementation bridge between sou
 
 ## 3. Final sidebar
 
-There is no separate Objective menu. All Objective work lives inside Objective Agent Builder.
+Navigation is persona- and scope-aware. A hidden row is a usability decision only; every route,
+record and action remains protected by backend authorization.
 
 ~~~text
-UBOSS AI AMS                               Collapse
-Current Workspace
+COMPANY / DELEGATED ADMIN
 
-WORKSPACE
-Dashboard
-Hierarchy
+HOME
+  Dashboard
 
-Agents                                     Expand/collapse
-  01  Objective Agent Builder
-  02  Job Builder
-  03  Agent Builder
-  04  Supervisor Agent
+BUILDERS
+  Hierarchy
+  Objective Optimization
+  Agent Builder / Sync
 
-GOVERNED WORK
-To-do list                                 Action count
+OPERATIONS
+  Job Agents
+  Supervisor Agents
+  To-do List
 
 ------------------------------------------------
-User avatar + name
-Workspace switcher
-Settings gear
+Settings
+~~~
+
+~~~text
+NORMAL EMPLOYEE
+
+HOME
+  My Dashboard
+
+OPERATIONS
+  My Job Agent
+  My Supervisor Agent
+  My To-do List
+
+------------------------------------------------
+Settings
 ~~~
 
 Top bar:
@@ -89,9 +102,16 @@ Sidebar behavior:
 
 - Expanded and collapsed modes with remembered user preference.
 - Icons have labels/tooltips and accessible focus states.
-- Agents keeps parent/child selected state visible.
+- Department admins see the admin information architecture but only for assigned departments,
+  hierarchy subtrees, resources and actions.
+- Normal employees never receive Builder destinations unless an administrator grants an effective
+  Builder capability.
 - Mobile/tablet uses a dismissible drawer.
 - Menu visibility is role-based; backend permission enforcement remains mandatory.
+- Footer contains Settings only. Profile, security, sessions, workspace switching and sign-out
+  live inside Settings or the top-bar account control.
+- Job Builder has no permanent navigation item. It remains an internal, versioned execution model
+  compiled from an approved Objective Optimization result.
 - Do not add more permanent MVP menu items. Search, Notifications and Help stay outside the sidebar.
 
 ## 4. Dashboard
@@ -1108,3 +1128,125 @@ Authoritative detail: docs/delivery/GATE_CONTROLS.md
 The executable step-by-step order, current verified baseline, foundation corrections, per-Gate deliverables and evidence rules are defined in `docs/delivery/IMPLEMENTATION_PLAN.md`.
 
 That document is subordinate to this PLAN and approved client decisions. It may sequence work and record implementation status, but it cannot silently change product scope, permissions, workbook contracts, UI source of truth or Gate exit criteria.
+
+## 43. Phase 1 product contract revision — 2026-09-01
+
+This section records the confirmed client workflow and supersedes any earlier wording that presents
+Objective Agent Builder, a user-facing Job Builder, or the four-Agent sidebar as the target product.
+Existing Job data and services are retained; only their product role changes.
+
+### 43.1 Product operating model
+
+UBOSS is an administrator-governed AI Operations Management System. An administrator builds the
+company Hierarchy, invites people, grants bounded access, selects the people participating in an
+Objective and records their current work. Claude proposes a Human, AI Agent, Hybrid or Approval
+allocation. A human administrator must review and may edit every allocation before it can become
+operational.
+
+Human work appears in the assigned person's Job Agent and To-do List. AI work binds to a published,
+version-pinned Agent from Agent Builder / Sync. A Supervisor Agent monitors only the people, Agents,
+departments and controls placed within its two independent scopes: supervised scope and handler
+scope.
+
+### 43.2 Personas, roles and access
+
+Effective access is `role grants ∩ data scope ∩ action ceiling`, with explicit denials winning.
+
+- Company Owner/Super Admin may administer the company within platform policy.
+- Company Admin may manage the modules, people and data explicitly granted to the role.
+- Department Admin receives the admin interface but only for assigned departments, hierarchy
+  subtrees, resources and actions. They cannot grant beyond their own ceiling.
+- Supervisor/Operator may monitor or control only assigned Supervisor scopes and handler actions.
+- Employee receives the personal operational interface and own/assigned records only.
+- Viewer receives read-only access to explicitly shared resources.
+- Custom roles combine named actions and scopes; a role name alone never bypasses scope.
+
+Administrators can invite by email, assign or end roles, promote another user to a bounded admin
+role and choose which sidebar modules, data scopes and actions that person receives. Access removal
+takes effect on the next authorized request. No user, Agent or Supervisor may promote itself,
+approve its own protected transition or widen its own scope. Every access change is audited.
+
+### 43.3 Objective Optimization contract
+
+`WHO — Person Name` is a searchable multi-select backed by active Hierarchy memberships, not free
+text. The creator can select all permitted participants and record responsibility, contribution,
+current work, inputs, method, outputs, controls, approvals and failure handling for each.
+
+Claude receives only opaque keys for the selected permitted participants and allowed Agent
+candidates. Its structured proposal references those keys; it cannot invent a user, membership,
+permission or executable Agent identifier. The server validates tenant, scope, active membership,
+Agent status and every assignment before displaying the proposal.
+
+Each generated work step has exactly one accountable owner, optional contributors, optional
+reviewer/approver and one of four execution modes: Human, AI Agent, Hybrid or Approval. The review
+screen shows differences, reasoning and confidence. The administrator can add, edit, delete,
+reassign and reorder steps before approval.
+
+### 43.4 Publish and Activate are separate transitions
+
+- **Publish** freezes an immutable Objective Version, approved participant allocation and audit
+  evidence. Publish does not create notifications or begin work.
+- **Activate** compiles the published version into executable internal records, creates or schedules
+  human/approval work, binds pinned Agent Versions and begins Supervisor monitoring.
+- Re-activation is idempotent. A changed Objective produces a new version and a reviewed deployment
+  diff; it never mutates the evidence of an already active version.
+
+Both transitions show an impact summary and require the relevant permission. High-risk activation
+requires step-up authentication when workspace policy says so.
+
+### 43.5 Internal Job system
+
+Job Builder is no longer a user-facing Builder or sidebar destination. The existing Job and
+JobVersion model remains the canonical internal execution contract. An idempotent Objective
+Deployment Compiler maps a published Objective Version to a system-managed Job Version, WHO rules,
+inputs, dependencies, approvals, schedules and Agent bindings. Generated Jobs carry their origin,
+source Objective Version and managed status and are not silently hand-edited.
+
+This preserves the approved workbook field contract and the existing Tasks, Runs, Schedules,
+Approvals and evidence pipeline without forcing administrators to describe the same work twice.
+
+### 43.6 Job Agent contract
+
+A Job Agent is a person's governed operational workspace over assigned Tasks, Runs, approvals,
+inputs and evidence; it is not a duplicate AI Agent record. Normal employees see `My Job Agent`.
+Authorized admins see `Job Agents` aggregated only over their effective scope.
+
+The workspace provides Assigned, Input Requested, In Progress, Waiting for Approval, Blocked and
+Completed views. A work item shows its Objective, instructions, inputs, deadline/SLA, permitted
+actions, AI output, comments and evidence. Start, complete, block, clarify, approve/reject and
+delegate are offered only when both state and permission allow them.
+
+### 43.7 Agent Builder / Sync contract
+
+An AI allocation can search compatible published Agents, clone one or start a new Agent draft.
+Sync always binds an exact published Agent Version after capability, Skill, tool, data, approval and
+policy gates pass. Status is explicit: Not configured, Draft, Validation failed, Ready to sync,
+Synced, Outdated or Resync required. Updating an Agent never silently changes an active Objective.
+
+### 43.8 Supervisor contract
+
+Supervisor configuration remains separate per tenant/account and may be personal, departmental or
+resource-scoped. Supervised scope answers what is watched; handler scope answers who may control
+the Supervisor. It can observe run health, missing input, SLA, budget, quality and failure; within
+policy it may retry, pause, resume, escalate and notify. It cannot perform protected approvals,
+change permissions or widen either scope.
+
+### 43.9 Required implementation data additions
+
+- `objective_participants` links an Objective to selected active memberships and responsibilities.
+- `objective_step_assignments` records accountable owner, contributors, reviewer/approver and
+  Human/AI/Hybrid/Approval mode.
+- `objective_step_agent_bindings` pins a step to an Agent and published Agent Version with sync
+  state and evidence.
+- `objective_deployments` records idempotent Objective Version to internal Job Version compilation,
+  preview, activation and status.
+- Job records gain system-managed origin/source metadata; existing Job data is not deleted.
+
+All additions use backward-compatible migrations, explicit backfill and a reversible cutover.
+
+### 43.10 Phase 1 exit criteria
+
+Phase 1 is complete only when PLAN and UI_SPEC agree on the navigation, personas, scoped access,
+Objective allocation, internal Job model, Job Agent, Agent Sync and Publish/Activate lifecycle;
+the implemented sidebar contains no user-facing Job Builder; and unresolved product decisions are
+recorded rather than hidden in code.

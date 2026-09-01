@@ -10,7 +10,6 @@ import { useSession } from "@/lib/auth/use-session";
 import { cn } from "@/lib/cn";
 import { useSidebar } from "@/lib/shell/use-sidebar";
 import { ErrorState, LoadingState } from "@/ui/states";
-import { AccountFooter } from "@/ui/shell/account";
 import { SettingsDialog } from "@/ui/settings/settings-dialog";
 import { Sidebar } from "@/ui/shell/sidebar";
 import { Topbar } from "@/ui/shell/topbar";
@@ -99,9 +98,10 @@ export function AppShell({
       collapsed={sidebar.collapsed}
       onToggle={sidebar.toggle}
       ready={sidebar.ready}
-      footer={<AccountFooter collapsed={sidebar.collapsed} />}
       onOpenSettings={() => setSettingsOpen(true)}
-      {...(todo.data ? { counts: { todo: todo.data.mine_open } } : {})}
+      {...(todo.data
+        ? { counts: { todo: todo.data.mine_open, myTodo: todo.data.mine_open } }
+        : {})}
     />
   );
 

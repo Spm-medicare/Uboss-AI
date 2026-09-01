@@ -242,18 +242,22 @@
     "soon": "Soon",
     "notBuiltYet": "Not built yet — {gate}",
     "groups": {
-      "workspace": "Workspace",
-      "agents": "Agents",
-      "governedWork": "Governed work"
+      "home": "Home",
+      "builders": "Builders",
+      "operations": "Operations"
     },
     "items": {
       "dashboard": "Dashboard",
+      "myDashboard": "My Dashboard",
       "hierarchy": "Hierarchy",
-      "objectiveBuilder": "Objective Agent Builder",
-      "jobBuilder": "Job Builder",
-      "agentBuilder": "Agent Builder",
-      "supervisor": "Supervisor Agent",
+      "objectiveOptimization": "Objective Optimization",
+      "agentBuilderSync": "Agent Builder / Sync",
+      "jobAgents": "Job Agents",
+      "supervisorAgents": "Supervisor Agents",
       "todo": "To-do list",
+      "myJobAgent": "My Job Agent",
+      "mySupervisorAgent": "My Supervisor Agent",
+      "myTodo": "My To-do List",
       "settings": "Settings"
     },
     "waiting": "{count} waiting on you"
@@ -1236,6 +1240,26 @@
     "refused": "Refused by {count}",
     "supplyInputs": "Add the {count} missing inputs",
     "introCatalogueOnly": "The catalogue holds {catalogue, plural, one {# approved skill} other {# approved skills}}, and this workspace has added none of its own yet. Search ranks by resemblance; the gates decide what may actually be used."
+  },
+  "jobAgents": {
+    "adminTitle": "Job Agents",
+    "myTitle": "My Job Agent",
+    "adminHeading": "Job Agents",
+    "myHeading": "My Job Agent",
+    "adminIntro": "Human work created by activated objectives, narrowed to the people and departments you are allowed to manage.",
+    "myIntro": "Your governed work, requested inputs and approvals in one operational workspace.",
+    "openQueue": "Open To-do List",
+    "assigned": "Assigned to me",
+    "approvals": "Waiting approvals",
+    "inputs": "Input requested",
+    "unassigned": "Needs assignment",
+    "following": "Following",
+    "flowTitle": "How work reaches a Job Agent",
+    "flowBody": "Only an approved, activated objective creates governed operational work.",
+    "flowObjective": "Objective approved",
+    "flowAllocation": "Human and AI allocation",
+    "flowWork": "Work routed to Job Agent",
+    "flowEvidence": "Progress and evidence monitored"
   },
   "supervisor": {
     "supervisors": "Supervisor Agent",

@@ -1,35 +1,25 @@
 /**
- * The sidebar, as `PLAN.md` §3 defines it. Nothing here is a design choice.
+ * Product navigation locked by the Phase 1 product contract.
  *
- * §3 ends with an instruction rather than a suggestion: *"Do not add more permanent MVP menu
- * items. Search, Notifications and Help stay outside the sidebar."* Every navigation product
- * drifts the same way — one item at a time, each defensible on its own — until the sidebar is a
- * list of everything the team built. This file is the list, and adding to it is a change to the
- * plan, not to a component.
- *
- * There is deliberately **no Objective menu**. §3 opens by saying so: all Objective work lives
- * inside the Objective Agent Builder, because an objective is not a place a person goes, it is
- * something they build.
- *
- * `requires` is the *courtesy*, not the boundary. PLAN line 94: *"Menu visibility is role-based;
- * backend permission enforcement remains mandatory."* Hiding an item a person cannot use spares
- * them a refusal they could do nothing about; it is not what stops them, and this file must never
- * be mistaken for the thing that does. `backend/src/uboss/core/permissions.py` is that.
+ * Visibility is a courtesy; backend authorization remains the boundary. Job Builder is absent
+ * because a published Objective compiles to an internal Job instead of asking a person to enter
+ * the same work twice.
  */
 
 import type { LucideIcon } from "lucide-react";
 import {
   Bot,
+  BriefcaseBusiness,
   ClipboardList,
   LayoutDashboard,
   ListChecks,
   Network,
   Target,
   UserCog,
-  Workflow,
 } from "lucide-react";
 
-/** The verbs from PLAN §14, mirroring `Action` in the backend. Not a second vocabulary. */
+import type { CurrentUser } from "@/lib/api/auth";
+
 export type Action =
   | "view"
   | "comment"
@@ -46,34 +36,23 @@ export type Action =
   | "audit";
 
 export interface NavItem {
-  /** Stable key, and the message-catalogue key under `nav.`. */
   id: string;
   href: string;
   icon: LucideIcon;
-  /** Hidden unless the session carries this action. The server checks again regardless. */
   requires: Action;
-  /**
-   * The gate that builds this screen, or `null` once it exists.
-   *
-   * An item whose screen is not built yet is shown disabled and labelled, never hidden and never
-   * linked to a 404. `CLAUDE.md`: *"Never show a control that does not do what it says."* Hiding
-   * it instead would be worse — a person would read the absence as "I do not have access", which
-   * is a different and untrue statement.
-   */
   buildsIn: string | null;
-  /** Shown as `01`–`04` beside the four Agents, exactly as §3 numbers them. */
   ordinal?: string;
 }
 
 export interface NavGroup {
-  /** Message key under `nav.groups.`. */
   id: string;
   items: NavItem[];
 }
 
-export const NAVIGATION: NavGroup[] = [
+/** Admin and delegated-admin navigation. Server-side scope still narrows every result. */
+export const ADMIN_NAVIGATION: NavGroup[] = [
   {
-    id: "workspace",
+    id: "home",
     items: [
       {
         id: "dashboard",
@@ -82,6 +61,11 @@ export const NAVIGATION: NavGroup[] = [
         requires: "view",
         buildsIn: null,
       },
+    ],
+  },
+  {
+    id: "builders",
+    items: [
       {
         id: "hierarchy",
         href: "/hierarchy",
@@ -89,51 +73,39 @@ export const NAVIGATION: NavGroup[] = [
         requires: "view",
         buildsIn: null,
       },
-    ],
-  },
-  {
-    id: "agents",
-    items: [
       {
-        id: "objectiveBuilder",
-        ordinal: "01",
+        id: "objectiveOptimization",
         href: "/objective-builder",
         icon: Target,
         requires: "edit_draft",
         buildsIn: null,
       },
       {
-        id: "jobBuilder",
-        ordinal: "02",
-        href: "/job-builder",
-        icon: Workflow,
-        requires: "edit_draft",
-        buildsIn: null,
-      },
-      {
-        id: "agentBuilder",
-        ordinal: "03",
+        id: "agentBuilderSync",
         href: "/agent-builder",
         icon: Bot,
         requires: "edit_draft",
         buildsIn: null,
       },
-      {
-        id: "supervisor",
-        ordinal: "04",
-        href: "/supervisor",
-        icon: UserCog,
-        //  `run` because §10's Operator — pause, resume and safe retry — is the lowest handler
-        //  role that does anything, and somebody with no `run` anywhere has nothing to open it
-        //  for. The handler scope narrows it further; this only decides whether the row appears.
-        requires: "run",
-        buildsIn: null,
-      },
     ],
   },
   {
-    id: "governedWork",
+    id: "operations",
     items: [
+      {
+        id: "jobAgents",
+        href: "/job-agents",
+        icon: BriefcaseBusiness,
+        requires: "view",
+        buildsIn: null,
+      },
+      {
+        id: "supervisorAgents",
+        href: "/supervisor",
+        icon: UserCog,
+        requires: "view",
+        buildsIn: null,
+      },
       {
         id: "todo",
         href: "/todo",
@@ -145,36 +117,89 @@ export const NAVIGATION: NavGroup[] = [
   },
 ];
 
-/**
- * Settings, which §3 puts in the footer beside the avatar and the workspace switcher rather than
- * in the menu itself.
- */
+/** A normal employee sees only their personal operational workspace. */
+export const EMPLOYEE_NAVIGATION: NavGroup[] = [
+  {
+    id: "home",
+    items: [
+      {
+        id: "myDashboard",
+        href: "/dashboard",
+        icon: LayoutDashboard,
+        requires: "view",
+        buildsIn: null,
+      },
+    ],
+  },
+  {
+    id: "operations",
+    items: [
+      {
+        id: "myJobAgent",
+        href: "/job-agents",
+        icon: BriefcaseBusiness,
+        requires: "view",
+        buildsIn: null,
+      },
+      {
+        id: "mySupervisorAgent",
+        href: "/supervisor",
+        icon: UserCog,
+        requires: "view",
+        buildsIn: null,
+      },
+      {
+        id: "myTodo",
+        href: "/todo",
+        icon: ListChecks,
+        requires: "view",
+        buildsIn: null,
+      },
+    ],
+  },
+];
+
+/** Compatibility export for screens that do not yet have a session in hand. */
+export const NAVIGATION: NavGroup[] = ADMIN_NAVIGATION;
+
 export const SETTINGS_ITEM: NavItem = {
   id: "settings",
   href: "/settings",
   icon: ClipboardList,
   requires: "view",
-  //  Built in 8.1: §13's four working categories — profile, appearance, notifications and
-  //  sessions — plus the rest of its list, each saying which gate builds it. This row read
-  //  "Not built yet — Gate 8" for seven gates, which was the truth until now.
   buildsIn: null,
 };
 
 /**
- * Whether this person sees the item at all.
- *
- * `actions` is the *narrowed* set the API returned — already through the company → department →
- * resource → action ceiling. This does no resolution of its own, on purpose: two places that
- * compute permissions are two places that can disagree, and the one that would win is the one
- * printed on the screen.
+ * Temporary persona selector until `/auth/me` returns explicit module capabilities. Possessing a
+ * design, publishing, assignment, access or audit action selects the scoped admin workspace.
  */
+export function hasAdminWorkspace(user: Pick<CurrentUser, "actions">): boolean {
+  const adminActions = new Set([
+    "edit_draft",
+    "publish",
+    "assign",
+    "schedule",
+    "manage_access",
+    "administer",
+    "audit",
+  ]);
+  return user.actions.some((action) => adminActions.has(action));
+}
+
+export function navigationFor(user: Pick<CurrentUser, "actions">): NavGroup[] {
+  return hasAdminWorkspace(user) ? ADMIN_NAVIGATION : EMPLOYEE_NAVIGATION;
+}
+
 export function canSee(item: NavItem, actions: readonly string[]): boolean {
   return actions.includes(item.requires);
 }
 
-/** The item whose screen the current path is on, longest match first. */
-export function activeItem(pathname: string): NavItem | undefined {
-  return [...NAVIGATION.flatMap((group) => group.items), SETTINGS_ITEM]
+export function activeItem(
+  pathname: string,
+  navigation: NavGroup[] = NAVIGATION,
+): NavItem | undefined {
+  return [...navigation.flatMap((group) => group.items), SETTINGS_ITEM]
     .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
     .sort((a, b) => b.href.length - a.href.length)[0];
 }

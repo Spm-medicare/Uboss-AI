@@ -35,29 +35,43 @@ Do not copy another product's visual identity. UBOSS owns its dark navigation, e
 ### 3.1 Sidebar
 
 ~~~text
-UBOSS AI AMS                                  Collapse
-Current workspace
+COMPANY / DELEGATED ADMIN
 
-WORKSPACE
-Dashboard
-Hierarchy
+HOME
+  Dashboard
 
-Agents                                        Expand/collapse
-  01  Objective Agent Builder
-  02  Job Builder
-  03  Agent Builder
-  04  Supervisor Agent
+BUILDERS
+  Hierarchy
+  Objective Optimization
+  Agent Builder / Sync
 
-GOVERNED WORK
-To-do list                                    Action count
+OPERATIONS
+  Job Agents
+  Supervisor Agents
+  To-do List
 
 ---------------------------------------------------
-User avatar + name
-Workspace switcher
-Settings gear
+Settings
 ~~~
 
-There is no separate Objective menu. Objective cards, creation, editing, publishing and progress all live inside Objective Agent Builder.
+~~~text
+NORMAL EMPLOYEE
+
+HOME
+  My Dashboard
+
+OPERATIONS
+  My Job Agent
+  My Supervisor Agent
+  My To-do List
+
+---------------------------------------------------
+Settings
+~~~
+
+There is no separate Objective menu and no user-facing Job Builder menu. Objective creation,
+participant selection, Claude allocation review, publishing, activation and progress begin in
+Objective Optimization. Approved work is compiled into the internal Job execution model.
 
 Dimensions:
 
@@ -69,12 +83,16 @@ Dimensions:
 
 Behavior:
 
-- Parent Agents and selected child are both visibly active.
 - Expansion state persists per user/workspace.
 - Collapsed icons expose accessible names and tooltips.
 - Arrow keys move, Enter activates and Left/Right collapse/expand.
 - Unauthorized items are not rendered, but backend remains authoritative.
-- Workspace switcher appears only when useful.
+- Company and Department Admins share the admin information architecture; records and actions are
+  narrowed to their effective scope.
+- Employees receive only their personal operational destinations unless granted a Builder
+  capability.
+- Footer contains Settings only. Account, sign-out and workspace controls live within Settings or
+  the top-bar account control.
 
 ### 3.2 Top bar
 
@@ -330,7 +348,7 @@ Upload → Map → Validate → Preview tree → Confirm
 
 Errors are actionable, downloadable and never produce partial live data.
 
-## 11. Objective Agent Builder contract
+## 11. Objective Optimization contract
 
 Landing:
 
@@ -351,11 +369,12 @@ Detail tabs:
 Analysis timeline:
 
 - Validate Objective.
+- Load selected, permitted Hierarchy participants.
 - Load allowed context.
 - Identify workstreams.
-- Propose Human/AI steps.
+- Propose Human, AI Agent, Hybrid and Approval steps.
 - Check policy and dependencies.
-- Prepare review.
+- Prepare allocation review.
 
 Output editor defaults to accessible list mode:
 
@@ -363,9 +382,26 @@ Output editor defaults to accessible list mode:
 List | Graph | Changes | Validation
 ~~~
 
-Step card shows type, owner, title, inputs, output, dependency and warning. Graph mode uses the same data, never a separate truth.
+`WHO — Person Name` is a searchable multi-select of active, permitted Hierarchy memberships. Each
+step card shows execution mode, one accountable owner, optional contributors/reviewer/approver,
+title, inputs, output, dependency, suggested Agent and warning. Claude can suggest only from the
+selected participant keys and allowed Agent candidates. Graph mode uses the same data, never a
+separate truth.
 
-## 12. Job Builder contract
+Before Claude analysis, submission shows a complete input summary. Before Publish, the Changes
+view shows the proposed allocation, administrator edits, validation and impact. Publish freezes an
+immutable Objective Version but starts no work. A separate Activate action previews and creates the
+internal deployment, tasks, Agent bindings, schedules and Supervisor monitoring.
+
+## 12. Internal Job system contract
+
+Job Builder is not a sidebar destination or a normal user-authored screen. The existing Job and
+JobVersion records remain the internal execution contract produced by the Objective Deployment
+Compiler after Publish and explicit Activate. The compiler preview explains how approved Objective
+steps map to WHO rules, inputs, dependencies, approvals, schedules and pinned Agent Versions.
+
+The following groups describe the internal contract and administrator-readable deployment detail;
+they do not require a second form entry flow.
 
 Landing and tabs match Objective patterns.
 
@@ -411,7 +447,7 @@ The repeatable Job Step card must preserve all 16 source columns:
 
 Form 3 header fields, approved dropdown options and conditional behavior are mapped in the canonical field dictionary and must not be dropped. UI grouping may reduce repetition but may not silently merge or remove approved meaning.
 
-## 13. Agent Builder contract
+## 13. Agent Builder / Sync contract
 
 Landing views:
 
@@ -440,6 +476,11 @@ Form sections:
 - Tests/Publish.
 
 Tool permission card always shows connection owner, granted scopes, risk and last health check. Publish screen shows test evidence and cost estimate.
+
+Objective Sync adds an explicit lifecycle: Not configured, Draft, Validation failed, Ready to
+sync, Synced, Outdated and Resync required. Sync selects an existing published Agent, clones one or
+opens a new draft, then pins an exact published Agent Version. A changed Agent never silently
+changes an active Objective; the impact diff must be reviewed before resync.
 
 Skill Resolver UI shows semantic match as discovery evidence, then separately displays blocking compatibility gates: permission, jurisdiction, data classification, tool, approval, lifecycle and freshness. A high similarity score never visually implies approval.
 
@@ -477,7 +518,15 @@ Allowed human handlers and their permissions
 
 Never imply that being supervised grants control. Critical controls display exact affected Agents/runs before execution.
 
-## 15. To-do contract
+## 15. Job Agent and To-do contract
+
+Job Agent is an operational projection over real Tasks, Runs, approvals, inputs and evidence—not a
+second AI Agent record. Employees receive `My Job Agent`; permitted admins receive scoped `Job
+Agents`. Views are Assigned, Input Requested, In Progress, Waiting for Approval, Blocked and
+Completed. Each item exposes its Objective, instructions, due/SLA, required input, AI output,
+comments, evidence and only the state transitions the signed-in person may perform.
+
+To-do is the compact actionable queue across the same governed records.
 
 Tabs:
 

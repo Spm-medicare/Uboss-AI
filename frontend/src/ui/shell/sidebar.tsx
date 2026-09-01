@@ -10,7 +10,7 @@ import type { CurrentUser } from "@/lib/api/auth";
 import { cn } from "@/lib/cn";
 import {
   canSee,
-  NAVIGATION,
+  navigationFor,
   SETTINGS_ITEM,
   type NavItem,
 } from "@/lib/shell/navigation";
@@ -35,7 +35,6 @@ export function Sidebar({
   collapsed,
   onToggle,
   ready,
-  footer,
   counts,
   onOpenSettings,
 }: {
@@ -52,7 +51,6 @@ export function Sidebar({
    */
   onOpenSettings?: () => void;
   /** The avatar, workspace switcher and sign-out — §3's footer, built in AS.6. */
-  footer: ReactNode;
   /**
    * A number beside a row, keyed by item id. Passed in rather than fetched here, because the
    * sidebar renders on every screen and a component that made its own request would make one
@@ -64,6 +62,7 @@ export function Sidebar({
   const t = useTranslations("nav");
   const tProduct = useTranslations("product");
   const pathname = usePathname();
+  const navigation = navigationFor(user);
 
   return (
     <nav
@@ -95,6 +94,7 @@ export function Sidebar({
           className={cn(
             "flex min-w-0 items-center gap-2.5 rounded-md",
             "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
+            collapsed && "hidden",
           )}
         >
           {/*  The same tile the signed-out panel uses. Somebody who has just signed in sees the
@@ -115,7 +115,14 @@ export function Sidebar({
               expanded
             />
           </span>
-        ) : null}
+        ) : (
+          <SidebarButton
+            onClick={onToggle}
+            label={t("expand")}
+            icon={<PanelLeftOpen className="size-4" />}
+            expanded
+          />
+        )}
       </div>
 
       {/*  Nothing between the mark and the navigation.
@@ -141,7 +148,7 @@ export function Sidebar({
           collapsed ? "px-2 pt-1" : "px-2",
         )}
       >
-        {NAVIGATION.map((group) => {
+        {navigation.map((group) => {
           const visible = group.items.filter((item) => canSee(item, user.actions));
           //  A group whose every item is hidden leaves no heading behind. An empty "GOVERNED
           //  WORK" label is a promise of something that is not there.
@@ -199,33 +206,6 @@ export function Sidebar({
             in the most valuable position on the screen. Here it is a control that says what it
             does — and collapsed, it is the one row whose icon points the way it will move, which
             is the only affordance a 3.5rem rail has room for. */}
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={!collapsed}
-          title={collapsed ? t("expand") : t("collapse")}
-          className={cn(
-            "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm",
-            !collapsed && "mb-1",
-            "text-sidebar-muted transition-colors duration-150",
-            "hover:bg-sidebar-surface hover:text-sidebar-foreground",
-            "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
-            "motion-reduce:transition-none",
-            collapsed && "size-9 w-9 justify-center p-0",
-          )}
-        >
-          {collapsed ? (
-            <PanelLeftOpen aria-hidden className="size-4 shrink-0" />
-          ) : (
-            <PanelLeftClose aria-hidden className="size-4 shrink-0" />
-          )}
-          {collapsed ? (
-            <span className="sr-only">{t("expand")}</span>
-          ) : (
-            <span className="min-w-0 flex-1 truncate text-left">{t("collapse")}</span>
-          )}
-        </button>
-
         <ul className={cn(collapsed ? "space-y-2.5" : "space-y-1")}>
           <SidebarItem
             item={SETTINGS_ITEM}
@@ -235,7 +215,6 @@ export function Sidebar({
             {...(onOpenSettings ? { onActivate: onOpenSettings } : {})}
           />
         </ul>
-        {footer}
       </div>
     </nav>
   );

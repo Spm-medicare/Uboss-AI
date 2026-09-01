@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 import { useSession } from "@/lib/auth/use-session";
-import { canSee, NAVIGATION } from "@/lib/shell/navigation";
+import { canSee, navigationFor } from "@/lib/shell/navigation";
 import { cn } from "@/lib/cn";
 import { LoadingState } from "@/ui";
 import { AgentCards } from "@/ui/dashboard/agent-cards";
@@ -57,7 +57,7 @@ export default function DashboardPage() {
   //  Only screens that exist (`buildsIn === null`) and that this person's actions admit them to.
   //  A card leading to a disabled screen would be an invitation to a dead end, which is a worse
   //  version of the thing the sidebar carefully avoids.
-  const destinations = NAVIGATION.flatMap((group) => group.items)
+  const destinations = navigationFor(user).flatMap((group) => group.items)
     .filter((item) => item.buildsIn === null && item.href !== "/dashboard")
     .filter((item) => canSee(item, user.actions));
 
