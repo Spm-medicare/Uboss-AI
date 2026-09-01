@@ -163,6 +163,13 @@ async def set_schedule(
     schedule = await read(session, context, job_id)
     if schedule is None and expected_version is not None:
         raise Conflict("This job has no schedule yet.")
+    #  Creating the first schedule has no version to send and needs none. **Replacing** one does:
+    #  without this, a caller that simply omitted the field overwrote the timezone, the recurrence
+    #  and the pinned version with no conflict and no sign of what had been there.
+    if schedule is not None and expected_version is None:
+        raise Conflict(
+            "This job already has a schedule. Reload it and send the version you are replacing."
+        )
     if (
         schedule is not None
         and expected_version is not None
@@ -245,14 +252,27 @@ def _next(schedule: JobSchedule) -> datetime | None:
 
 
 async def remove(
-    session: AsyncSession, context: SecurityContext, job_id: uuid.UUID
+    session: AsyncSession,
+    context: SecurityContext,
+    job_id: uuid.UUID,
+    *,
+    expected_version: int,
 ) -> None:
-    """Delete the schedule. The job stays; it simply no longer runs by itself."""
+    """Delete the schedule. The job stays; it simply no longer runs by itself.
+
+    Guarded like every other state change, which it was not: this is the one destructive operation
+    on a schedule and it took no version at all, so a stale screen could delete a recurrence
+    somebody had just rewritten and neither of them would know.
+
+    A schedule that is already gone is not an error. The caller asked for it not to exist.
+    """
     await guard.authorise(session, context, Action.EDIT_DRAFT)
 
     schedule = await read(session, context, job_id)
     if schedule is None:
         return
+    if schedule.version != expected_version:
+        raise Conflict("Somebody else changed this schedule. Reload it and try again.")
 
     await session.delete(schedule)
     await session.flush()

@@ -99,26 +99,45 @@ export function deleteStep(
   });
 }
 
+/**
+ * Copy a step.
+ *
+ * `planSize` is in the key because the key alone was the step id, so a second duplicate of the
+ * same step matched the first's stored response and returned the copy already made — the button
+ * appeared to do nothing. The plan's size is what tells the two presses apart: duplicating this
+ * step when there were four is a different operation from duplicating it when there were five,
+ * and a retry of either still has the size it was sent with.
+ */
 export function duplicateStep(
   objectiveId: string,
   stepId: string,
+  planSize: number,
 ): Promise<{ id: string }> {
   return request(`/objectives/${objectiveId}/plan/steps/${stepId}/duplicate`, {
     method: "POST",
     body: {},
-    idempotencyKey: `step-duplicate:${stepId}`,
+    idempotencyKey: `step-duplicate:${stepId}:of${planSize}`,
   });
 }
 
+/**
+ * Fold one step into another, deleting the one absorbed.
+ *
+ * The version is the version of the step that disappears. Every other mutation on a step carried
+ * one and this — the only one that deletes — did not, so a merge could absorb a step somebody had
+ * rewritten a moment earlier and take the rewrite with it.
+ */
 export function mergeStep(
   objectiveId: string,
   stepId: string,
   intoStepId: string,
+  expectedVersion: number,
 ): Promise<{ id: string }> {
   return request(`/objectives/${objectiveId}/plan/steps/${stepId}/merge`, {
     method: "POST",
-    body: { into_step_id: intoStepId },
-    idempotencyKey: `step-merge:${stepId}:${intoStepId}`,
+    body: { into_step_id: intoStepId, expected_version: expectedVersion },
+    idempotencyKey: `step-merge:${stepId}:${intoStepId}:v${expectedVersion}`,
+    expectedVersion,
   });
 }
 
@@ -135,14 +154,25 @@ export function reorderPlan(
   });
 }
 
+/**
+ * Replace what this step waits for.
+ *
+ * The version is in the body because the server checks it — the set is replaced, not added to, so
+ * an edit made against an older view of it silently drops whatever appeared in between. And in the
+ * key, which is what fixes un-ticking a box and ticking it again: that re-sent a key *and* a body
+ * the server had already answered, so the tick did not come back. The step's version moves with
+ * each set, so the second attempt is a different operation.
+ */
 export function setDependencies(
   objectiveId: string,
   stepId: string,
   dependsOn: string[],
+  expectedVersion: number,
 ): Promise<{ status: string }> {
   return request(`/objectives/${objectiveId}/plan/steps/${stepId}/dependencies`, {
     method: "PUT",
-    body: { depends_on: dependsOn },
-    idempotencyKey: `step-deps:${stepId}:${dependsOn.join(",").slice(0, 150)}`,
+    body: { depends_on: dependsOn, expected_version: expectedVersion },
+    idempotencyKey: `step-deps:${stepId}:v${expectedVersion}`,
+    expectedVersion,
   });
 }

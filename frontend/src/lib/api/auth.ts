@@ -13,6 +13,7 @@ import type {
   ChooseWorkspaceResponse,
   CurrentUser,
   PasswordStepUpRequest,
+  SessionSummary,
   SignInRequest,
   SignInResponse,
   StepUpResponse,
@@ -20,6 +21,7 @@ import type {
   WorkspaceSummary,
 } from "./contract";
 import { request } from "./client";
+import { operationKey } from "./idempotency";
 
 export type {
   ChooseWorkspaceResponse,
@@ -97,4 +99,63 @@ export function fetchCurrentUser(signal?: AbortSignal): Promise<CurrentUser> {
 /** True when the signed-in person holds this action anywhere in their workspace. */
 export function can(user: CurrentUser | undefined, action: string): boolean {
   return user?.actions.includes(action) ?? false;
+}
+
+/**
+ * Change your own name, job title or timezone — §13's *"Profile and timezone/locale"*.
+ *
+ * The timezone is the one that matters most: `CurrentUser.timezone` is what every screen formats
+ * instants with, and until `PATCH /auth/me` existed nothing wrote it, so a person outside the
+ * workspace's zone read every time in the wrong one.
+ *
+ * ## The key names the transition, not the destination
+ *
+ * `from` is not decoration. Keyed on the new values alone, *"set my zone to Dubai"* is one
+ * operation for ever — so somebody who set Dubai, went back to Kolkata, and set Dubai again was
+ * handed the first response as a replay and nothing changed. The idempotency store was doing
+ * exactly what it is for; the key was wrong.
+ *
+ * Keyed on both ends, a retry of the same transition still replays — which is the point — and a
+ * return trip is a different operation, because it is one. Found by a browser test that ran twice.
+ */
+export function updateProfile(
+  input: {
+    display_name?: string;
+    job_title?: string | null;
+    timezone?: string;
+  },
+  from: Pick<CurrentUser, "display_name" | "job_title" | "timezone">,
+): Promise<CurrentUser> {
+  return request<CurrentUser>("/auth/me", {
+    method: "PATCH",
+    body: input,
+    idempotencyKey: operationKey(
+      "profile-update",
+      from.display_name,
+      from.job_title ?? "",
+      from.timezone,
+      input.display_name ?? "",
+      input.job_title ?? "",
+      input.timezone ?? "",
+    ),
+  });
+}
+
+/** Where this account is signed in — §13's *"Security, MFA and sessions"*. */
+export function fetchSessions(signal?: AbortSignal): Promise<SessionSummary[]> {
+  return request<SessionSummary[]>("/auth/sessions", signal ? { signal } : {});
+}
+
+/**
+ * End one of them.
+ *
+ * Ending the current one signs this browser out, which the screen says before offering it — a
+ * person clearing old sessions should not be surprised by being logged out of the one they are
+ * using.
+ */
+export function revokeSession(id: string): Promise<void> {
+  return request(`/auth/sessions/${id}`, {
+    method: "DELETE",
+    idempotencyKey: operationKey("session-revoke", id),
+  });
 }

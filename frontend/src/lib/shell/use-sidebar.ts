@@ -3,6 +3,9 @@
 /**
  * Expanded or collapsed, and remembered.
  *
+ * **Collapsed is the default.** Somebody who has never touched it gets the icon rail; the
+ * remembered preference takes over from their first click.
+ *
  * PLAN §3: *"Expanded and collapsed modes with remembered user preference."* Remembered is the
  * part that is easy to get wrong. A person who collapses the sidebar has said something about how
  * they want to work; giving it back to them expanded on every visit ignores it.
@@ -24,7 +27,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 const COLLAPSED_KEY = "uboss.sidebar.collapsed";
-const AGENTS_KEY = "uboss.sidebar.agentsOpen";
 
 const listeners = new Set<() => void>();
 
@@ -57,6 +59,18 @@ function write(key: string, value: boolean): void {
   for (const listener of listeners) listener();
 }
 
+/**
+ * Put the sidebar back to collapsed.
+ *
+ * Called on a fresh sign-in. **This deliberately overrides the remembered preference**, which §3
+ * asks for and which the toggle still writes: the instruction is that every login starts with the
+ * rail, so the preference lasts the session rather than the device. Somebody who expands it keeps
+ * it expanded until they sign out again.
+ */
+export function collapseSidebar(): void {
+  write(COLLAPSED_KEY, true);
+}
+
 export interface SidebarState {
   collapsed: boolean;
   toggle: () => void;
@@ -67,11 +81,20 @@ export interface SidebarState {
   ready: boolean;
 }
 
+//  **Collapsed until somebody says otherwise.** The rail is the default: a person arriving at
+//  work wants the screen, and the icons plus their tooltips are enough to navigate by. §3's
+//  "remembered user preference" still wins the moment they express one — the fallback only
+//  answers for somebody who never has.
+//
+//  The server snapshot below has to match this, or React hydrates against markup for the other
+//  state and throws the tree away — which is visible as the sidebar flicking open and shut.
+const COLLAPSED_BY_DEFAULT = true;
+
 export function useSidebar(): SidebarState {
   const collapsed = useSyncExternalStore(
     subscribe,
-    () => read(COLLAPSED_KEY, false),
-    () => false,
+    () => read(COLLAPSED_KEY, COLLAPSED_BY_DEFAULT),
+    () => COLLAPSED_BY_DEFAULT,
   );
   const ready = useSyncExternalStore(
     subscribe,
@@ -80,29 +103,8 @@ export function useSidebar(): SidebarState {
   );
 
   const toggle = useCallback(() => {
-    write(COLLAPSED_KEY, !read(COLLAPSED_KEY, false));
+    write(COLLAPSED_KEY, !read(COLLAPSED_KEY, COLLAPSED_BY_DEFAULT));
   }, []);
 
   return { collapsed, toggle, ready };
-}
-
-/**
- * Whether the Agents group is open.
- *
- * §3 gives that group its own expand/collapse, separate from the sidebar's. It defaults to open,
- * because the four Builders are the product — a person arriving to find them folded away has to
- * discover them.
- */
-export function useAgentsGroup(): { open: boolean; toggle: () => void } {
-  const open = useSyncExternalStore(
-    subscribe,
-    () => read(AGENTS_KEY, true),
-    () => true,
-  );
-
-  const toggle = useCallback(() => {
-    write(AGENTS_KEY, !read(AGENTS_KEY, true));
-  }, []);
-
-  return { open, toggle };
 }

@@ -205,10 +205,18 @@ export function PlanSection({
                       onRemove={() =>
                         act(() => deleteStep(objectiveId, step.id, step.version))
                       }
-                      onDuplicate={() => act(() => duplicateStep(objectiveId, step.id))}
-                      onMerge={(into) => act(() => mergeStep(objectiveId, step.id, into))}
+                      onDuplicate={() =>
+                        act(() =>
+                          duplicateStep(objectiveId, step.id, plan.data.steps.length),
+                        )
+                      }
+                      onMerge={(into) =>
+                        act(() => mergeStep(objectiveId, step.id, into, step.version))
+                      }
                       onDependencies={(dependsOn) =>
-                        act(() => setDependencies(objectiveId, step.id, dependsOn))
+                        act(() =>
+                          setDependencies(objectiveId, step.id, dependsOn, step.version),
+                        )
                       }
                       onMove={(direction) => {
                         const target = index + direction;
@@ -232,6 +240,13 @@ export function PlanSection({
                         addStep(objectiveId, {
                           kind: "human" as StepKind,
                           title: t("newStepTitle"),
+                          //  Where it is going. The key is built from the insertion point and the
+                          //  title, and this caller sent neither a varying title nor a point — so
+                          //  every press after the first matched the stored response and came
+                          //  back as the step already made. Naming the step it follows makes two
+                          //  presses two operations, and keeps a real retry a retry.
+                          after_step_id:
+                            plan.data.steps[plan.data.steps.length - 1]?.id ?? null,
                         }),
                       )
                     }

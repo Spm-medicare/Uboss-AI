@@ -19,6 +19,7 @@ import type {
   OrgUnitCreate,
   OrgUnitMove,
   OrgUnitUpdate,
+  PlaceablePerson,
   PositionCreate,
   PositionUpdate,
   ReportingEdgeCreate,
@@ -52,6 +53,45 @@ export function fetchTree(
     include_archived: options.includeArchived,
   })}`;
   return request<TreeRead>(path, options.signal ? { signal: options.signal } : {});
+}
+
+/**
+ * Everybody who can be put in a seat — wider than `/objectives/people`, and deliberately.
+ *
+ * That route answers "who may be named as owner or approver" and is limited to active members,
+ * because an owner has to be able to act. This answers "who works here": placing somebody in a
+ * seat grants them nothing, and an invited colleague is exactly who a chart is drawn around
+ * during onboarding. The picker offered two of twenty-seven people before this existed.
+ */
+export function fetchPlaceablePeople(
+  signal?: AbortSignal,
+): Promise<PlaceablePerson[]> {
+  return request<PlaceablePerson[]>(
+    "/hierarchy/people",
+    signal ? { signal } : {},
+  );
+}
+
+/**
+ * Add a colleague to the workspace and invite them.
+ *
+ * Needed because a typed name cannot become a person on its own: `memberships.user_id` is NOT
+ * NULL, so somebody has to have an account, and an account is reached by email. The org chart
+ * could otherwise only ever place people a provisioning script had already inserted.
+ *
+ * Returns the membership so the caller can put them straight into the seat they were typed into.
+ */
+export async function invitePerson(body: {
+  display_name: string;
+  email: string;
+}): Promise<{ membership_id: string; display_name: string; created: string }> {
+  return request("/hierarchy/people", {
+    method: "POST",
+    body,
+    //  Keyed on the address, not the name: inviting the same person twice is the same intent
+    //  however their name was typed, and the route answers with the existing person either way.
+    idempotencyKey: operationKey("invite-person", body.email),
+  });
 }
 
 export function fetchIssues(
@@ -97,7 +137,7 @@ export function updateUnit(id: string, body: OrgUnitUpdate): Promise<Written> {
   return request<Written>(`/hierarchy/units/${id}`, {
     method: "PATCH",
     body,
-    idempotencyKey: `unit-update:${id}:v${body.expected_version}`,
+    idempotencyKey: operationKey("unit-update", id, `v${body.expected_version}`, body.name ?? ""),
     expectedVersion: body.expected_version,
   });
 }
@@ -106,7 +146,15 @@ export function moveUnit(id: string, body: OrgUnitMove): Promise<Written> {
   return request<Written>(`/hierarchy/units/${id}/move`, {
     method: "POST",
     body,
-    idempotencyKey: `unit-move:${id}:v${body.expected_version}`,
+    /*  The destination is part of the key, not only the version.
+
+        Without it, "put it under Operations" and "put it under Finance" are the same operation at
+        one version. A person who is refused once — the parent turned out to be archived, say —
+        chooses a different parent and presses Move again: same key, different body, and the
+        server answers *"Idempotency-Key is not valid"*. An error about plumbing, for an ordinary
+        correction. The version stays in the key because it is what makes A → B → A → B a sequence
+        of four operations rather than two replays. */
+    idempotencyKey: operationKey("unit-move", id, `v${body.expected_version}`, body.new_parent_id),
     expectedVersion: body.expected_version,
   });
 }
@@ -132,7 +180,17 @@ export function updatePosition(id: string, body: PositionUpdate): Promise<Writte
   return request<Written>(`/hierarchy/positions/${id}`, {
     method: "PATCH",
     body,
-    idempotencyKey: `position-update:${id}:v${body.expected_version}`,
+    /*  The department is in the key for the same reason it is in the body: moving a seat and
+        renaming it are different operations, and at one version they would otherwise share a key
+        — so correcting a refused move by choosing another department would be answered with the
+        first attempt's stored response. */
+    idempotencyKey: operationKey(
+      "position-update",
+      id,
+      `v${body.expected_version}`,
+      body.org_unit_id ?? "same",
+      body.title ?? "",
+    ),
     expectedVersion: body.expected_version,
   });
 }

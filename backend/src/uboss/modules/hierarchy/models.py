@@ -125,6 +125,11 @@ class Position(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion):
     org_unit_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
 
+    #: The grade in the organisation's own words — "Senior Manager", "AVP", "Consultant". Free
+    #: text because three fixed bands describe a company that does not exist; see migration 0038.
+    #: `level` below is what *orders* seats, because text cannot be ordered.
+    designation: Mapped[str | None] = mapped_column(String(80), nullable=True)
+
     #: Seniority as the customer counts it, for filtering by level (PLAN §5). Not a permission:
     #: what a person may do comes from their roles and grants, never from a number here.
     level: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -186,7 +191,11 @@ class PositionAssignment(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVe
             ondelete="RESTRICT",
         ),
         CheckConstraint(
-            "effective_to IS NULL OR effective_to > effective_from",
+            #: `>=`, not `>`: a zero-length range means "recorded and corrected the same day",
+            #: which is a real correction and keeps the row as evidence. See migration 0039 —
+            #: with an exclusive `effective_to`, `>` made an assignment made today impossible to
+            #: end today.
+            "effective_to IS NULL OR effective_to >= effective_from",
             name="ck_assignments_range_ordered",
         ),
         Index("ix_assignments_tenant_position", "tenant_id", "position_id"),
@@ -227,7 +236,11 @@ class ReportingEdge(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion
         CheckConstraint("kind IN ('primary', 'dotted')", name="ck_edges_kind_known"),
         CheckConstraint("position_id <> manager_position_id", name="ck_edges_not_self_managed"),
         CheckConstraint(
-            "effective_to IS NULL OR effective_to > effective_from",
+            #: `>=`, not `>`: a zero-length range means "recorded and corrected the same day",
+            #: which is a real correction and keeps the row as evidence. See migration 0039 —
+            #: with an exclusive `effective_to`, `>` made an assignment made today impossible to
+            #: end today.
+            "effective_to IS NULL OR effective_to >= effective_from",
             name="ck_edges_range_ordered",
         ),
         Index("ix_edges_tenant_position", "tenant_id", "position_id"),

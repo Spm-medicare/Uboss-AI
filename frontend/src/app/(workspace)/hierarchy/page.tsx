@@ -10,6 +10,7 @@ import {
   Plus,
   Undo2,
   Upload,
+  UserMinus,
   UserPlus,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -29,6 +30,7 @@ import {
   undoRevision,
 } from "@/lib/api/hierarchy";
 import { can } from "@/lib/api/auth";
+import { ApiError, NetworkError } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/auth/use-session";
 import { contextFor, formatDateTime } from "@/lib/format";
@@ -103,6 +105,18 @@ export default function HierarchyPage() {
     queryFn: ({ signal }) => fetchRevisions({ limit: 15, signal }),
   });
 
+  //  The row as the server currently has it, not as it was when the dialog opened. See the
+  //  comment beside the dialogs themselves.
+  const allUnits = tree.data?.units ?? [];
+  const liveUnit = editingUnit
+    ? (allUnits.find((candidate) => candidate.id === editingUnit.id) ?? null)
+    : null;
+  const liveSeat = editingSeat
+    ? (allUnits
+        .flatMap((candidate) => candidate.positions ?? [])
+        .find((candidate) => candidate.id === editingSeat.id) ?? null)
+    : null;
+
   const mayEdit = can(user, "administer");
   const mayAssign = can(user, "assign");
 
@@ -120,10 +134,13 @@ export default function HierarchyPage() {
           <div className="flex items-center gap-1.5">
             <Button
               size="sm"
+              aria-label={t("import")}
               icon={<Upload className="size-3.5" />}
               onClick={() => router.push("/hierarchy/import")}
             >
-              {t("import")}
+              {/*  Icon only on a phone. The label is the accessible name above, so the control
+                  keeps its name for assistive technology and for a tooltip. */}
+              <span className="hidden sm:inline">{t("import")}</span>
             </Button>
             {tree.data.is_empty ? null : (
               <AddUnitButton parentId={rootId(tree.data.units)} onDone={refresh} />
@@ -134,7 +151,7 @@ export default function HierarchyPage() {
     >
       {/*  `max-w-5xl` on the reading column, and the chart steps out of it below. A chart is as
           wide as the organisation; a column meant for prose is the wrong container for one. */}
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="space-y-6">
         {/*  A heading on the page, not only in the top bar. The bar names the room; a person
             landing here needs to be told what the screen is for before they are asked to pick a
             date, and a screen that opens with a form control reads as a fragment of something
@@ -183,12 +200,17 @@ export default function HierarchyPage() {
               ) : null}
 
               {view === "chart" ? (
-                //  Out of the reading column and across the whole screen. A chart is as wide as
-                //  the organisation, and a 64rem column meant a company with five departments
-                //  scrolling sideways inside a box a third of the window — on a monitor with
-                //  room to show the whole thing. The margins cancel this column's own centring
-                //  and the shell's padding, so the chart starts where the sidebar ends.
-                <div className="-mx-4 w-[calc(100%+2rem)] sm:-mx-6 sm:w-[calc(100%+3rem)]">
+                //  In the column, not bleeding past it. The chart carries its own
+                //  `overflow-x-auto`, so a company wider than the window scrolls *inside the
+                //  chart* — and the page body never scrolls sideways, which is the rule
+                //  everywhere else in the app.
+                //
+                //  This used to be a full-bleed wrapper with negative margins, from when the
+                //  content column was capped at 64rem and a chart of five departments was
+                //  scrolling inside a third of the window. The cap is gone, and the wrapper was
+                //  pushing one rem past its parent on each side — enough to make a phone scroll
+                //  the whole document sideways.
+                <div>
                 <OrgChart
                   units={tree.data?.units ?? []}
                   //  One `+` per box and one per seat, both opening the same dialog. Passed only
@@ -236,24 +258,34 @@ export default function HierarchyPage() {
                   mayEdit={mayEdit}
                   mayAssign={mayAssign}
                   onDone={refresh}
+                  onEditUnit={setEditingUnit}
                 />
               )}
             </>
           )}
         </QueryStates>
 
-        {editingSeat ? (
+        {/*  Looked up in live data rather than used as captured.
+
+            A dialog opened with the row it was clicked on, and `refresh()` runs while it is open —
+            after a save inside it, or when the window regains focus. The captured object then held
+            a `version` the row no longer has, and the next save came back as *"changed by somebody
+            else while you were editing"*, blaming a concurrent editor who was the refresh. Reading
+            it back by id on every render means the dialog always carries the version the server
+            currently holds, and closes by itself if the row goes away underneath it. */}
+        {liveSeat ? (
           <EditSeatDialog
-            position={editingSeat}
+            position={liveSeat}
             units={tree.data?.units ?? []}
             onClose={() => setEditingSeat(null)}
             onDone={refresh}
           />
         ) : null}
 
-        {editingUnit ? (
+        {liveUnit ? (
           <EditUnitDialog
-            unit={editingUnit}
+            unit={liveUnit}
+            units={tree.data?.units ?? []}
             onClose={() => setEditingUnit(null)}
             onDone={refresh}
           />
@@ -351,8 +383,21 @@ function Issues({ issues }: { issues: { kind: string; entity_id: string; detail:
   const visible = all ? issues : issues.slice(0, SHOWN);
   const hidden = issues.length - visible.length;
 
+  //  **A vacancy is not a warning.** §5 requires vacant seats to be visible — they are the hiring
+  //  plan — and drawing them in amber beside genuine problems made a correctly-mapped
+  //  organisation look broken. So the tone follows what is actually in the list: amber only when
+  //  something is really wrong (an orphaned manager), informational when it is only vacancies.
+  const onlyVacancies = issues.every((issue) => issue.kind === "vacant_position");
+
   return (
-    <Alert tone="warning" title={t("issuesTitle", { count: issues.length })}>
+    <Alert
+      tone={onlyVacancies ? "info" : "warning"}
+      title={
+        onlyVacancies
+          ? t("vacanciesTitle", { count: issues.length })
+          : t("issuesTitle", { count: issues.length })
+      }
+    >
       <ul className="mt-1 space-y-0.5">
         {visible.map((issue) => (
           <li key={`${issue.kind}:${issue.entity_id}`}>{issue.detail}</li>
@@ -466,11 +511,14 @@ function Tree({
   mayEdit,
   mayAssign,
   onDone,
+  onEditUnit,
 }: {
   units: OrgUnitRead[];
   mayEdit: boolean;
   mayAssign: boolean;
   onDone: () => void;
+  /** Opens the department dialog — the same one the chart opens, so Move lives in both views. */
+  onEditUnit: (unit: OrgUnitRead) => void;
 }) {
   const childrenByParent = useMemo(() => {
     const map = new Map<string | null, OrgUnitRead[]>();
@@ -491,10 +539,12 @@ function Tree({
           key={unit.id}
           unit={unit}
           childrenByParent={childrenByParent}
+          allUnits={units}
           depth={0}
           mayEdit={mayEdit}
           mayAssign={mayAssign}
           onDone={onDone}
+          onEditUnit={onEditUnit}
         />
       ))}
     </ul>
@@ -504,21 +554,27 @@ function Tree({
 function UnitNode({
   unit,
   childrenByParent,
+  allUnits,
   depth,
   mayEdit,
   mayAssign,
   onDone,
+  onEditUnit,
 }: {
   unit: OrgUnitRead;
   //  Not named `children`: React reserves that prop, and a Map passed under it is both a lint
   //  error and a genuinely confusing thing to read.
   childrenByParent: Map<string | null, OrgUnitRead[]>;
+  /** Every unit, so a seat row can resolve who it reports to. */
+  allUnits: OrgUnitRead[];
   depth: number;
   mayEdit: boolean;
   mayAssign: boolean;
   onDone: () => void;
+  onEditUnit: (unit: OrgUnitRead) => void;
 }) {
   const t = useTranslations("hierarchy");
+  const tCommon = useTranslations("common");
   const [open, setOpen] = useState(depth < 2);
   const sub = childrenByParent.get(unit.id) ?? [];
   //  The generated contract has `positions` optional — the server always sends it, but a client
@@ -543,14 +599,36 @@ function UnitNode({
                 <>
                   <AddUnitButton parentId={unit.id} onDone={onDone} />
                   <AddPositionButton unitId={unit.id} onDone={onDone} />
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    busy={archive.isPending}
-                    onClick={() => archive.mutate()}
-                  >
-                    {t("archive")}
-                  </Button>
+                  {/*  Edit — and therefore Move — reaches the list too. Without it, moving a
+                      department was a chart-only capability, and somebody working in the list had
+                      no way to correct where a department sits.
+
+                      Withheld on the company for the same reason the chart withholds it: renaming
+                      the organisation is a settings decision, and it has nowhere to move to. */}
+                  {unit.parent_id === null ? null : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={<Pencil className="size-3.5" />}
+                      onClick={() => onEditUnit(unit)}
+                    >
+                      {tCommon("edit")}
+                    </Button>
+                  )}
+                  {/*  Archive, never on the company. Archiving the root leaves a tenant with no
+                      tree and no way back: `uq_org_units_single_root` refuses a second root, so
+                      the organisation cannot be re-created. The chart never offered this; the
+                      list did. */}
+                  {unit.parent_id === null ? null : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      busy={archive.isPending}
+                      onClick={() => archive.mutate()}
+                    >
+                      {t("archive")}
+                    </Button>
+                  )}
                 </>
               ) : null}
             </div>
@@ -559,7 +637,12 @@ function UnitNode({
 
         {archive.error ? (
           <CardBody className="pb-0">
-            <Alert tone="danger">{archive.error.message}</Alert>
+            {/*  The same shape as every other failure on this screen: an offline tone when the
+                request never arrived, and the server's own sentence when it did. Printing
+                `error.message` raw put a fetch error where a reason belongs. */}
+            <Alert tone={archive.error instanceof NetworkError ? "offline" : "danger"}>
+              {archive.error instanceof ApiError ? archive.error.message : t("archiveFailed")}
+            </Alert>
           </CardBody>
         ) : null}
 
@@ -572,6 +655,7 @@ function UnitNode({
                 <PositionRow
                   key={position.id}
                   position={position}
+                  units={allUnits}
                   mayEdit={mayEdit}
                   mayAssign={mayAssign}
                   onDone={onDone}
@@ -605,10 +689,12 @@ function UnitNode({
                       key={child.id}
                       unit={child}
                       childrenByParent={childrenByParent}
+                      allUnits={allUnits}
                       depth={depth + 1}
                       mayEdit={mayEdit}
                       mayAssign={mayAssign}
                       onDone={onDone}
+                      onEditUnit={onEditUnit}
                     />
                   ))}
                 </ul>
@@ -629,11 +715,14 @@ function UnitNode({
  */
 function PositionRow({
   position,
+  units,
   mayEdit,
   mayAssign,
   onDone,
 }: {
   position: PositionRead;
+  /** Every unit, so `reports_to_position_id` can be resolved to a person and a seat. */
+  units: OrgUnitRead[];
   mayEdit: boolean;
   mayAssign: boolean;
   onDone: () => void;
@@ -645,12 +734,19 @@ function PositionRow({
     onSuccess: onDone,
   });
 
+  const manager = managerOf(position, units);
+
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/50 px-3 py-2">
       <div className="min-w-0">
         <p className="truncate text-sm font-medium">{position.title}</p>
+        {/*  Who, what grade, under whom — the order somebody asks them in. The chart answers the
+            third with lines; the list had no answer at all, so "who does Alok report to?" meant
+            switching views. */}
         <p className="truncate text-xs text-muted-foreground">
           {position.holder ? position.holder.display_name : t("vacant")}
+          {position.designation ? ` · ${position.designation}` : ""}
+          {manager ? ` · ${t("reportsToIs", { manager })}` : ""}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
@@ -661,6 +757,15 @@ function PositionRow({
         )}
         {mayAssign && !position.holder ? (
           <AssignButton position={position} onDone={onDone} />
+        ) : null}
+        {/*  The same slot, from the other side. A seat is either empty and can be taken, or
+            filled and can be emptied — never both, so one control appears at a time.
+
+            It is also the only way to satisfy *"End the current assignment before archiving this
+            position"*, which the archive route has always answered with and nothing could act
+            on. */}
+        {mayAssign && position.holder ? (
+          <RemovePersonButton position={position} onDone={onDone} />
         ) : null}
         {mayEdit ? (
           <Button
@@ -714,10 +819,11 @@ function AddUnitButton({
       <Button
         size="sm"
         variant="ghost"
+        aria-label={t("addDepartment")}
         icon={<Plus className="size-3.5" />}
         onClick={() => setOpen(true)}
       >
-        {t("addDepartment")}
+        <span className="hidden sm:inline">{t("addDepartment")}</span>
       </Button>
     );
   }
@@ -808,6 +914,88 @@ function AddPositionButton({ unitId, onDone }: { unitId: string; onDone: () => v
         {t("cancel")}
       </Button>
     </form>
+  );
+}
+
+/**
+ * Take whoever is in a seat out of it, from today.
+ *
+ * **Ended, not deleted.** `effective_to` moves to today and the assignment row stays, because
+ * they did hold the seat and that does not stop being true — `AssignmentEnd` in the schemas says
+ * it in one line: *"The row stays; only its end moves."* A chart asked for last month still shows
+ * them in it, which is the whole reason the hierarchy is dated.
+ *
+ * Confirmed before it runs. Emptying somebody's seat is not destructive — it is reversible by
+ * assigning them again — but it is the kind of thing nobody means to do with a stray click on a
+ * list of thirty rows.
+ */
+function RemovePersonButton({
+  position,
+  onDone,
+}: {
+  position: PositionRead;
+  onDone: () => void;
+}) {
+  const t = useTranslations("hierarchy");
+  const tCommon = useTranslations("common");
+  const withStepUp = useStepUp();
+  const [asking, setAsking] = useState(false);
+
+  const end = useMutation({
+    mutationFn: async () => {
+      const { endAssignment } = await import("@/lib/api/hierarchy");
+      const holder = position.holder!;
+      return withStepUp(() =>
+        endAssignment(holder.assignment_id, {
+          effective_to: new Date().toISOString().slice(0, 10),
+          expected_version: holder.assignment_version,
+        }),
+      );
+    },
+    onSuccess: () => {
+      setAsking(false);
+      onDone();
+    },
+  });
+
+  if (!position.holder) return null;
+
+  if (!asking) {
+    return (
+      <Button
+        size="sm"
+        variant="ghost"
+        icon={<UserMinus className="size-3.5" />}
+        onClick={() => setAsking(true)}
+        title={t("removePersonHint")}
+      >
+        {t("removePerson")}
+      </Button>
+    );
+  }
+
+  return (
+    <span className="flex items-center gap-1.5">
+      <Button
+        size="sm"
+        variant="danger"
+        busy={end.isPending}
+        onClick={() => end.mutate()}
+      >
+        {t("removePersonConfirm", { name: position.holder.display_name })}
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={end.isPending}
+        onClick={() => setAsking(false)}
+      >
+        {tCommon("cancel")}
+      </Button>
+      {end.error ? (
+        <span className="text-xs text-danger">{end.error.message}</span>
+      ) : null}
+    </span>
   );
 }
 
@@ -932,4 +1120,30 @@ function History({
       ) : null}
     </Card>
   );
+}
+
+/**
+ * Who this seat reports to, as a person and a seat — or `null` at the top of the organisation.
+ *
+ * Resolved from the units the list already has rather than fetched: `reports_to_position_id` is
+ * on every position in the tree response, and a request per row would be thirty requests for
+ * data already on the page.
+ *
+ * A vacant manager seat gives the title alone. "reports to (Finance Director)" with an empty name
+ * in front of it reads as missing data; the title on its own reads as the fact it is.
+ */
+function managerOf(position: PositionRead, units: OrgUnitRead[]): string | null {
+  const id = position.reports_to_position_id;
+  if (!id) return null;
+  for (const unit of units) {
+    for (const candidate of unit.positions ?? []) {
+      if (candidate.id !== id) continue;
+      return candidate.holder
+        ? `${candidate.holder.display_name} (${candidate.title})`
+        : candidate.title;
+    }
+  }
+  //  The manager seat is not in the tree — archived since, or outside what this person may see.
+  //  Silent rather than a broken reference: the line simply omits it.
+  return null;
 }

@@ -121,8 +121,12 @@ def _filtered(
     return statement
 
 
-def _recall_query(words: str) -> str:
+def widen_to_any_word(words: str) -> str:
     """A plain sentence, widened to match any of its words rather than all of them.
+
+    Public because Gate 7.7's Copilot retrieval needs the identical rule and a second copy of it
+    would be a fourth drift in this codebase. The name says what it does rather than which caller
+    asked for it, since there are now two.
 
     `websearch_to_tsquery` ANDs bare terms, which is right for a web search and wrong here. A
     requirement is usually a sentence — *"vendor statement reconciliation and payment run
@@ -174,7 +178,7 @@ async def search(
         rows = (await session.execute(browse.limit(limit))).scalars().all()
         return [Hit(skill=skill, rank=n, text_match=0.0) for n, skill in enumerate(rows, start=1)]
 
-    query = func.websearch_to_tsquery(DICTIONARY, _recall_query(words))
+    query = func.websearch_to_tsquery(DICTIONARY, widen_to_any_word(words))
     vector: ColumnElement[Any] = literal_column("skills.search")
     ranked = func.ts_rank_cd(vector, query).label("text_match")
 
@@ -211,6 +215,30 @@ async def by_id(session: AsyncSession, skill_id: uuid.UUID) -> Skill | None:
     return (
         await session.execute(select(Skill).where(Skill.id == skill_id))
     ).scalar_one_or_none()
+
+
+async def registry_counts(session: AsyncSession) -> tuple[int, int]:
+    """How many skills the catalogue holds, and how many this workspace has added.
+
+    Counted rather than asserted. The screen used to state a figure written into a translation
+    string, which was true of one seed and of nothing else — and which no amount of correcting the
+    seed would ever update.
+
+    Two numbers because the sentence makes two claims. A catalogue skill carries no tenant and is
+    the same row for everybody; a workspace's own is scoped by row-level security, so counting it
+    needs no clause here.
+    """
+    catalogue = (
+        await session.execute(
+            select(func.count()).select_from(Skill).where(Skill.tenant_id.is_(None))
+        )
+    ).scalar_one()
+    mine = (
+        await session.execute(
+            select(func.count()).select_from(Skill).where(Skill.tenant_id.is_not(None))
+        )
+    ).scalar_one()
+    return int(catalogue), int(mine)
 
 
 async def registry_lists(session: AsyncSession) -> tuple[

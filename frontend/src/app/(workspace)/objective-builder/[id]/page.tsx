@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import {Lightbulb, Save, Send, Sparkles, X} from "lucide-react";
+import { ArrowDown, Lightbulb, Save, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useRef } from "react";
@@ -15,6 +15,8 @@ import {
   type Lists,
   type Objective,
 } from "@/lib/api/objectives";
+import { unsavedSince } from "@/lib/builder/unsaved-since";
+import { useAdoptServerVersion } from "@/lib/builder/use-adopt-server-version";
 import { useAutosave } from "@/lib/builder/use-autosave";
 import { contextFor, formatDate } from "@/lib/format";
 import { useSession } from "@/lib/auth/use-session";
@@ -40,6 +42,7 @@ import { PublishSection } from "@/ui/builder/publish-section";
 import { SheetSteps } from "@/ui/builder/design-table";
 import { objectiveColumns } from "@/ui/builder/workbook-columns";
 import { Suggest } from "@/ui/builder/suggest";
+import { PersonSelect } from "@/ui/builder/person-select";
 import { AppShell } from "@/ui/shell/app-shell";
 
 /**
@@ -80,19 +83,29 @@ export default function ObjectiveBuilderPage() {
 
   return (
     <AppShell
+      //  **The top bar names the room, the builder's own heading names the record.** Putting
+      //  the record's name here as well printed it twice within an inch of itself — the
+      //  duplication complaint. The crumb is the way back to the list and is deliberately
+      //  worded differently from the screen name, so it is a link rather than an echo.
       title={t("builderTitle")}
-      breadcrumb={[{ label: t("objectives"), href: "/objective-builder" }]}
+      breadcrumb={[{ label: t("backToList"), href: "/objective-builder" }]}
     >
+      {/*  The people query is inside the states, not beside them.
+
+          It sat outside, and the list was passed as `people.data ?? []` — so a failed lookup
+          rendered as a required dropdown with nobody in it: a request that failed, reported as an
+          empty workspace. That inversion is the exact thing `ui/states.tsx` exists to prevent, and
+          an approver is the one field on this screen that cannot be filled from an empty list. */}
       <QueryStates
-        isPending={objective.isPending || lists.isPending}
-        error={objective.error ?? lists.error}
+        isPending={objective.isPending || lists.isPending || people.isPending}
+        error={objective.error ?? lists.error ?? people.error}
         onRetry={() => void objective.refetch()}
       >
-        {objective.data && lists.data ? (
+        {objective.data && lists.data && people.data ? (
           <Editor
             initial={objective.data}
             lists={lists.data}
-            people={people.data ?? []}
+            people={people.data}
             onReload={() => void objective.refetch()}
           />
         ) : null}
@@ -188,15 +201,28 @@ function Editor({
       };
       const saved = await saveObjective(next.id, payload);
       confirmedVersion.current = saved.version;
-            //  The server's copy replaces the local one — it carries the new version number, and every
+      //  The server's copy replaces the local one — it carries the new version number, and every
       //  subsequent save depends on it. Keeping the local copy would make the second save a
-      //  guaranteed conflict.
+      //  guaranteed conflict. Whatever was typed after this request went out survives, because
+      //  `unsavedSince` puts it back on top.
       setDraft((current) => ({ ...saved, ...unsavedSince(current, next) }));
     },
     [],
   );
 
   const autosave = useAutosave<Objective>(send, { enabled: editable });
+
+  /*  The form follows the server: it takes a fresher copy whenever one arrives and nothing is
+      queued, and `resolveConflict` is the way out of a real conflict. See the hook — the reasoning
+      is the same on all four Builders, which is why it is one hook. */
+  const { resolveConflict } = useAdoptServerVersion<Objective>({
+    server: initial,
+    confirmedVersionRef: confirmedVersion,
+    setDraft,
+    autosave,
+    reload: onReload,
+  });
+
 
   const edit = useCallback(
     (patch: Partial<Objective>) => {
@@ -223,7 +249,12 @@ function Editor({
       {
         id: "identity",
         label: t("sections.identity"),
-        complete: Boolean(draft.title && draft.department && draft.expected_result),
+        //  The owner belongs here: the workbook marks `Objective Owner *` required and
+        //  `OBJECTIVE_FIELDS.md:18` records it as required, so a section missing one is not
+        //  complete however full the other three are.
+        complete: Boolean(
+          draft.title && draft.department && draft.expected_result && draft.owner_membership_id,
+        ),
       },
       {
         id: "process",
@@ -244,8 +275,21 @@ function Editor({
         label: t("sections.governance"),
         complete: Boolean(draft.approver_membership_id),
       },
-      { id: "ai", label: t("sections.ai"), complete: true },
-      { id: "plan", label: t("sections.plan"), complete: false },
+      {
+        id: "ai",
+        label: t("sections.ai"),
+        //  Read from the two fields the section holds. This was the literal `true`, so the rail
+        //  showed a finished section to somebody who had filled in neither.
+        complete: Boolean(draft.ai_assistance || draft.human_checkpoints),
+      },
+      {
+        //  No completeness answer at all — a state the rail supports, and the honest one here:
+        //  whether a plan exists lives behind the plan section's own query, which this component
+        //  cannot see. It was the literal `false`, so the section could be finished and would
+        //  never say so.
+        id: "plan",
+        label: t("sections.plan"),
+      },
       { id: "publish", label: t("sections.publish") },
     ],
     [draft, steps.length, t],
@@ -258,7 +302,6 @@ function Editor({
 
   return (
     <BuilderLayout
-      eyebrow={t("eyebrow")}
       title={draft.title}
       status={<StatusPill status={draft.status} />}
       meta={
@@ -301,8 +344,13 @@ function Editor({
           >
             {t("saveDraft")}
           </Button>
+          {/*  These two scroll to a section; they do not analyse and do not publish. They were
+              labelled *Analyse* and *Review and publish*, one of them under a Sparkles icon, which
+              is a control promising an action it does not perform. The section each one goes to
+              has the real button, with the real gating. */}
           <Button
-            icon={<Sparkles className="size-4" />}
+            variant="secondary"
+            icon={<ArrowDown className="size-4" />}
             disabled={!editable || steps.length === 0}
             title={steps.length === 0 ? t("analyseNeedsSteps") : undefined}
             onClick={() => goTo("plan")}
@@ -310,8 +358,8 @@ function Editor({
             {t("analyse")}
           </Button>
           <Button
-            variant="primary"
-            icon={<Send className="size-4" />}
+            variant="secondary"
+            icon={<ArrowDown className="size-4" />}
             onClick={() => goTo("publish")}
           >
             {t("reviewAndPublish")}
@@ -343,9 +391,9 @@ function Editor({
           <button
             type="button"
             className="underline underline-offset-4"
-            onClick={onReload}
+            onClick={resolveConflict}
           >
-            {t("reloadIt")}
+            {t("keepMyChange")}
           </button>
         </Alert>
       ) : null}
@@ -389,7 +437,8 @@ function Editor({
             onChange={(value) => edit({ department: value || null })}
           />
           <PersonSelect
-            label={`${t("owner")} *`}
+            label={t("owner")}
+            required
             value={draft.owner_membership_id}
             people={people}
             disabled={!editable}
@@ -719,19 +768,6 @@ function stripReadFields(step: Objective["current_steps"][number]): CurrentStepI
  * A save takes a moment, and somebody keeps typing during it. Without this, the server's reply
  * would overwrite those keystrokes — the classic autosave bug, and the one people notice.
  */
-function unsavedSince(
-  current: Objective,
-  sent: Objective,
-): Partial<Objective> {
-  const changed: Partial<Objective> = {};
-  for (const key of Object.keys(current) as (keyof Objective)[]) {
-    if (key === "version" || key === "updated_at" || key === "is_editable") continue;
-    if (JSON.stringify(current[key]) !== JSON.stringify(sent[key])) {
-      changed[key] = current[key] as never;
-    }
-  }
-  return changed;
-}
 
 function StatusPill({ status }: { status: Objective["status"] }) {
   const t = useTranslations("objective");
@@ -822,42 +858,6 @@ function Guidance({
   );
 }
 
-function PersonSelect({
-  label,
-  value,
-  people,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  value: string | null;
-  people: { membership_id: string; display_name: string; job_title?: string | null }[];
-  disabled: boolean;
-  onChange: (value: string | null) => void;
-}) {
-  const t = useTranslations("objective");
-  return (
-    <Field label={label}>
-      {(field) => (
-        <select
-          {...field}
-          value={value ?? ""}
-          disabled={disabled}
-          onChange={(event) => onChange(event.target.value || null)}
-          className="h-9 w-full rounded-md border border-border bg-card px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <option value="">{t("choosePerson")}</option>
-          {people.map((person) => (
-            <option key={person.membership_id} value={person.membership_id}>
-              {person.display_name}
-              {person.job_title ? ` — ${person.job_title}` : ""}
-            </option>
-          ))}
-        </select>
-      )}
-    </Field>
-  );
-}
 
 /**
  * A small closed set, as buttons rather than a dropdown.

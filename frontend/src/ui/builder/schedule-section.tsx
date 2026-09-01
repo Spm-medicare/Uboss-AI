@@ -14,11 +14,26 @@ import {
 } from "@/lib/api/jobs";
 import { cn } from "@/lib/cn";
 import { contextFor, formatDateTimeWithZone } from "@/lib/format";
+import { fetchFirings, releaseFiring } from "@/lib/api/schedule-firings";
 import { Alert } from "@/ui/alert";
+import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Field } from "@/ui/field";
 import { Input } from "@/ui/input";
 import { QueryStates } from "@/ui/states";
+
+/**
+ * Which colour a firing's state wears. A skip is not a failure: one is a rule the author chose —
+ * an overlap policy, a holiday — and the other is something going wrong. Showing them alike
+ * would make a correctly-behaving schedule look broken.
+ */
+const FIRING_TONE: Record<string, "neutral" | "success" | "danger" | "approval" | "ai"> = {
+  due: "neutral",
+  started: "success",
+  skipped: "neutral",
+  failed: "danger",
+  awaiting_approval: "approval",
+};
 
 /**
  * A job's schedule, and what it would actually do — PLAN §8.
@@ -53,6 +68,22 @@ export function ScheduleSection({
     queryFn: ({ signal }) => fetchSchedule(jobId, signal),
   });
 
+  //  What the scheduler actually did. Beside the preview on purpose: one answers "when will this
+  //  run", the other "when did it, and when did it not" — and the second is the question people
+  //  bring to this screen after the first surprise.
+  const firings = useQuery({
+    queryKey: ["job", jobId, "schedule", "firings"],
+    queryFn: ({ signal }) => fetchFirings(jobId, signal),
+    enabled: Boolean(schedule.data),
+  });
+
+  const release = useMutation({
+    mutationFn: (firingId: string) => releaseFiring(firingId),
+    onSuccess: () => {
+      void firings.refetch();
+    },
+  });
+
   const preview = useQuery({
     queryKey: ["job", jobId, "schedule", "preview", previewFrom],
     queryFn: ({ signal }) =>
@@ -75,9 +106,13 @@ export function ScheduleSection({
     onSuccess: reload,
   });
   const drop = useMutation({
-    mutationFn: () => removeSchedule(jobId),
+    mutationFn: (expectedVersion: number) => removeSchedule(jobId, expectedVersion),
     onSuccess: reload,
   });
+  //  Deleting a schedule is the one destructive act on this panel, and it fired on the first
+  //  click with nothing asked and nothing said — `UI_SPEC.md:243` requires a destructive
+  //  confirmation to state its exact impact, which here is that the job stops running by itself.
+  const [confirmingDrop, setConfirmingDrop] = useState(false);
 
   const current = schedule.data;
 
@@ -201,13 +236,99 @@ export function ScheduleSection({
               </QueryStates>
             </div>
 
-            {editable ? (
+            {/*  What actually happened. Skips are shown with their reasons and not hidden: a
+                schedule that skips every bank holiday is behaving correctly, and a history that
+                showed only the runs would make it look broken twice a year. Nothing here is
+                derived — every state and every sentence is the scheduler's own. */}
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="mb-3 text-sm font-semibold">{t("historyTitle")}</p>
+              <QueryStates
+                isPending={firings.isPending}
+                error={firings.error}
+                isEmpty={(firings.data ?? []).length === 0}
+                emptyTitle={t("noHistory")}
+                emptyDescription={t("noHistoryWhy")}
+                onRetry={() => void firings.refetch()}
+              >
+                <ul className="divide-y divide-border">
+                  {(firings.data ?? []).map((firing) => (
+                    <li key={firing.id} className="flex items-start gap-3 py-2.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm tabular-nums">
+                          {formatDateTimeWithZone(firing.due_at, {
+                            ...format,
+                            timeZone: preview.data?.timezone ?? format.timeZone,
+                          })}
+                        </p>
+                        {firing.detail ? (
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {firing.detail}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {firing.was_missed ? (
+                          <Badge tone="approval" outline>
+                            {t("wasMissed")}
+                          </Badge>
+                        ) : null}
+                        <Badge tone={FIRING_TONE[firing.state] ?? "neutral"}>
+                          {t(`firingStates.${firing.state}`)}
+                        </Badge>
+                        {firing.state === "awaiting_approval" ? (
+                          <Button
+                            size="sm"
+                            busy={release.isPending}
+                            onClick={() => release.mutate(firing.id)}
+                          >
+                            {t("release")}
+                          </Button>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </QueryStates>
+              {release.error ? (
+                <Alert tone="danger" className="mt-3">
+                  {release.error.message}
+                </Alert>
+              ) : null}
+            </div>
+
+            {editable && confirmingDrop ? (
+              <Alert tone="danger" title={t("removeScheduleConfirmTitle")}>
+                <p>{t("removeScheduleConfirmBody")}</p>
+                {drop.error ? (
+                  <p className="mt-2 font-medium">{drop.error.message}</p>
+                ) : null}
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="sm"
+                    busy={drop.isPending}
+                    onClick={() => drop.mutate(current.version)}
+                  >
+                    {t("removeScheduleConfirm")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={drop.isPending}
+                    onClick={() => setConfirmingDrop(false)}
+                  >
+                    {t("removeScheduleCancel")}
+                  </Button>
+                </div>
+              </Alert>
+            ) : editable ? (
               <Button
                 variant="ghost"
                 className="text-muted-foreground hover:text-danger"
                 icon={<Trash2 className="size-4" />}
-                busy={drop.isPending}
-                onClick={() => drop.mutate()}
+                onClick={() => setConfirmingDrop(true)}
               >
                 {t("removeSchedule")}
               </Button>

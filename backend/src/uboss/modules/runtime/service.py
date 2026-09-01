@@ -34,17 +34,21 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from uboss.core.context import SecurityContext
 from uboss.core.errors import NotFound, ValidationFailed
 from uboss.core.logging import correlation_id, get_logger
+from uboss.modules.approvals import service as approvals
 from uboss.modules.audit import service as audit
 from uboss.modules.jobs.models import JobVersion
+from uboss.modules.notifications import fanout
+from uboss.modules.notifications import service as notify
 from uboss.modules.runtime.models import (
     Run,
     RunEvent,
+    RunOutput,
     RunState,
     RunStep,
     RunTrigger,
@@ -78,12 +82,18 @@ def workflow_id_for(tenant_id: uuid.UUID, run_id: uuid.UUID) -> str:
 
 async def start(
     session: AsyncSession,
-    context: SecurityContext,
     *,
+    tenant_id: uuid.UUID,
     job_version_id: uuid.UUID,
     trigger: RunTrigger,
+    actor: SecurityContext | None = None,
 ) -> StartedRun:
     """Create the run and its steps from a published version.
+
+    **`actor` is optional, and that is the point.** A scheduled run has no person behind it. The
+    alternative — inventing a context for the scheduler to pass — would put a name on the audit
+    row of every nightly job, and the name would be a lie. `tenant_id` is therefore explicit:
+    every run belongs to a workspace, and only some belong to somebody.
 
     **The row is written before the workflow is started**, by the caller in `api.py`, and this
     function only does the database half. A crash between the two leaves a `pending` run a
@@ -111,14 +121,19 @@ async def start(
         )
 
     run = Run(
-        tenant_id=context.tenant_id,
+        tenant_id=tenant_id,
         job_version_id=version.id,
         job_id=version.job_id,
         workflow_id="",  # replaced below, once the row has an id
         state=RunState.PENDING,
         trigger=trigger,
+        #  Only a run somebody started has a starter. A scheduled run has none, and separation of
+        #  duty reads that as "there is nobody to separate the approver from" rather than
+        #  silently naming whoever configured the schedule months ago.
         started_by_membership_id=(
-            context.membership_id if trigger is RunTrigger.MANUAL else None
+            actor.membership_id
+            if actor is not None and trigger is RunTrigger.MANUAL
+            else None
         ),
         correlation_id=correlation_id.get(),
     )
@@ -127,12 +142,12 @@ async def start(
     #  caller decides the transaction boundary, and it has to be the same one that records the
     #  audit event.
     await session.flush()
-    run.workflow_id = workflow_id_for(context.tenant_id, run.id)
+    run.workflow_id = workflow_id_for(tenant_id, run.id)
 
     for position, step in enumerate(steps, start=1):
         session.add(
             RunStep(
-                tenant_id=context.tenant_id,
+                tenant_id=tenant_id,
                 run_id=run.id,
                 position=position,
                 #  A step with no title is still a step; the position is what identifies it, and
@@ -143,14 +158,14 @@ async def start(
             )
         )
 
-    await _record(session, run, kind="run.created", detail={"steps": len(steps)}, context=context)
+    await _record(session, run, kind="run.created", detail={"steps": len(steps)}, context=actor)
     await audit.record(
         session,
-        tenant_id=context.tenant_id,
+        tenant_id=tenant_id,
         action="runtime.run_started",
         resource_type="run",
         resource_id=run.id,
-        actor=context,
+        actor=actor,
         detail={"job_version_id": str(version.id), "trigger": trigger.value},
     )
     #  Flushed before returning, so the function's postcondition is true: the run, its steps and
@@ -235,6 +250,78 @@ async def finish_step(
     )
 
 
+async def designed_output(
+    session: AsyncSession, run: Run, step: RunStep
+) -> tuple[str, str | None]:
+    """What the published version calls this step's output, and where it was meant to go.
+
+    Read from the snapshot rather than from the draft: a run is bound to the version it started
+    from, and the name an output is filed under must be the name that was approved, not whatever
+    the Job has been edited to say since.
+
+    Falls back to the step's title when the design left the column blank, because an output with
+    no name is one nobody can look for.
+    """
+    version = await session.get(JobVersion, run.job_version_id)
+    steps = (version.snapshot or {}).get("steps", []) if version is not None else []
+    for entry in steps:
+        if entry.get("position") == step.position:
+            name = (entry.get("output") or "").strip()
+            destination = (entry.get("output_destination") or "").strip()
+            return name or step.title, destination or None
+    return step.title, None
+
+
+async def record_output(
+    session: AsyncSession,
+    run: Run,
+    step: RunStep | None,
+    *,
+    name: str,
+    destination: str | None = None,
+    value_text: str | None = None,
+    file_id: uuid.UUID | None = None,
+    output_format: str | None = None,
+) -> RunOutput | None:
+    """Write one thing a run produced.
+
+    Returns `None` for an output with neither a value nor a file rather than raising: the caller is
+    usually recording whatever a person happened to provide, and "they left the note empty and
+    attached nothing" is an ordinary outcome, not an error. A row for it would be a run claiming to
+    have produced something it cannot show.
+
+    Append-only, so this is the only moment the row can be written correctly.
+    """
+    if not (value_text or "").strip() and file_id is None:
+        return None
+
+    #  `position` is unique per run and is the order somebody reads them in, so it counts across
+    #  the whole run rather than restarting per step.
+    used = (
+        await session.execute(
+            select(func.coalesce(func.max(RunOutput.position), 0)).where(
+                RunOutput.run_id == run.id
+            )
+        )
+    ).scalar_one()
+
+    output = RunOutput(
+        tenant_id=run.tenant_id,
+        run_id=run.id,
+        run_step_id=step.id if step is not None else None,
+        position=used + 1,
+        name=name[:200],
+        destination=destination,
+        output_format=output_format,
+        value_text=(value_text or "").strip() or None,
+        file_id=file_id,
+        correlation_id=run.correlation_id,
+    )
+    session.add(output)
+    await session.flush()
+    return output
+
+
 async def fail_step(session: AsyncSession, run: Run, step: RunStep, *, detail: str) -> None:
     """A step failed for good — the workflow has exhausted its retries.
 
@@ -248,6 +335,24 @@ async def fail_step(session: AsyncSession, run: Run, step: RunStep, *, detail: s
     run.state = RunState.FAILED
     run.finished_at = now
     run.failure_detail = detail
+    #  Nobody is going to decide an approval on a run that has stopped. Withdrawn rather than
+    #  rejected: no refusal was made, and a refusal nobody made would sit in somebody's record.
+    await approvals.withdraw_for_run(
+        session, run.id, why="The run failed before this was decided."
+    )
+    #  The Job's owner, and whoever started it if that was a person. A scheduled run has no
+    #  starter, so the owner is the one accountable name there is — which is what §9 makes them.
+    owner = await fanout.job_owner(session, run.job_id)
+    for who in {owner, run.started_by_membership_id} - {None}:
+        await notify.run_failed(
+            session,
+            tenant_id=run.tenant_id,
+            membership_id=who,  # type: ignore[arg-type]
+            run_id=run.id,
+            job_id=run.job_id,
+            job_name=await _job_name(session, run.job_id),
+            detail=detail,
+        )
     await _record(
         session,
         run,
@@ -289,6 +394,9 @@ async def cancel(
         raise ValidationFailed("That run has already finished.")
     run.state = RunState.CANCELLED
     run.finished_at = datetime.now(UTC)
+    await approvals.withdraw_for_run(
+        session, run.id, why="The run was cancelled before this was decided."
+    )
     await _record(
         session, run, kind="run.cancelled", detail={"reason": reason[:500]}, context=context
     )
@@ -301,6 +409,20 @@ async def cancel(
         actor=context,
         detail={"reason": reason[:500]},
     )
+
+
+async def _job_name(session: AsyncSession, job_id: uuid.UUID) -> str:
+    """The Job's name for a notification line, or a plain fallback.
+
+    Never a made-up name. A job whose row has gone is described as "A job" rather than as
+    something that sounds specific and is not.
+    """
+    from uboss.modules.jobs.models import Job
+
+    name = (
+        await session.execute(select(Job.name).where(Job.id == job_id))
+    ).scalar_one_or_none()
+    return name or "A job"
 
 
 async def _record(

@@ -377,10 +377,16 @@ async def test_only_the_most_recent_change_can_be_undone(
 async def test_a_move_that_would_close_a_loop_is_refused(
     app_engine: AsyncEngine, two_workspaces: tuple[Workspace, Workspace]
 ) -> None:
-    """The refusal comes from the database, and the service surfaces it at the point of the move.
+    """Refused in words by the service, and still refused by the database underneath.
 
-    Flushing inside `move_unit` is what makes that true — without it the trigger would fire at
-    the end of some later request, and the person who caused it would be somewhere else.
+    It used to be refused only by `org_units_refuse_cycle`, which raises `check_violation` —
+    nothing maps that to a status, so the caller got a **500 saying "Nothing was changed by this
+    request"**: a server fault where there was none, and untrue besides, for what is an ordinary
+    mistake. The service now walks the ancestors first and answers in a sentence.
+
+    The trigger is not replaced by that and this test proves it, by reaching past the service and
+    writing the same cycle straight to the table. It guards the importer, `undo`, and anything
+    that arrives another way; a check in Python is a better *message*, never a better *boundary*.
     """
     left, _ = two_workspaces
     async with build_sessionmaker(app_engine)() as session:
@@ -397,12 +403,27 @@ async def test_a_move_that_would_close_a_loop_is_refused(
         )
         await session.flush()
 
-        with pytest.raises(Exception) as refused:
+        with pytest.raises(ValidationFailed) as refused:
             await service.move_unit(
                 session,
                 context,
                 root.id,
                 OrgUnitMove(new_parent_id=middle.id, expected_version=root.version),
             )
-        assert "descendant" in str(refused.value)
+        assert "cannot sit inside itself" in str(refused.value)
+        #  The message names the department that is in the way, not only the rule.
+        assert "Operations" in str(refused.value)
+
+        await session.refresh(root)
+        assert root.parent_id is None, "the refusal must not have moved it anyway"
+
+        #  Past the service, straight at the table. A savepoint so the failure does not poison the
+        #  session for the assertions after it.
+        await session.begin_nested()
+        with pytest.raises(Exception) as by_the_database:
+            await session.execute(
+                text("UPDATE org_units SET parent_id = :parent WHERE id = :id"),
+                {"parent": middle.id, "id": root.id},
+            )
+        assert "descendant" in str(by_the_database.value)
         await session.rollback()

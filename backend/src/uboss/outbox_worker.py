@@ -28,7 +28,7 @@ import socket
 from uboss.core.logging import configure_logging, get_logger
 from uboss.core.runtime import configure_event_loop, loop_factory
 from uboss.core.settings import get_settings
-from uboss.db.base import build_engine, build_sessionmaker
+from uboss.db.base import build_relay_engine, build_sessionmaker
 from uboss.modules.audit import relay
 from uboss.modules.notifications import publishers
 
@@ -46,7 +46,11 @@ ERROR_SECONDS = 10.0
 async def run(*, worker: str, once: bool = False) -> int:
     """Deliver until stopped. Returns how many events were claimed in total."""
     settings = get_settings()
-    engine = build_engine(settings)
+    #  The relay role, not the application role. `uboss_app` unbound sees zero pending rows —
+    #  its policies are doing their job — so a worker connected as it would poll an empty view
+    #  forever while the queue looked healthy. Found by probing the live database, not by
+    #  reading the code.
+    engine = build_relay_engine(settings)
     factory = build_sessionmaker(engine)
     registry = publishers.build(settings)
 

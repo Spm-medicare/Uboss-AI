@@ -23,6 +23,7 @@ import {
   Input,
   QueryStates,
 } from "@/ui";
+import { toneFor, toneVars } from "@/ui/agent-tone";
 import { AppShell } from "@/ui/shell/app-shell";
 import { PageHeader } from "@/ui/shell/page-header";
 
@@ -59,8 +60,8 @@ export default function ObjectivesPage() {
     >
       {/*  Wider than a reading column: the intro paragraph sets its own `max-w-prose`,
           and a grid of cards should use the width the window actually has. */}
-      <div className="mx-auto max-w-7xl space-y-6">
-        <PageHeader title={t("objectives")} description={t("intro")} />
+      <div className="space-y-6">
+        <PageHeader title={t("heading")} description={t("intro")} />
 
         <QueryStates
           isPending={objectives.isPending}
@@ -109,7 +110,7 @@ export default function ObjectivesPage() {
                   </button>
                 </Alert>
               ) : (
-                <ul className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(21rem,1fr))]">
+                <ul className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,21rem),1fr))]">
                   {/*  Auto-fill on a minimum column width, not a fixed two: `sm:grid-cols-2`
                       gave every list exactly two columns whatever the window, so one card sat in
                       the left half with the right half empty and eight cards on a wide monitor
@@ -138,10 +139,15 @@ function Filters({
   counts: Card_[];
 }) {
   const t = useTranslations("objective");
-  const present = Array.from(new Set(counts.map((card) => card.status)));
-  const options = ["", ...present];
+  //  **A fixed vocabulary, not a summary of what is on screen.** These were derived from the
+  //  rows the server had already filtered, so picking "Draft" left one status in the list, tripped
+  //  a `length < 2` guard, and removed the filter row entirely — with no way back to All short of
+  //  reloading. The options a filter offers cannot depend on the filter's own result.
+  const options = ["", "draft", "published"];
 
-  if (present.length < 2) return null;
+  //  Hidden only when there is nothing to filter *and* no filter is applied. With a filter on,
+  //  the row stays even for an empty result, because that is the moment somebody needs it.
+  if (counts.length === 0 && current === "") return null;
 
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -191,14 +197,19 @@ function ObjectiveTile({
     <li>
       <Link
         href={`/objective-builder/${card.id}`}
+        //  The Agent's own hue, as a rail down the left edge. `border-l-[3px]` rather than a
+        //  background wash: a tinted card competes with the status badge on it, and the badge is
+        //  the one that carries meaning. The rail is identity, the badge is state.
+        style={toneVars(toneFor("objectiveBuilder"))}
         className={cn(
           "group flex h-full flex-col gap-3 rounded-lg border border-border bg-card p-4",
-          "transition-colors duration-150 hover:border-[var(--ub-brand)] motion-reduce:transition-none",
+          "border-l-[3px] border-l-[var(--card-accent)]",
+          "transition-colors duration-150 hover:bg-[var(--card-soft)] motion-reduce:transition-none",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
         )}
       >
         <div className="flex items-start justify-between gap-3">
-          <p className="min-w-0 flex-1 font-medium leading-snug">{card.title}</p>
+          <p className="min-w-0 flex-1 break-words font-medium leading-snug">{card.title}</p>
           <Badge tone={tones[card.status] ?? "neutral"}>{t(`status.${card.status}`)}</Badge>
         </div>
 

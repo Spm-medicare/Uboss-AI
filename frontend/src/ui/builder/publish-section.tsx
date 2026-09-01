@@ -179,15 +179,31 @@ export function PublishSection({
             {failure ? <Alert tone="danger">{failure.message}</Alert> : null}
 
             <div className="flex flex-wrap items-center gap-2">
-              {summary.data.can_submit ? (
-                <Button
-                  variant="primary"
-                  icon={<Send className="size-4" />}
-                  busy={submit.isPending}
-                  onClick={() => submit.mutate(summary.data.version)}
-                >
-                  {t("sendForApproval")}
-                </Button>
+              {/*  Disabled with the reason beside it, not removed.
+
+                  A control that vanishes leaves somebody looking for it; the server already
+                  computes exactly why it cannot be pressed and returns it as `next_action`, and
+                  that sentence is more useful than an empty space. Hidden entirely only once the
+                  thing has been submitted, when the question is no longer "why can I not send
+                  this". */}
+              {summary.data.status === "draft" ||
+              summary.data.status === "needs_review" ? (
+                <>
+                  <Button
+                    variant="primary"
+                    icon={<Send className="size-4" />}
+                    busy={submit.isPending}
+                    disabled={!summary.data.can_submit}
+                    onClick={() => submit.mutate(summary.data.version)}
+                  >
+                    {t("sendForApproval")}
+                  </Button>
+                  {!summary.data.can_submit && summary.data.next_action ? (
+                    <span className="text-xs text-muted-foreground">
+                      {t("cannotSubmit", { reason: summary.data.next_action })}
+                    </span>
+                  ) : null}
+                </>
               ) : null}
 
               {summary.data.status === "ready_to_publish" && editable === false ? (
@@ -215,6 +231,22 @@ export function PublishSection({
           </>
         ) : null}
       </QueryStates>
+
+      {/*  A failed versions lookup used to render as nothing at all, which on this panel reads as
+          *never published* — a request that failed, reported as a fact about the record. Said
+          plainly instead, with the way to try again. */}
+      {versions.error ? (
+        <Alert tone="danger" title={t("versionsFailedTitle")}>
+          {t("versionsFailedBody")}{" "}
+          <button
+            type="button"
+            className="underline underline-offset-4"
+            onClick={() => void versions.refetch()}
+          >
+            {t("versionsRetry")}
+          </button>
+        </Alert>
+      ) : null}
 
       {versions.data && versions.data.length > 0 ? (
         <div className="rounded-lg border border-border bg-card p-4">

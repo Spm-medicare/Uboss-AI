@@ -169,4 +169,9 @@ class RegistryLists(BaseModel):
     departments: list[str]
     industries: list[str]
     archetypes: list[dict[str, str]]
+    #: How many skills the shared catalogue holds, and how many this workspace has added. Served
+    #: because the screen states both, and a stated number that nothing counted is a number that
+    #: was true of one seed and of nothing since.
+    catalogue_skills: int = 0
+    workspace_skills: int = 0
     autonomy: list[str] = Field(default_factory=lambda: list(AUTONOMY_ORDER))

@@ -291,3 +291,20 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* A scroll region with no permanent track.
+ *
+ * The sidebar's nav list showed a grey bar down its middle at all times, which on a dark rail
+ * reads as a UI element rather than as a scrollbar. This hides the chrome and changes nothing
+ * about the behaviour — wheel, drag, touch and keyboard all still scroll, and the region keeps
+ * its `overflow-y: auto`, so a keyboard user can still reach everything in it.
+ *
+ * `overflow` is left to the element; this rule is only about what is drawn. */
+.ub-scroll-quiet {
+  scrollbar-width: none;
+}
+
+.ub-scroll-quiet::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}

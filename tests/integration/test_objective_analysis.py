@@ -438,7 +438,13 @@ async def test_a_dependency_that_closes_a_loop_is_refused(
         )
         #  Step 3 already waits for 2, which waits for 1. Making 1 wait for 3 closes the ring.
         with pytest.raises(Exception) as refused:
-            await graph.set_dependencies(session, context, steps[0].id, [steps[2].id])
+            await graph.set_dependencies(
+                session,
+                context,
+                steps[0].id,
+                [steps[2].id],
+                expected_version=steps[0].version,
+            )
         assert "wait for itself" in str(refused.value)
         await session.rollback()
 
@@ -477,7 +483,15 @@ async def test_merging_keeps_what_the_absorbed_step_said(
         )
         await session.flush()
 
-        merged = await graph.merge(session, context, steps[1].id, steps[0].id)
+        #  The version of the step being absorbed, read after the update above spent one.
+        absorbed_version = steps[1].version
+        merged = await graph.merge(
+            session,
+            context,
+            steps[1].id,
+            steps[0].id,
+            expected_version=absorbed_version,
+        )
         await session.flush()
 
         assert "contract price list" in (merged.detail or "")

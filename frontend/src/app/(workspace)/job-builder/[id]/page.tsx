@@ -26,6 +26,8 @@ import {
   type Lists,
 } from "@/lib/api/jobs";
 import { fetchPeople } from "@/lib/api/objectives";
+import { unsavedSince } from "@/lib/builder/unsaved-since";
+import { useAdoptServerVersion } from "@/lib/builder/use-adopt-server-version";
 import { useAutosave } from "@/lib/builder/use-autosave";
 import { useSession } from "@/lib/auth/use-session";
 import { contextFor, formatDate, formatDateTime } from "@/lib/format";
@@ -50,6 +52,7 @@ import { jobColumns } from "@/ui/builder/workbook-columns";
 import { ScheduleSection } from "@/ui/builder/schedule-section";
 import { Suggest } from "@/ui/builder/suggest";
 import { JobInputs, JobTools, WhoRules } from "@/ui/builder/who-and-inputs";
+import { PersonSelect } from "@/ui/builder/person-select";
 import { AppShell } from "@/ui/shell/app-shell";
 
 /**
@@ -88,19 +91,29 @@ export default function JobBuilderFormPage() {
 
   return (
     <AppShell
+      //  **The top bar names the room, the builder's own heading names the record.** Putting
+      //  the record's name here as well printed it twice within an inch of itself — the
+      //  duplication complaint. The crumb is the way back to the list and is deliberately
+      //  worded differently from the screen name, so it is a link rather than an echo.
       title={t("builderTitle")}
-      breadcrumb={[{ label: t("jobs"), href: "/job-builder" }]}
+      breadcrumb={[{ label: t("backToList"), href: "/job-builder" }]}
     >
+      {/*  The people query is inside the states, not beside them.
+
+          It sat outside, and the list was passed as `people.data ?? []` — so a failed lookup
+          rendered as a required dropdown with nobody in it: a request that failed, reported as an
+          empty workspace. That inversion is the exact thing `ui/states.tsx` exists to prevent, and
+          an approver is the one field on this screen that cannot be filled from an empty list. */}
       <QueryStates
-        isPending={job.isPending || lists.isPending}
-        error={job.error ?? lists.error}
+        isPending={job.isPending || lists.isPending || people.isPending}
+        error={job.error ?? lists.error ?? people.error}
         onRetry={() => void job.refetch()}
       >
-        {job.data && lists.data ? (
+        {job.data && lists.data && people.data ? (
           <Editor
             initial={job.data}
             lists={lists.data}
-            people={people.data ?? []}
+            people={people.data}
             onReload={() => void job.refetch()}
           />
         ) : null}
@@ -195,6 +208,17 @@ function Editor({
 
   const autosave = useAutosave<Job>(send, { enabled: editable });
 
+  /*  The form follows the server: it takes a fresher copy whenever one arrives and nothing is
+      queued, and `resolveConflict` is the way out of a real conflict. See the hook — the reasoning
+      is the same on all four Builders, which is why it is one hook. */
+  const { resolveConflict } = useAdoptServerVersion<Job>({
+    server: initial,
+    confirmedVersionRef: confirmedVersion,
+    setDraft,
+    autosave,
+    reload: onReload,
+  });
+
   const edit = useCallback(
     (patch: Partial<Job>) => {
       setDraft((current) => {
@@ -244,7 +268,6 @@ function Editor({
 
   return (
     <BuilderLayout
-      eyebrow={t("eyebrow")}
       title={draft.name}
       status={<StatusPill status={draft.status} />}
       meta={
@@ -308,8 +331,12 @@ function Editor({
       {autosave.conflicted ? (
         <Alert tone="danger" title={t("conflictTitle")}>
           {t("conflictBody")}{" "}
-          <button type="button" className="underline underline-offset-4" onClick={onReload}>
-            {t("reloadIt")}
+          <button
+            type="button"
+            className="underline underline-offset-4"
+            onClick={resolveConflict}
+          >
+            {t("keepMyChange")}
           </button>
         </Alert>
       ) : null}
@@ -353,7 +380,8 @@ function Editor({
             onChange={(value) => edit({ department: value || null })}
           />
           <PersonSelect
-            label={`${t("owner")} *`}
+            label={t("owner")}
+            required
             value={draft.owner_membership_id}
             people={people}
             disabled={!editable}
@@ -614,16 +642,6 @@ function stripReadFields(step: Job["steps"][number]): JobStepInput {
 }
 
 /** What somebody typed while a save was in flight. Without this, the reply overwrites it. */
-function unsavedSince(current: Job, sent: Job): Partial<Job> {
-  const changed: Partial<Job> = {};
-  for (const key of Object.keys(current) as (keyof Job)[]) {
-    if (key === "version" || key === "updated_at" || key === "is_editable") continue;
-    if (JSON.stringify(current[key]) !== JSON.stringify(sent[key])) {
-      changed[key] = current[key] as never;
-    }
-  }
-  return changed;
-}
 
 function StatusPill({ status }: { status: Job["status"] }) {
   const t = useTranslations("job");
@@ -835,6 +853,22 @@ function JobPublish({
         ) : null}
       </QueryStates>
 
+      {/*  A failed versions lookup used to render as nothing at all, which on this panel reads as
+          *never published* — a request that failed, reported as a fact about the record. Said
+          plainly instead, with the way to try again. */}
+      {versions.error ? (
+        <Alert tone="danger" title={t("versionsFailedTitle")}>
+          {t("versionsFailedBody")}{" "}
+          <button
+            type="button"
+            className="underline underline-offset-4"
+            onClick={() => void versions.refetch()}
+          >
+            {t("versionsRetry")}
+          </button>
+        </Alert>
+      ) : null}
+
       {versions.data && versions.data.length > 0 ? (
         <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-sm font-semibold">{t("published")}</p>
@@ -859,42 +893,6 @@ function JobPublish({
   );
 }
 
-function PersonSelect({
-  label,
-  value,
-  people,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  value: string | null;
-  people: { membership_id: string; display_name: string; job_title?: string | null }[];
-  disabled: boolean;
-  onChange: (value: string | null) => void;
-}) {
-  const t = useTranslations("job");
-  return (
-    <Field label={label}>
-      {(field) => (
-        <select
-          {...field}
-          value={value ?? ""}
-          disabled={disabled}
-          onChange={(event) => onChange(event.target.value || null)}
-          className="h-9 w-full rounded-md border border-border bg-card px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <option value="">{t("choosePerson")}</option>
-          {people.map((person) => (
-            <option key={person.membership_id} value={person.membership_id}>
-              {person.display_name}
-              {person.job_title ? ` — ${person.job_title}` : ""}
-            </option>
-          ))}
-        </select>
-      )}
-    </Field>
-  );
-}
 
 function LongField({
   label,

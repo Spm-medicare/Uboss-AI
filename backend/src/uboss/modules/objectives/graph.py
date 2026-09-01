@@ -181,6 +181,8 @@ async def merge(
     context: SecurityContext,
     step_id: uuid.UUID,
     into_step_id: uuid.UUID,
+    *,
+    expected_version: int,
 ) -> ObjectiveStep:
     """Fold one step into another.
 
@@ -194,6 +196,14 @@ async def merge(
 
     source = await _step(session, step_id)
     target = await _step(session, into_step_id)
+    #  Guarded on the step that disappears. Every other mutation on a step carries its version and
+    #  this one — the only one that deletes — did not, so a merge could absorb a step somebody had
+    #  rewritten a moment earlier and take the rewrite with it.
+    if source.version != expected_version:
+        raise Conflict(
+            "That step was changed by somebody else while you were editing. "
+            "Reload the plan and apply your change again."
+        )
     if source.objective_id != target.objective_id:
         raise ValidationFailed("Those steps belong to different objectives.")
     objective = await _editable(session, source.objective_id)
@@ -282,6 +292,8 @@ async def set_dependencies(
     context: SecurityContext,
     step_id: uuid.UUID,
     depends_on: list[uuid.UUID],
+    *,
+    expected_version: int,
 ) -> None:
     """Replace what this step waits for.
 
@@ -290,6 +302,13 @@ async def set_dependencies(
     """
     await guard.authorise(session, context, Action.EDIT_DRAFT)
     step = await _step(session, step_id)
+    #  The whole set is replaced, so an edit made against an older view of it silently drops
+    #  whatever was added in between.
+    if step.version != expected_version:
+        raise Conflict(
+            "That step was changed by somebody else while you were editing. "
+            "Reload the plan and apply your change again."
+        )
     objective = await _editable(session, step.objective_id)
 
     steps = {row.id for row in await _steps(session, step.objective_id)}
@@ -315,10 +334,15 @@ async def set_dependencies(
     #  The cycle trigger fires here.
     await session.flush()
 
+    #  `edited` is about the model's work: an AI step a person changed. The **version** is not —
+    #  it is the optimistic guard, and it belongs on any step whose dependencies just changed.
+    #  Bumping it only for AI steps left every hand-written step with a version that never moved,
+    #  so the `expected_version` this function now checks would have been satisfied by any stale
+    #  value at all. `update`, ten lines up, already had the split the right way round.
     if step.source == StepSource.AI:
         step.edited = True
-        step.version += 1
-        await session.flush()
+    step.version += 1
+    await session.flush()
 
     await _record(
         session,

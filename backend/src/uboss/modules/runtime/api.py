@@ -11,7 +11,7 @@ different people in most organisations, and collapsing them would make that impo
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field
@@ -24,8 +24,9 @@ from uboss.core.idempotency import require_idempotency_key
 from uboss.core.logging import get_logger
 from uboss.core.permissions import Action
 from uboss.db.base import bind_tenant
+from uboss.modules.audit import service as audit
 from uboss.modules.identity import guard
-from uboss.modules.runtime import service, temporal
+from uboss.modules.runtime import evidence, service, temporal
 from uboss.modules.runtime.models import Run, RunEvent, RunStep, RunTrigger, StepState
 
 log = get_logger(__name__)
@@ -57,6 +58,9 @@ class RunRead(BaseModel):
 
     id: uuid.UUID
     job_id: uuid.UUID
+    #: The Job's name. Carried so a list of runs says *which* job — without it every row read
+    #: "0 of 1 steps" and a reader had to open each one to find out what it was.
+    job_name: str | None = None
     job_version_id: uuid.UUID
     state: str
     trigger: str
@@ -110,7 +114,11 @@ async def start_run(
     await guard.authorise(session, context, Action.RUN)
 
     started = await service.start(
-        session, context, job_version_id=body.job_version_id, trigger=RunTrigger.MANUAL
+        session,
+        tenant_id=context.tenant_id,
+        job_version_id=body.job_version_id,
+        trigger=RunTrigger.MANUAL,
+        actor=context,
     )
     #  Committed before the workflow starts. The whole point of the ordering.
     await _commit(session, context)
@@ -142,7 +150,8 @@ async def list_runs(
 
     #  One query for the step counts of every run on the page, rather than one per run.
     counts = await _step_counts(session, [run.id for run in runs])
-    return [_summary(run, counts) for run in runs]
+    names = await _job_names(session, [run.job_id for run in runs])
+    return [_summary(run, counts, names) for run in runs]
 
 
 @router.get("/{run_id}", summary="One run, with its steps and what happened")
@@ -177,6 +186,7 @@ async def read_run(
         **_summary(
             run,
             {run.id: (len(steps), sum(1 for step in steps if step.state in _FINISHED))},
+            await _job_names(session, [run.job_id]),
         ).model_dump(),
         steps=[
             RunStepRead(
@@ -201,6 +211,44 @@ async def read_run(
             for event in events
         ],
     )
+
+
+@router.get(
+    "/{run_id}/evidence",
+    summary="Everything recorded about a run — what it read, did, produced and who decided",
+)
+async def read_evidence(
+    run_id: uuid.UUID, session: SessionDep, context: CurrentContext
+) -> dict[str, Any]:
+    """Gate 7.6's document, as one request.
+
+    Six endpoints a reader has to call in the right order and join by hand are a set of facts; one
+    document is an account. The difference matters most for the reader this is for — somebody
+    asking, a year later, why a thing happened.
+
+    **Reading it is recorded.** Evidence is read when something has gone wrong or somebody is being
+    asked to answer for a decision, and who looked is part of the same history. `view` is enough to
+    see it; the audit row is written either way.
+    """
+    document = await evidence.bundle(session, context, run_id)
+    await audit.record(
+        session,
+        tenant_id=context.tenant_id,
+        action="run.evidence.read",
+        resource_type="run",
+        resource_id=run_id,
+        actor=context,
+        #  Counts, not contents. The row says the evidence was read and how much of it there was;
+        #  duplicating the evidence into the audit trail would be two copies to keep consistent.
+        detail={
+            "steps": len(document["steps"]),
+            "events": len(document["events"]),
+            "outputs": len(document["outputs"]),
+            "model_calls": len(document["model_calls"]),
+        },
+    )
+    await _commit(session, context)
+    return document
 
 
 @router.post("/{run_id}/cancel", summary="Stop a run")
@@ -269,7 +317,29 @@ async def _run(session: AsyncSession, run_id: uuid.UUID) -> Run:
 
 async def _read(session: AsyncSession, run_id: uuid.UUID) -> RunRead:
     run = await _run(session, run_id)
-    return _summary(run, await _step_counts(session, [run.id]))
+    return _summary(
+        run,
+        await _step_counts(session, [run.id]),
+        await _job_names(session, [run.job_id]),
+    )
+
+
+async def _job_names(
+    session: AsyncSession, job_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, str]:
+    """The Job names for a page of runs, in one query.
+
+    Names rather than ids in the response because a list of UUIDs is not a list of runs anybody
+    can read, and the alternative — the frontend looking each one up — is one request per row.
+    """
+    if not job_ids:
+        return {}
+    from uboss.modules.jobs.models import Job
+
+    rows = (
+        await session.execute(select(Job.id, Job.name).where(Job.id.in_(job_ids)))
+    ).all()
+    return {row[0]: row[1] for row in rows}
 
 
 async def _step_counts(
@@ -302,11 +372,16 @@ async def _step_counts(
 _FINISHED = StepState.finished()
 
 
-def _summary(run: Run, counts: dict[uuid.UUID, tuple[int, int]]) -> RunRead:
+def _summary(
+    run: Run,
+    counts: dict[uuid.UUID, tuple[int, int]],
+    names: dict[uuid.UUID, str] | None = None,
+) -> RunRead:
     total, done = counts.get(run.id, (0, 0))
     return RunRead(
         id=run.id,
         job_id=run.job_id,
+        job_name=(names or {}).get(run.job_id),
         job_version_id=run.job_version_id,
         state=run.state,
         trigger=run.trigger,

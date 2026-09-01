@@ -15,6 +15,7 @@ import {
   type UseMutationResult,
 } from "@tanstack/react-query";
 
+import { collapseSidebar } from "@/lib/shell/use-sidebar";
 import {
   fetchCurrentUser,
   selectWorkspace as selectWorkspaceRequest,
@@ -73,6 +74,9 @@ export function useSignIn(): UseMutationResult<SignInResult, Error, SignInInput>
         // Seed the cache from the response so the next screen does not flash a loading state
         // for data the sign-in already returned.
         queryClient.setQueryData(SESSION_QUERY_KEY, result.user);
+        //  Every login starts on the rail. This overrides whatever the device remembered — see
+        //  `collapseSidebar` for why that is deliberate rather than a bug.
+        collapseSidebar();
       }
     },
   });
@@ -88,6 +92,8 @@ export function useSelectWorkspace(): UseMutationResult<
     mutationFn: selectWorkspaceRequest,
     onSuccess: async (result) => {
       queryClient.setQueryData(SESSION_QUERY_KEY, result.user);
+      //  Choosing a workspace is the other way a session begins.
+      collapseSidebar();
     },
   });
 }

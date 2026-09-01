@@ -238,7 +238,13 @@ async def merge_step(
         if execution.is_replay:
             return cast(dict[str, str], execution.replay_body)
 
-        step = await graph.merge(session, context, step_id, body.into_step_id)
+        step = await graph.merge(
+            session,
+            context,
+            step_id,
+            body.into_step_id,
+            expected_version=body.expected_version,
+        )
         result = {"id": str(step.id), "version": str(step.version)}
         execution.complete_json(status_code=200, body=result)
         return result
@@ -289,7 +295,13 @@ async def set_dependencies(
         if execution.is_replay:
             return cast(dict[str, str], execution.replay_body)
 
-        await graph.set_dependencies(session, context, step_id, body.depends_on)
+        await graph.set_dependencies(
+            session,
+            context,
+            step_id,
+            body.depends_on,
+            expected_version=body.expected_version,
+        )
         result = {"status": "set"}
         execution.complete_json(status_code=200, body=result)
         return result

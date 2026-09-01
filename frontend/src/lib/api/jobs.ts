@@ -145,10 +145,18 @@ export function saveSchedule(
   });
 }
 
-export function removeSchedule(jobId: string): Promise<void> {
-  return request<void>(`/jobs/${jobId}/schedule`, {
+/**
+ * Delete a job's schedule.
+ *
+ * The version goes in the query because a `DELETE` carries no body, and it goes in the key for the
+ * same reason it goes in the request: a retry of *this* deletion should replay, and a deletion of a
+ * schedule that has changed since is a different operation. Without it, this was the one
+ * destructive call in the module with no optimistic guard at all.
+ */
+export function removeSchedule(jobId: string, expectedVersion: number): Promise<void> {
+  return request<void>(`/jobs/${jobId}/schedule?expected_version=${expectedVersion}`, {
     method: "DELETE",
-    idempotencyKey: `job-schedule-remove:${jobId}`,
+    idempotencyKey: `job-schedule-remove:${jobId}:v${expectedVersion}`,
   });
 }
 

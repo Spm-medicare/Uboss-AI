@@ -13,6 +13,7 @@ import { can } from "@/lib/api/auth";
 import { useSession } from "@/lib/auth/use-session";
 import { cn } from "@/lib/cn";
 import { Alert, Badge, Button, Card, CardBody, Field, Input, QueryStates } from "@/ui";
+import { toneFor, toneVars } from "@/ui/agent-tone";
 import { AppShell } from "@/ui/shell/app-shell";
 import { PageHeader } from "@/ui/shell/page-header";
 
@@ -51,8 +52,8 @@ export default function AgentBuilderPage() {
     >
       {/*  Wider than a reading column: the intro paragraph sets its own `max-w-prose`,
           and a grid of cards should use the width the window actually has. */}
-      <div className="mx-auto max-w-7xl space-y-6">
-        <PageHeader title={t("agents")} description={t("intro")} />
+      <div className="space-y-6">
+        <PageHeader title={t("heading")} description={t("intro")} />
 
         <QueryStates
           isPending={agents.isPending}
@@ -99,7 +100,7 @@ export default function AgentBuilderPage() {
                   </button>
                 </Alert>
               ) : (
-                <ul className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(21rem,1fr))]">
+                <ul className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,21rem),1fr))]">
                   {/*  Auto-fill on a minimum column width, not a fixed two: `sm:grid-cols-2`
                       gave every list exactly two columns whatever the window, so one card sat in
                       the left half with the right half empty and eight cards on a wide monitor
@@ -127,12 +128,18 @@ function Filters({
   cards: Card_[];
 }) {
   const t = useTranslations("agent");
-  const present = Array.from(new Set(cards.map((card) => card.status)));
-  if (present.length < 2) return null;
+  //  **A fixed vocabulary, not a summary of what is on screen.** These were derived from the
+  //  rows the server had already filtered, so picking "Draft" left one status in the list, tripped
+  //  a `length < 2` guard, and removed the filter row entirely — with no way back to All short of
+  //  reloading. The options a filter offers cannot depend on the filter's own result.
+  const options = ["", "draft", "published"];
+  //  Hidden only when there is nothing to filter *and* no filter is applied. With a filter on,
+  //  the row stays even for an empty result, because that is the moment somebody needs it.
+  if (cards.length === 0 && current === "") return null;
 
   return (
     <div className="flex flex-wrap gap-1.5">
-      {["", ...present].map((option) => (
+      {options.map((option) => (
         <button
           key={option || "all"}
           type="button"
@@ -171,30 +178,47 @@ function AgentTile({ card }: { card: Card_ }) {
     <li>
       <Link
         href={`/agent-builder/${card.id}`}
+        //  The Agent's own hue, as a rail down the left edge. `border-l-[3px]` rather than a
+        //  background wash: a tinted card competes with the status badge on it, and the badge is
+        //  the one that carries meaning. The rail is identity, the badge is state.
+        style={toneVars(toneFor("agentBuilder"))}
         className={cn(
           "group flex h-full flex-col gap-3 rounded-lg border border-border bg-card p-4",
-          "transition-colors duration-150 hover:border-[var(--ub-brand)] motion-reduce:transition-none",
+          "border-l-[3px] border-l-[var(--card-accent)]",
+          "transition-colors duration-150 hover:bg-[var(--card-soft)] motion-reduce:transition-none",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
         )}
       >
         <div className="flex items-start justify-between gap-3">
-          <p className="min-w-0 flex-1 font-medium leading-snug">{card.name}</p>
+          <p className="min-w-0 flex-1 break-words font-medium leading-snug">{card.name}</p>
           <Badge tone={STATUS_TONE[card.status] ?? "neutral"}>
             {t(`status.${card.status}`)}
           </Badge>
         </div>
 
-        <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        {/*  Not a `dl`. It was one, and two of its three entries were bare `dd` elements with no
+            `dt` — invalid markup, and a screen reader announces an orphan `dd` as a definition of
+            nothing. These are three unlabelled facts about the card, which is a list of facts:
+            each carries its own label in `sr-only` text so the reading order still makes sense. */}
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
           {card.job_name ? (
-            <div>
-              <dt className="sr-only">{t("forJob")}</dt>
-              <dd>{card.job_name}</dd>
-            </div>
+            <li>
+              <span className="sr-only">{t("forJob")}: </span>
+              {card.job_name}
+            </li>
           ) : null}
-          {card.owner_name ? <dd>{card.owner_name}</dd> : null}
+          {card.owner_name ? (
+            <li>
+              <span className="sr-only">{t("owner")}: </span>
+              {card.owner_name}
+            </li>
+          ) : null}
           {/*  Who can see it. The one field on this card somebody would be surprised by later. */}
-          <dd>{t(`audience.${card.visibility}`)}</dd>
-        </dl>
+          <li>
+            <span className="sr-only">{t("visibility")}: </span>
+            {t(`audience.${card.visibility}`)}
+          </li>
+        </ul>
 
         <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-3 text-xs">
           <span className="text-muted-foreground">

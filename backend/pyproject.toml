@@ -75,6 +75,18 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+#  `ci.yml` lints `../tests` alongside `src`, and two rules read differently there.
+#
+#  S105/S106 — a hardcoded password. Correct about the code and beside the point in a test of
+#  sign-in, which needs a known credential to sign in with. The passwords are fixtures, they name
+#  no real account, and moving them to environment variables would only hide from the linter what
+#  the file exists to exercise.
+#
+#  SIM117 — nested `async with`. Every occurrence is the same shape: a database session, and
+#  inside it the tenant that session is bound to. The rule would have them share one statement;
+#  the nesting is the meaning, because the inner scope is derived from the outer one, and a reader
+#  should see that rather than a comma between two things that look independent.
+"../tests/**" = ["S105", "S106", "SIM117"]
 #  A migration's docstring explains a schema change to a future reader; wrapping SQL to fit a
 #  column makes it harder to compare against the database.
 "migrations/*" = ["E501"]
@@ -86,6 +98,8 @@ ignore = [
 "src/uboss/modules/audit/relay.py" = ["N818"]
 #  `raise FileNotReady(...)` likewise.
 "src/uboss/modules/files/service.py" = ["N818"]
+#  And `raise AlreadyReleased(...)`, which is a statement about the occurrence rather than a fault.
+"src/uboss/modules/schedules/service.py" = ["N818"]
 
 [tool.mypy]
 python_version = "3.12"

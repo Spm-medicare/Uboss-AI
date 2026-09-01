@@ -65,6 +65,46 @@ def _invite_body(*, invite_url: str, minutes: int, workspace: str, inviter: str)
     )
 
 
+def _notification_body(
+    *, title: str, detail: str | None, link: str, product: str
+) -> str:
+    """One notification as plain text.
+
+    Plain because §12 does not ask for HTML and a plain message renders identically everywhere,
+    including in the clients that strip it. The link is absolute here and only here: the row
+    stores a path, and the origin is configuration — so a deployment that moves domain does not
+    have to rewrite everybody's history.
+    """
+    lines = [title]
+    if detail:
+        lines += ["", detail]
+    lines += [
+        "",
+        "Open it here:",
+        link,
+        "",
+        f"You can change what {product} tells you about in your notification settings.",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def _digest_body(*, lines: list[dict[str, str]], base: str, product: str) -> str:
+    """Everything since the last digest, oldest first.
+
+    Oldest first because a digest is read as a story of what happened, unlike the bell, which is
+    read newest-first as a list of what needs attention.
+    """
+    out = [f"Here is what happened in {product} since your last digest.", ""]
+    for line in lines:
+        out.append(f"- {line.get('title', '')}")
+        if line.get("body"):
+            out.append(f"  {line['body']}")
+        if line.get("deep_link"):
+            out.append(f"  {base}{line['deep_link']}")
+    out += ["", "Change when you receive this in your notification settings."]
+    return "\n".join(out) + "\n"
+
+
 def build(settings: Settings) -> Registry:
     """The registry the relay runs with.
 
@@ -104,6 +144,52 @@ def build(settings: Settings) -> Registry:
             settings,
         )
 
+    async def notification_email(event: Event) -> None:
+        """One notification, as mail. §12's *immediate* delivery.
+
+        The address is in the payload rather than looked up here: this runs on the relay's
+        cross-tenant credential, which has no grant on `users` and no tenant bound, and widening
+        it to allow a lookup is precisely what migration 0008 warned against.
+        """
+        payload = event.payload
+        await mail.send(
+            mail.Message(
+                to=payload["email"],
+                subject=payload["title"],
+                body=_notification_body(
+                    title=payload["title"],
+                    detail=payload.get("body"),
+                    link=f"{settings.public_base_url.rstrip('/')}{payload['deep_link']}",
+                    product=settings.mail_from_name,
+                ),
+            ),
+            settings,
+        )
+
+    async def notification_digest(event: Event) -> None:
+        """§12's digest — everything since the last one, as one message.
+
+        A digest with nothing in it is not sent; the worker does not stage one. That is checked
+        there rather than here, so this never has to decide whether an empty mail is worth
+        sending (it is not).
+        """
+        payload = event.payload
+        lines = payload.get("lines") or []
+        await mail.send(
+            mail.Message(
+                to=payload["email"],
+                subject=f"{len(lines)} updates from {settings.mail_from_name}",
+                body=_digest_body(
+                    lines=lines,
+                    base=settings.public_base_url.rstrip("/"),
+                    product=settings.mail_from_name,
+                ),
+            ),
+            settings,
+        )
+
     registry.register("identity.password_reset_requested", password_reset)
     registry.register("identity.invite_issued", invite_issued)
+    registry.register("notifications.email", notification_email)
+    registry.register("notifications.digest", notification_digest)
     return registry

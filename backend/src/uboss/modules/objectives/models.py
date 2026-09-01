@@ -183,16 +183,21 @@ class Objective(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion):
 
     @property
     def is_editable(self) -> bool:
-        """A draft is edited; a published version is not.
+        """A draft is edited; a submitted or published one is not.
 
-        `analyzing` is excluded as well: a proposal is being worked out against these fields, and
-        changing them underneath it would produce a plan for an objective that no longer exists.
+        `analyzing` is excluded: a proposal is being worked out against these fields, and changing
+        them underneath it would produce a plan for an objective that no longer exists.
+
+        `ready_to_publish` is excluded for the same kind of reason, one step later. It is the state
+        between sending for approval and being approved, and this flag is what `service.update`,
+        `analysis.start` and every plan mutation check before writing — so leaving it in meant the
+        design could change while somebody was reviewing it, and the version published at the end
+        was not the version that was read.
+
+        The same two states as `agents.EDITABLE` and `Supervisor.is_editable`. Submitting and
+        withdrawing both test `status` directly, so neither depends on this.
         """
-        return self.status in (
-            ObjectiveStatus.DRAFT,
-            ObjectiveStatus.NEEDS_REVIEW,
-            ObjectiveStatus.READY_TO_PUBLISH,
-        )
+        return self.status in (ObjectiveStatus.DRAFT, ObjectiveStatus.NEEDS_REVIEW)
 
 
 class ObjectiveCurrentStep(Base, PrimaryKey, TenantOwned, Timestamps):

@@ -49,6 +49,9 @@ class StepDelete(_Payload):
 
 class StepMerge(_Payload):
     into_step_id: uuid.UUID
+    #: The version of the step being absorbed. A merge deletes it, and a destructive operation
+    #: against a step somebody has edited since is the one this most needs to refuse.
+    expected_version: int = Field(ge=1)
 
 
 class PlanReorder(_Payload):
@@ -63,6 +66,8 @@ class PlanReorder(_Payload):
 
 class StepDependencies(_Payload):
     depends_on: list[uuid.UUID]
+    #: The version of the step whose dependencies these are. The set is replaced, not added to.
+    expected_version: int = Field(ge=1)
 
 
 class StepRead(BaseModel):

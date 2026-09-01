@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -14,7 +14,6 @@ import {
   SETTINGS_ITEM,
   type NavItem,
 } from "@/lib/shell/navigation";
-import { useAgentsGroup } from "@/lib/shell/use-sidebar";
 import { Monogram, Wordmark } from "@/ui/brand/mark";
 
 /**
@@ -37,18 +36,34 @@ export function Sidebar({
   onToggle,
   ready,
   footer,
+  counts,
+  onOpenSettings,
 }: {
   user: CurrentUser;
   collapsed: boolean;
   onToggle: () => void;
   ready: boolean;
+  /**
+   * Opens §13's Settings panel over the current screen.
+   *
+   * The row is not a `Link` for that reason: Settings is a panel you open and close, not a place
+   * you navigate to and come back from. `/settings` remains a real route for a link somebody sends
+   * — see `settings-dialog.tsx`.
+   */
+  onOpenSettings?: () => void;
   /** The avatar, workspace switcher and sign-out — §3's footer, built in AS.6. */
   footer: ReactNode;
+  /**
+   * A number beside a row, keyed by item id. Passed in rather than fetched here, because the
+   * sidebar renders on every screen and a component that made its own request would make one
+   * on each of them. `undefined` draws nothing — a badge showing `0` while a count is still
+   * loading is a number the backend has not returned.
+   */
+  counts?: Partial<Record<string, number>>;
 }) {
   const t = useTranslations("nav");
   const tProduct = useTranslations("product");
   const pathname = usePathname();
-  const agents = useAgentsGroup();
 
   return (
     <nav
@@ -103,76 +118,48 @@ export function Sidebar({
         ) : null}
       </div>
 
-      {collapsed ? (
-        <div className="flex justify-center pb-2">
-          <SidebarButton
-            onClick={onToggle}
-            label={t("expand")}
-            icon={<PanelLeftOpen className="size-4" />}
-          />
-        </div>
-      ) : (
-        <div className="px-3 pb-3">
-          <p className="truncate rounded-lg bg-sidebar-surface px-3 py-2 text-xs font-medium text-sidebar-foreground ring-1 ring-inset ring-sidebar-border">
-            <span className="block text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-sidebar-muted">
-              {t("workspace")}
-            </span>
-            {user.workspace_name}
-          </p>
-        </div>
-      )}
+      {/*  Nothing between the mark and the navigation.
+          Two things used to sit here and both were in the way. A workspace card printed the
+          workspace name directly above a nav group *also* labelled "Workspace" — the same word
+          twice in three centimetres — and the name is now a line in the account menu, which is
+          where somebody looks when they wonder which workspace they are in. And the collapse
+          control was the second thing in the reading order, which is chrome for the chrome; it is
+          at the foot now, with the other controls that are about the window rather than the
+          work. */}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+      {/*  **`overflow-x-hidden` is not belt-and-braces.** Setting `overflow-y` to anything but
+          `visible` makes the *other* axis compute to `auto` as well, so this container grew a
+          horizontal scrollbar — the stray `◀ ▶` at the foot of the rail — as soon as anything
+          inside it was wider than the rail. What was wider was the collapsed tooltip, which is
+          absolutely positioned at `left-full` and therefore counts toward scroll width.
+
+          The tooltip is now a native `title` (see `SidebarItem`), which no overflow can clip, and
+          this axis is pinned shut. */}
+      <div
+        className={cn(
+          "ub-scroll-quiet min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-2",
+          collapsed ? "px-2 pt-1" : "px-2",
+        )}
+      >
         {NAVIGATION.map((group) => {
           const visible = group.items.filter((item) => canSee(item, user.actions));
           //  A group whose every item is hidden leaves no heading behind. An empty "GOVERNED
           //  WORK" label is a promise of something that is not there.
           if (visible.length === 0) return null;
 
-          if (group.collapsible) {
-            return (
-              <section key={group.id} className="mt-4">
-                <button
-                  type="button"
-                  onClick={agents.toggle}
-                  aria-expanded={agents.open}
-                  className={cn(
-                    "flex w-full items-center gap-1.5 rounded-md px-2 py-1.5",
-                    "text-xs font-semibold uppercase tracking-wide text-sidebar-muted",
-                    "transition-colors duration-150 hover:text-sidebar-foreground",
-                    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
-                    collapsed && "sr-only",
-                  )}
-                >
-                  <ChevronDown
-                    aria-hidden
-                    className={cn(
-                      "size-3.5 transition-transform duration-150 motion-reduce:transition-none",
-                      !agents.open && "-rotate-90",
-                    )}
-                  />
-                  {t(`groups.${group.id}`)}
-                </button>
-                {/*  Collapsed, the group is always shown: its own disclosure is meaningless when
-                    the heading it belongs to is not visible. */}
-                {agents.open || collapsed ? (
-                  <ul className="mt-1 space-y-0.5">
-                    {visible.map((item) => (
-                      <SidebarItem
-                        key={item.id}
-                        item={item}
-                        collapsed={collapsed}
-                        pathname={pathname}
-                      />
-                    ))}
-                  </ul>
-                ) : null}
-              </section>
-            );
-          }
-
+          //  **Every group renders the same way.** Agents used to be a disclosure — the one
+          //  collapsible group — which hid four of the eight destinations behind a click on the
+          //  screen whose only job is to show where you can go. It now reads like Workspace,
+          //  because there was never a reason for it to read differently.
           return (
-            <section key={group.id} className="mt-4 first:mt-0">
+            <section
+              key={group.id}
+              //  On the rail the heading is `sr-only`, so the only thing saying "these four
+              //  belong together" is the gap above them. It has to be clearly bigger than the
+              //  gap between the items themselves or the column reads as one undifferentiated
+              //  strip of icons.
+              className={cn(collapsed ? "mt-6 first:mt-2" : "mt-5 first:mt-0")}
+            >
               <h2
                 className={cn(
                   "px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-sidebar-muted",
@@ -181,13 +168,14 @@ export function Sidebar({
               >
                 {t(`groups.${group.id}`)}
               </h2>
-              <ul className="space-y-0.5">
+              <ul className={cn(collapsed ? "space-y-2.5" : "space-y-1")}>
                 {visible.map((item) => (
                   <SidebarItem
                     key={item.id}
                     item={item}
                     collapsed={collapsed}
                     pathname={pathname}
+                    count={counts?.[item.id]}
                   />
                 ))}
               </ul>
@@ -196,13 +184,55 @@ export function Sidebar({
         })}
       </div>
 
-      <div className="shrink-0 border-t border-sidebar-border p-2">
-        <ul className="space-y-0.5">
+      {/*  The foot: Settings, the way out, and the width of the rail itself. Appearance moved to
+          the top bar as a light/dark switch — it is a property of the window you are looking at,
+          so it belongs on the chrome rather than in the menu. */}
+      <div
+        className={cn(
+          "shrink-0 border-t border-sidebar-border p-2",
+          //  Three controls of three sizes used to stack here with no shared rhythm, and the
+          //  avatar was clipped by the padding. One centred column, spaced like the nav above.
+          collapsed && "flex flex-col items-center gap-2.5 py-3",
+        )}
+      >
+        {/*  **A row, not an icon.** As a bare glyph under the wordmark this was unlabelled chrome
+            in the most valuable position on the screen. Here it is a control that says what it
+            does — and collapsed, it is the one row whose icon points the way it will move, which
+            is the only affordance a 3.5rem rail has room for. */}
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={!collapsed}
+          title={collapsed ? t("expand") : t("collapse")}
+          className={cn(
+            "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm",
+            !collapsed && "mb-1",
+            "text-sidebar-muted transition-colors duration-150",
+            "hover:bg-sidebar-surface hover:text-sidebar-foreground",
+            "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
+            "motion-reduce:transition-none",
+            collapsed && "size-9 w-9 justify-center p-0",
+          )}
+        >
+          {collapsed ? (
+            <PanelLeftOpen aria-hidden className="size-4 shrink-0" />
+          ) : (
+            <PanelLeftClose aria-hidden className="size-4 shrink-0" />
+          )}
+          {collapsed ? (
+            <span className="sr-only">{t("expand")}</span>
+          ) : (
+            <span className="min-w-0 flex-1 truncate text-left">{t("collapse")}</span>
+          )}
+        </button>
+
+        <ul className={cn(collapsed ? "space-y-2.5" : "space-y-1")}>
           <SidebarItem
             item={SETTINGS_ITEM}
             icon={Settings}
             collapsed={collapsed}
             pathname={pathname}
+            {...(onOpenSettings ? { onActivate: onOpenSettings } : {})}
           />
         </ul>
         {footer}
@@ -223,11 +253,21 @@ function SidebarItem({
   collapsed,
   pathname,
   icon: Override,
+  count,
+  onActivate,
 }: {
   item: NavItem;
   collapsed: boolean;
   pathname: string;
   icon?: NavItem["icon"];
+  /** How many things are waiting on this person here. Never invented, never a zero. */
+  count?: number | undefined;
+  /**
+   * When present, the row is a button that does this instead of a link that navigates. One row
+   * uses it — Settings, which opens a panel — and it is a prop rather than a special case inside
+   * this component so the next one does not need an `if (item.id === …)`.
+   */
+  onActivate?: () => void;
 }) {
   const t = useTranslations("nav");
   const Icon = Override ?? item.icon;
@@ -252,6 +292,20 @@ function SidebarItem({
           <span className="min-w-0 flex-1 truncate">{label}</span>
         </>
       )}
+      {/*  The count reads as part of the row's name — "To-do list, 3 waiting" — rather than as
+          a bare number a screen reader would announce with no idea what it counts. */}
+      {count !== undefined && count > 0 ? (
+        <span
+          className={cn(
+            "shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[0.6875rem]",
+            "font-semibold tabular-nums text-primary-foreground",
+            collapsed && "absolute right-1 top-1 px-1 py-0",
+          )}
+        >
+          <span aria-hidden>{count}</span>
+          <span className="sr-only">{t("waiting", { count })}</span>
+        </span>
+      ) : null}
     </>
   );
 
@@ -269,7 +323,11 @@ function SidebarItem({
           //  A real disabled control, not a dimmed link: it cannot be focused into a dead end,
           //  and assistive technology is told why rather than left to infer it from the colour.
           aria-disabled
-          title={t("notBuiltYet", { gate: item.buildsIn })}
+          title={
+            collapsed
+              ? `${label} — ${t("notBuiltYet", { gate: item.buildsIn })}`
+              : t("notBuiltYet", { gate: item.buildsIn })
+          }
           className={cn(shape, "cursor-not-allowed text-sidebar-muted opacity-60")}
         >
           {inner}
@@ -278,8 +336,25 @@ function SidebarItem({
               {t("soon")}
             </span>
           ) : null}
-          {collapsed ? <Tooltip>{label}</Tooltip> : null}
         </span>
+      </li>
+    );
+  }
+
+  if (onActivate) {
+    return (
+      <li>
+        <button
+          type="button"
+          onClick={onActivate}
+          //  `aria-haspopup="dialog"` so the row announces what it does: it opens a panel rather
+          //  than taking you somewhere, and a screen reader should say so before the click.
+          aria-haspopup="dialog"
+          title={collapsed ? label : undefined}
+          className={cn(shape, "w-full text-sidebar-foreground hover:bg-sidebar-hover")}
+        >
+          {inner}
+        </button>
       </li>
     );
   }
@@ -305,33 +380,8 @@ function SidebarItem({
           />
         ) : null}
         {inner}
-        {collapsed ? <Tooltip>{label}</Tooltip> : null}
       </Link>
     </li>
-  );
-}
-
-/**
- * The label a collapsed icon needs.
- *
- * CSS-only, shown on hover and on keyboard focus. `aria-hidden` because the label is already in
- * the accessible name — a tooltip that repeats it makes a screen reader say everything twice.
- */
-function Tooltip({ children }: { children: ReactNode }) {
-  return (
-    <span
-      aria-hidden
-      role="presentation"
-      className={cn(
-        "pointer-events-none absolute left-full top-1/2 z-20 ml-2 -translate-y-1/2",
-        "whitespace-nowrap rounded-md bg-sidebar-surface px-2 py-1 text-xs",
-        "text-sidebar-foreground opacity-0 shadow-popover",
-        "transition-opacity duration-150 motion-reduce:transition-none",
-        "group-hover:opacity-100 group-focus-visible:opacity-100",
-      )}
-    >
-      {children}
-    </span>
   );
 }
 

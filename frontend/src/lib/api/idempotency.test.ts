@@ -82,3 +82,20 @@ describe("operationKey", () => {
     expect(first).not.toBe(second);
   });
 });
+
+describe("a key that names a transition", () => {
+  //  `updateProfile` keys on both the current values and the wanted ones. Keyed on the wanted ones
+  //  alone, "set my zone to Dubai" is one operation for ever — so Dubai → Kolkata → Dubai replayed
+  //  the first response and changed nothing. A browser test that ran twice found it.
+  const key = (fromZone: string, toZone: string) =>
+    operationKey("profile-update", "Pranav", "", fromZone, "Pranav", "", toZone);
+
+  it("is the same key for a retry of the same change", () => {
+    expect(key("Asia/Kolkata", "Asia/Dubai")).toBe(key("Asia/Kolkata", "Asia/Dubai"));
+  });
+
+  it("is a different key for the change back", () => {
+    //  The property the profile route depends on: going back is not a retry of coming here.
+    expect(key("Asia/Dubai", "Asia/Kolkata")).not.toBe(key("Asia/Kolkata", "Asia/Dubai"));
+  });
+});

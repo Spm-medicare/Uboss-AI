@@ -22,15 +22,17 @@ from typing import Annotated, cast
 from fastapi import APIRouter, Body, Depends, Query, status
 
 from uboss.core import idempotency
-from uboss.core.dependencies import CurrentContext, SessionDep
+from uboss.core.dependencies import CurrentContext, RedisDep, SessionDep, SettingsDep
 from uboss.core.idempotency import require_idempotency_key
-from uboss.modules.hierarchy import service
+from uboss.modules.hierarchy import invite, service
 from uboss.modules.hierarchy.schemas import (
     AssignmentCreate,
     AssignmentEnd,
+    InvitePerson,
     OrgUnitCreate,
     OrgUnitMove,
     OrgUnitUpdate,
+    PlaceablePerson,
     PositionCreate,
     PositionUpdate,
     ReportingEdgeCreate,
@@ -79,6 +81,58 @@ async def read_issues(
     refused, and a person decides what to do about them.
     """
     return await service.validate(session, context, as_at=as_at)
+
+
+@router.get("/people", summary="Who can be put in a seat")
+async def read_placeable_people(
+    context: CurrentContext, session: SessionDep
+) -> list[PlaceablePerson]:
+    """Everybody who works here, invited colleagues included.
+
+    Wider than `/objectives/people` on purpose, and the two are not interchangeable: that route
+    answers *"who may be named as owner or approver"* and is limited to active members, because an
+    owner has to be able to act. Placing somebody in a seat grants them nothing — it records where
+    they sit — and an invited colleague is exactly who a chart is drawn around during onboarding.
+    """
+    return await service.placeable_people(session, context)
+
+
+@router.post(
+    "/people",
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a colleague to this workspace",
+)
+async def invite_person(
+    body: InvitePerson,
+    context: CurrentContext,
+    session: SessionDep,
+    redis: RedisDep,
+    settings: SettingsDep,
+    idempotency_key: Annotated[str, Depends(require_idempotency_key)],
+) -> dict[str, str]:
+    """A name and an address, so the chart can place somebody who has never signed in.
+
+    `manage_access` — §14's own word for deciding who is in an organisation — which is high-risk,
+    so this asks for a password. The invitation is queued on the outbox, never sent from here, so
+    it goes if and only if this transaction commits.
+
+    An address the workspace already has returns that person rather than failing: inviting
+    somebody twice is an ordinary thing to do, and the caller wanted a person to place.
+    """
+    added = await invite.add_person(
+        session,
+        context,
+        redis,
+        settings,
+        display_name=body.display_name,
+        email=body.email,
+    )
+    await session.commit()
+    return {
+        "membership_id": str(added.membership_id),
+        "display_name": added.display_name,
+        "created": str(added.created).lower(),
+    }
 
 
 @router.get("/revisions", summary="What changed, and who changed it")

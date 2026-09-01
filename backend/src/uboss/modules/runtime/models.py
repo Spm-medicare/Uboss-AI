@@ -45,6 +45,16 @@ class RunState(enum.StrEnum):
     def finished(cls) -> frozenset[str]:
         return frozenset({cls.SUCCEEDED, cls.FAILED, cls.CANCELLED})
 
+    @classmethod
+    def active(cls) -> frozenset[str]:
+        """A run that has not finished — what an overlap policy counts.
+
+        `PENDING` counts. A run whose row exists but whose workflow has not started yet is still a
+        run of this job, and a scheduler that ignored it would start a second one during exactly
+        the window the ordering in `POST /runs` creates.
+        """
+        return frozenset({cls.PENDING, cls.RUNNING, cls.WAITING})
+
 
 class StepState(enum.StrEnum):
     """Where one step is.
@@ -144,6 +154,9 @@ class RunStep(Base, PrimaryKey, TenantOwned):
             name="fk_run_steps_run",
             ondelete="CASCADE",
         ),
+        #: What a composite foreign key into this table needs. Nothing referenced a step until
+        #: `run_outputs` and `model_calls` did, so it was never required before.
+        UniqueConstraint("tenant_id", "id", name="uq_run_steps_tenant_id"),
     )
 
     run_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
@@ -203,3 +216,117 @@ class RunEvent(Base, PrimaryKey, TenantOwned):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     correlation_id: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class RunOutput(Base, PrimaryKey, TenantOwned):
+    """What a run produced — the thing somebody actually wanted.
+
+    `RunStep.result` is a JSONB blob and stays one: it is a step's own bookkeeping, the shape an
+    activity writes and a retry compares. It is the wrong shape for evidence. Nothing in it can be
+    listed, counted or opened, and a file a run produced has nowhere to be at all.
+
+    An output is named before it exists. Form 3 gives every step an `Output` and an
+    `Output Destination`, so the design already says what this step is for; this is where that
+    name gets a value, a format and, when there is one, a file.
+
+    Append-only by trigger and by withheld privilege, for the reason `RunEvent` is: evidence that
+    can be edited is a record of what somebody last decided it should say.
+    """
+
+    __tablename__ = "run_outputs"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "run_id"],
+            ["runs.tenant_id", "runs.id"],
+            name="fk_run_outputs_run",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "run_step_id"],
+            ["run_steps.tenant_id", "run_steps.id"],
+            name="fk_run_outputs_step",
+            ondelete="CASCADE",
+        ),
+        #: A join to `files`, never a second copy of one — the rule `task_evidence` keeps.
+        ForeignKeyConstraint(
+            ["tenant_id", "file_id"],
+            ["files.tenant_id", "files.id"],
+            name="fk_run_outputs_file",
+        ),
+        UniqueConstraint("run_id", "position", name="uq_run_outputs_position"),
+    )
+
+    run_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    #: Null for an output of the run as a whole rather than of one step.
+    run_step_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    destination: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    output_format: Mapped[str | None] = mapped_column(String(60), nullable=True)
+
+    #: One of the two, or both. A check constraint refuses a row with neither: an output that
+    #: records something was produced without saying what is worse than no row.
+    value_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    file_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+
+    produced_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class ModelCall(Base, PrimaryKey, TenantOwned):
+    """Every call through the gateway, attributable to the run that made it.
+
+    The gateway already writes an audit event for each call and its refusals, and that stays —
+    *"we asked and got nothing"* and *"we never asked"* are different facts. But an audit event
+    carries no `run_id`, so a model call made inside a run could not be attributed to it, and
+    *"what did this run cost, and which of its steps used a model"* had no answer.
+
+    **No prompt and no response text.** The gateway's own reason has not changed: a prompt can
+    carry personal data, and an evidence trail is not the place to duplicate it. What a run *read*
+    is its inputs and the step results it consumed, recorded as those; not as a transcript.
+    """
+
+    __tablename__ = "model_calls"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "run_id"],
+            ["runs.tenant_id", "runs.id"],
+            name="fk_model_calls_run",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["tenant_id", "run_step_id"],
+            ["run_steps.tenant_id", "run_steps.id"],
+            name="fk_model_calls_step",
+            ondelete="CASCADE",
+        ),
+    )
+
+    #: Both null for a call made outside a run — an objective's analysis, say. This is the
+    #: runtime's record of model use, not only a run's.
+    run_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    run_step_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+
+    task_kind: Mapped[str] = mapped_column(String(60), nullable=False)
+    provider: Mapped[str] = mapped_column(String(30), nullable=False)
+    model: Mapped[str] = mapped_column(String(120), nullable=False)
+
+    #: `completed` or `unavailable`, held apart from the counts because a refusal has none and a
+    #: row of zeroes would read as a call that returned nothing.
+    outcome: Mapped[str] = mapped_column(String(20), nullable=False)
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    actor_membership_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), nullable=True
+    )
+    correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )

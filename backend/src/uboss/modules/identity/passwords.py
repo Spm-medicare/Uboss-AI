@@ -52,12 +52,24 @@ def verify_password(password_hash: str | None, password: str) -> bool:
     A missing hash — an invited person who has not set a password — still runs a verification
     against the dummy hash. Returning early would make "this account has no password yet"
     measurably faster than "wrong password", which is a way to enumerate accounts.
+
+    **The result is decided before the comparison, not by it.** An account with no usable hash
+    can never verify, whatever was typed. Reading the outcome off the comparison instead would
+    hand out a sign-in to anybody who typed the dummy passphrase — it is a literal in this file,
+    so `_hasher.verify(DUMMY_HASH, "a password that matches nothing")` succeeds, and an
+    `is not None` test then calls that a match for a stored empty string. Blank, whitespace and
+    NULL are all "no password", because a column that allows NULL is reached by code that writes
+    `''`.
     """
+    #  Narrowed into a local so the type checker sees a `str` and so the verification below
+    #  cannot accidentally be given the unusable value it is meant to ignore.
+    stored = password_hash.strip() if password_hash is not None else ""
+    against = stored if stored else DUMMY_HASH
     try:
-        _hasher.verify(password_hash or DUMMY_HASH, normalise(password))
-        return password_hash is not None
+        _hasher.verify(against, normalise(password))
     except (VerifyMismatchError, InvalidHashError):
         return False
+    return bool(stored)
 
 
 def rehash(password: str) -> str:

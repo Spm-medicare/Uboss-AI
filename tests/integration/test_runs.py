@@ -31,8 +31,8 @@ from tests.conftest import Workspace
 from uboss.core.context import SecurityContext
 from uboss.core.errors import NotFound, ValidationFailed
 from uboss.db.base import build_sessionmaker, tenant_scope
-from uboss.modules.identity.service import access_for
 from uboss.modules.identity.models import Membership
+from uboss.modules.identity.service import access_for
 from uboss.modules.runtime import service
 from uboss.modules.runtime.models import Run, RunEvent, RunState, RunStep, RunTrigger, StepState
 
@@ -86,7 +86,12 @@ async def _publish_version(
             VALUES (:id, :tenant, :name, 'draft', :owner)
             """
         ),
-        {"id": job_id, "tenant": workspace.tenant_id, "name": name, "owner": workspace.membership_id},
+        {
+            "id": job_id,
+            "tenant": workspace.tenant_id,
+            "name": name,
+            "owner": workspace.membership_id,
+        },
     )
     await session.execute(
         text(
@@ -134,7 +139,11 @@ async def test_a_run_executes_the_version_and_not_the_draft(
                 ],
             )
             started = await service.start(
-                session, await _context(session, left), job_version_id=version_id, trigger=RunTrigger.MANUAL
+                session,
+                tenant_id=left.tenant_id,
+                job_version_id=version_id,
+                trigger=RunTrigger.MANUAL,
+                actor=await _context(session, left),
             )
 
             #  The draft changes underneath. Nothing about the run may follow it.
@@ -175,7 +184,11 @@ async def test_a_version_with_no_steps_is_refused(
             version_id = await _publish_version(session, left, steps=[])
             with pytest.raises(ValidationFailed) as refused:
                 await service.start(
-                    session, await _context(session, left), job_version_id=version_id, trigger=RunTrigger.MANUAL
+                    session,
+                    tenant_id=left.tenant_id,
+                    job_version_id=version_id,
+                    trigger=RunTrigger.MANUAL,
+                    actor=await _context(session, left),
                 )
         assert "no steps" in str(refused.value)
         await session.rollback()
@@ -209,9 +222,10 @@ async def test_a_version_from_another_workspace_is_not_found(
             with pytest.raises(NotFound):
                 await service.start(
                     session,
-                    await _context(session, left),
+                    tenant_id=left.tenant_id,
                     job_version_id=theirs,
                     trigger=RunTrigger.MANUAL,
+                    actor=await _context(session, left),
                 )
         await session.rollback()
 
@@ -232,7 +246,11 @@ async def test_an_attempt_is_counted_when_a_step_begins(
                 session, left, steps=[{"what_exact_work": "One", "mode": "ai_agent"}]
             )
             started = await service.start(
-                session, await _context(session, left), job_version_id=version_id, trigger=RunTrigger.MANUAL
+                session,
+                tenant_id=left.tenant_id,
+                job_version_id=version_id,
+                trigger=RunTrigger.MANUAL,
+                actor=await _context(session, left),
             )
             run = (
                 await session.execute(select(Run).where(Run.id == started.run_id))
@@ -269,7 +287,11 @@ async def test_a_failed_step_fails_the_run_and_says_why(
                 ],
             )
             started = await service.start(
-                session, await _context(session, left), job_version_id=version_id, trigger=RunTrigger.MANUAL
+                session,
+                tenant_id=left.tenant_id,
+                job_version_id=version_id,
+                trigger=RunTrigger.MANUAL,
+                actor=await _context(session, left),
             )
             run = (
                 await session.execute(select(Run).where(Run.id == started.run_id))
@@ -301,7 +323,11 @@ async def test_a_finished_run_cannot_be_cancelled(
                 session, left, steps=[{"what_exact_work": "One", "mode": "ai_agent"}]
             )
             started = await service.start(
-                session, await _context(session, left), job_version_id=version_id, trigger=RunTrigger.MANUAL
+                session,
+                tenant_id=left.tenant_id,
+                job_version_id=version_id,
+                trigger=RunTrigger.MANUAL,
+                actor=await _context(session, left),
             )
             run = (
                 await session.execute(select(Run).where(Run.id == started.run_id))
@@ -309,7 +335,9 @@ async def test_a_finished_run_cannot_be_cancelled(
             await service.finish_run(session, run)
 
             with pytest.raises(ValidationFailed):
-                await service.cancel(session, await _context(session, left), run, reason="Changed my mind")
+                await service.cancel(
+                    session, await _context(session, left), run, reason="Changed my mind"
+                )
         await session.rollback()
 
 
@@ -329,9 +357,10 @@ async def test_run_events_cannot_be_rewritten(
             )
             started = await service.start(
                 session,
-                await _context(session, left),
+                tenant_id=left.tenant_id,
                 job_version_id=version_id,
                 trigger=RunTrigger.MANUAL,
+                actor=await _context(session, left),
             )
 
             events = list(
@@ -372,9 +401,10 @@ async def test_a_run_is_invisible_to_another_workspace(
             )
             started = await service.start(
                 session,
-                await _context(session, left),
+                tenant_id=left.tenant_id,
                 job_version_id=version_id,
                 trigger=RunTrigger.MANUAL,
+                actor=await _context(session, left),
             )
 
         await session.commit()

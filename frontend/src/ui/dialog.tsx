@@ -33,6 +33,20 @@ import { cn } from "@/lib/cn";
  * `aria-modal` and a labelled heading; the close button has a real accessible name rather than
  * a bare glyph.
  */
+/**
+ * How much room the panel gets.
+ *
+ * `prompt` is the default and is what a confirmation needs. `wide` exists for one thing: §13's
+ * Settings, which is *"category navigation left and focused content right"* and cannot be that in
+ * 28rem. A second modal implementation would have been the easy way to get it, and would have meant
+ * two focus traps, two Escape handlers and two scroll locks — the duplication this file's own
+ * comments argue against everywhere else.
+ */
+const SIZES = {
+  prompt: "max-w-md",
+  wide: "max-w-5xl",
+} as const;
+
 export function Dialog({
   title,
   description,
@@ -40,6 +54,8 @@ export function Dialog({
   onClose,
   children,
   busy = false,
+  size = "prompt",
+  bodyClassName,
 }: {
   title: string;
   description?: string;
@@ -52,6 +68,9 @@ export function Dialog({
    * leave a submitted change with nothing on screen reporting how it went.
    */
   busy?: boolean;
+  size?: keyof typeof SIZES;
+  /** For a panel that manages its own scrolling — Settings scrolls its right pane, not the page. */
+  bodyClassName?: string;
 }) {
   const t = useTranslations("common");
   const panel = useRef<HTMLDivElement>(null);
@@ -140,7 +159,8 @@ export function Dialog({
         aria-labelledby="dialog-title"
         onKeyDown={trap}
         className={cn(
-          "w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-dialog",
+          "w-full rounded-xl border border-border bg-card p-6 shadow-dialog",
+          SIZES[size],
         )}
       >
         <div className="flex items-start gap-3.5">
@@ -171,7 +191,7 @@ export function Dialog({
           </button>
         </div>
 
-        <div className="mt-5">{children}</div>
+        <div className={cn("mt-5", bodyClassName)}>{children}</div>
       </div>
     </div>
   );

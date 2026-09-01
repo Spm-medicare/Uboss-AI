@@ -127,8 +127,12 @@ async def list_supervisors(
             Membership.display_name,
             func.coalesce(supervised.c.n, 0),
             func.coalesce(handled.c.n, 0),
+            OrgUnit.name,
         )
         .outerjoin(Membership, Membership.id == Supervisor.owner_membership_id)
+        #  Outer, because a personal Supervisor has no department — and because an archived
+        #  department is still the department this Supervisor was made for.
+        .outerjoin(OrgUnit, OrgUnit.id == Supervisor.org_node_id)
         .outerjoin(supervised, supervised.c.supervisor_id == Supervisor.id)
         .outerjoin(handled, handled.c.supervisor_id == Supervisor.id)
         .order_by(Supervisor.updated_at.desc())
@@ -140,7 +144,7 @@ async def list_supervisors(
 
     rows = (await session.execute(statement)).all()
     visible: list[SupervisorCard] = []
-    for supervisor, owner_name, supervised_count, handler_count in rows:
+    for supervisor, owner_name, supervised_count, handler_count, department_name in rows:
         #  Scope 2 decides what appears. A Supervisor somebody cannot control is not theirs to
         #  see, and listing it would leak who supervises whom.
         if await guard.role_for(session, supervisor, context.membership_id) is None:
@@ -152,6 +156,7 @@ async def list_supervisors(
                 kind=SupervisorKind(supervisor.kind),
                 status=SupervisorStatus(supervisor.status),
                 owner_name=owner_name,
+                department_name=department_name,
                 supervised_count=supervised_count,
                 handler_count=handler_count,
                 updated_at=supervisor.updated_at,
@@ -270,10 +275,24 @@ async def update(
     if dependencies is not None:
         await _replace_dependencies(session, supervisor, dependencies)
     if quality is not None:
+        _refuse_duplicates(quality, "name", "Two quality gates share the name")
         await _replace(session, SupervisorQualityGate, supervisor, quality)
     if escalations is not None:
+        _refuse_duplicates(escalations, "situation", "Two escalations share the situation")
+        #  An escalation that names nobody is a rule with no addressee — the words the check
+        #  constraint uses. It is the boundary and stays the boundary; refusing here means the
+        #  person is told which row is wrong instead of receiving a 500 from a constraint name.
+        for row in escalations:
+            if not row.get("escalate_to_membership_id") and not (
+                row.get("escalate_to_label") or ""
+            ).strip():
+                raise ValidationFailed(
+                    f"Escalation {row.get('position', '?')} names nobody to escalate to. "
+                    "Choose a person, or write the role it goes to."
+                )
         await _replace(session, SupervisorEscalation, supervisor, escalations)
     if notifications is not None:
+        _refuse_duplicates(notifications, "event", "Two notifications share the event")
         await _replace(session, SupervisorNotification, supervisor, notifications)
 
     cleared = publish.clear_results(
@@ -522,6 +541,28 @@ async def _replace_dependencies(
             )
         )
     await session.flush()
+
+
+def _refuse_duplicates(rows: list[dict[str, Any]], key: str, message: str) -> None:
+    """Two rows in one list cannot share the column their unique constraint is on.
+
+    Each of §10's three policy lists is unique on one human-written field — a gate's name, an
+    escalation's situation, a notification's event — and a duplicate reached the database as an
+    integrity error the API turned into a 500. It is an ordinary mistake, made by copying a row and
+    forgetting to rename it, and it deserves the sentence `record_simulations` already gives the
+    same mistake: *"Two scenarios share a name."*
+
+    The constraint stays the boundary. This only decides what the person reads.
+    """
+    seen: set[str] = set()
+    for row in rows:
+        value = str(row.get(key) or "").strip()
+        if not value:
+            continue
+        folded = value.casefold()
+        if folded in seen:
+            raise ValidationFailed(f"{message} “{value}”. Give each one its own.")
+        seen.add(folded)
 
 
 async def _replace(

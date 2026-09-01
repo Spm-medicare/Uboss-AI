@@ -316,6 +316,10 @@ class SupervisorCard(BaseModel):
     kind: SupervisorKind
     status: SupervisorStatus
     owner_name: str | None
+    #: The department a department Supervisor watches, and null for a personal one. §10 makes the
+    #: department part of a Supervisor's identity, and two department Supervisors are otherwise
+    #: told apart only by whatever their names happen to say.
+    department_name: str | None = None
     supervised_count: int
     handler_count: int
     updated_at: datetime

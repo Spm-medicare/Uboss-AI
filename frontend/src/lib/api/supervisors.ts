@@ -104,7 +104,15 @@ export function createSupervisor(
   return request("/supervisors", {
     method: "POST",
     body,
-    idempotencyKey: operationKey("supervisor-create", body.name),
+    //  The kind and the department are part of the operation, not decoration. Keyed on the name
+    //  alone, somebody who created "Sales watch" as personal, saw their mistake and created it
+    //  again as a department Supervisor would be handed the first one back as a replay.
+    idempotencyKey: operationKey(
+      "supervisor-create",
+      body.name,
+      body.kind ?? "personal",
+      body.org_node_id ?? null,
+    ),
   });
 }
 

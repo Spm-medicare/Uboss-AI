@@ -42,7 +42,6 @@ export interface BuilderSection {
 }
 
 export function BuilderLayout({
-  eyebrow,
   title,
   status,
   meta,
@@ -56,7 +55,6 @@ export function BuilderLayout({
   footer,
   children,
 }: {
-  eyebrow: string;
   title: string;
   status: ReactNode;
   /** Owner, version, and anything else that belongs beside the title. */
@@ -83,36 +81,46 @@ export function BuilderLayout({
 
   return (
     <div className="flex min-h-full flex-col">
-      {/*  **One line.**
+      {/*  **Two rows, and the second is quieter than the first.**
 
-          It was three: the form's name, then the title and status, then the owner and version.
-          Three lines of chrome above every Builder, none of which anybody reads twice, pushing
-          the form itself down the screen. On one line the same facts read left to right in the
-          order somebody wants them — which form, which draft, whose, which version — and the
-          right-hand end holds the two things that change while you work: the save state and the
-          output toggle.
+          It was one row carrying everything: the eyebrow, the name, the status, the owner, the
+          version, the date and the save state, all at the same baseline. That reads as one long
+          sentence of unrelated facts, and on a narrow window it wrapped into a paragraph of
+          chrome above the form.
 
-          It wraps rather than truncating. On a narrow window the parts fall onto a second line,
-          which is what should happen to a line of facts; the alternative is an ellipsis over the
-          agent's name.
+          The split is by what the reader is asking. The top row answers *what am I looking at* —
+          the record's name, large, with its status beside it, and the controls that change while
+          you work pinned to the right. The bottom row answers *whose is it, which version, when* —
+          real information, but nobody arrives at this screen to read it, so it is small and
+          grey and does not compete with the name.
+
+          The eyebrow is gone. The top bar already names the screen; repeating it here was the
+          same words twice within an inch of each other, which is what the duplication complaint
+          was about.
 
           The header sits above the columns, not inside them, so it stays put while the form
           scrolls. */}
-      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 border-b border-border pb-4">
-        <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          {eyebrow}
-        </p>
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-        {status}
+      <header className="border-b border-border pb-4">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          {/*  `title` as well as `truncate`: a record whose name does not fit was otherwise
+              unreadable in full anywhere on the screen, since the top bar truncates it too. */}
+          <h2
+            title={title}
+            className="min-w-0 truncate text-xl font-semibold tracking-tight"
+          >
+            {title}
+          </h2>
+          {status}
+          <span className="ml-auto flex shrink-0 items-center gap-3">
+            <SaveStateBadge state={saveState} />
+            {headerAction}
+          </span>
+        </div>
         {meta ? (
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-muted-foreground">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             {meta}
           </div>
         ) : null}
-        <span className="ml-auto flex items-center gap-3 self-center">
-          <SaveStateBadge state={saveState} />
-          {headerAction}
-        </span>
       </header>
 
       <div className="flex min-h-0 flex-1 gap-8 pt-6">

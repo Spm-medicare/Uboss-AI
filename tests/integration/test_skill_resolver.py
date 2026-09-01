@@ -99,7 +99,7 @@ async def wording(owner_engine: AsyncEngine) -> dict[str, str]:
                         then_clause="THEN …",
                         #  S106 reads the name: this is the gate's evidence column, not a
                         #  credential.
-                        pass_evidence="…",  # noqa: S106
+                        pass_evidence="…",
                         failure_state=failure_state,
                         position=position,
                     )

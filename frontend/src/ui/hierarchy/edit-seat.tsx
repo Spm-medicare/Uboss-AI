@@ -1,9 +1,9 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Pencil, Trash2 } from "lucide-react";
+import { MoveRight, Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import type { OrgUnitRead, PositionRead } from "@/lib/api/contract";
 import { ApiError, NetworkError } from "@/lib/api/errors";
@@ -11,11 +11,12 @@ import {
   addReportingLine,
   archivePosition,
   archiveUnit,
+  moveUnit,
   updatePosition,
   updateUnit,
 } from "@/lib/api/hierarchy";
-import { cn } from "@/lib/cn";
 import { useStepUp } from "@/ui/auth/step-up";
+import { gradesInUse } from "@/ui/hierarchy/add-under";
 import { Alert, Button, Dialog, Field, Input } from "@/ui";
 
 /**
@@ -42,8 +43,17 @@ const DESIGNATIONS = [
   { id: "employee", level: 3 },
 ] as const;
 
-function bandOf(level: number | null | undefined): (typeof DESIGNATIONS)[number]["id"] | "" {
-  return DESIGNATIONS.find((band) => band.level === level)?.id ?? "";
+/**
+ * The words for a seat recorded before `designation` existed.
+ *
+ * Empty for a level the product never labelled, so opening such a seat shows an empty field
+ * rather than a grade nobody chose.
+ */
+function spelledBand(level: number | null | undefined): string {
+  if (level === 1) return "Executive";
+  if (level === 2) return "Manager";
+  if (level === 3) return "Employee";
+  return "";
 }
 
 export function EditSeatDialog({
@@ -62,17 +72,47 @@ export function EditSeatDialog({
   const withStepUp = useStepUp();
 
   const [title, setTitle] = useState(position.title);
-  const [designation, setDesignation] = useState<string>(bandOf(position.level));
+  //  The same suggestions the Add form offers — this organisation's grades first, then the three
+  //  the product can order. Imported rather than re-derived: two forms writing one column must
+  //  not offer two vocabularies.
+  const gradeOptions = gradesInUse(units);
+
+  //  The stored words, or the old band's for a seat recorded before the field existed — so
+  //  opening an older seat does not silently blank its grade.
+  const [designation, setDesignation] = useState<string>(
+    position.designation ?? spelledBand(position.level),
+  );
   const [managerId, setManagerId] = useState(position.reports_to_position_id ?? "");
+  //  Which box the seat sits in. A seat in the wrong department was previously unfixable: the
+  //  only way to correct it was to remove the seat and make another one, which throws away the
+  //  record of who held the first — and that record is the evidence the whole module exists to
+  //  keep. The backend has always accepted `org_unit_id` here; nothing offered it.
+  const [unitId, setUnitId] = useState(position.org_unit_id);
   const [confirming, setConfirming] = useState(false);
+  //  Generated rather than written down: a hard-coded `htmlFor` is a duplicate id the moment two
+  //  of these are mounted, and a duplicate id points a label at the wrong control.
+  const unitFieldId = useId();
+
+  //  Only live departments. An archived one is not on the chart, and the server refuses a seat
+  //  moved into one — offering it would mean explaining a refusal afterwards.
+  const departments = units.filter((candidate) => candidate.archived_at === null);
+  const movingSeat = unitId !== position.org_unit_id;
 
   const save = useMutation({
     mutationFn: async () => {
-      const band = DESIGNATIONS.find((entry) => entry.id === designation);
+      const band = DESIGNATIONS.find(
+        (entry) => entry.id === designation.trim().toLowerCase(),
+      );
       await withStepUp(() =>
         updatePosition(position.id, {
           title: title.trim(),
+          designation: designation.trim() || null,
+          //  The rank of a known band, or null. A grade this product cannot order is stored
+          //  faithfully and sorts last; inventing a number would be inventing a rank.
           level: band ? band.level : null,
+          //  Only when it changed. Sending the department it is already in would write
+          //  "Moved position …" into the history for a move nobody made.
+          ...(movingSeat ? { org_unit_id: unitId } : {}),
           expected_version: position.version,
         }),
       );
@@ -92,6 +132,11 @@ export function EditSeatDialog({
       onDone();
       onClose();
     },
+    //  Two writes, and the first may have committed before the second failed. Refreshing on the
+    //  way out of the failure means the chart shows what actually happened rather than the state
+    //  before the click, and the dialog picks up the seat's new version from live data — so the
+    //  retry carries the version the row now holds instead of a spent one.
+    onError: () => onDone(),
   });
 
   const remove = useMutation({
@@ -158,30 +203,54 @@ export function EditSeatDialog({
           )}
         </Field>
 
-        <fieldset>
-          <legend className="mb-1.5 text-sm font-medium">{t("designation")}</legend>
-          <div className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-muted p-1">
-            {DESIGNATIONS.map((band) => (
-              <button
-                key={band.id}
-                type="button"
-                aria-pressed={designation === band.id}
+        <Field label={t("designation")} hint={t("designationHint")}>
+          {(field) => (
+            <>
+              <Input
+                {...field}
+                list="edit-designation-options"
+                value={designation}
                 disabled={busy}
-                onClick={() => setDesignation(band.id)}
-                className={cn(
-                  "rounded-md px-2 py-2 text-sm font-medium",
-                  "transition-colors duration-150 motion-reduce:transition-none",
-                  "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
-                  designation === band.id
-                    ? "bg-card text-foreground shadow-sm ring-1 ring-inset ring-border"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t(`designations.${band.id}`)}
-              </button>
-            ))}
-          </div>
-        </fieldset>
+                placeholder={t("designationPlaceholder")}
+                onChange={(event) => setDesignation(event.target.value)}
+              />
+              {/*  The same suggestions the Add form offers — this organisation's own grades,
+                  then the three the product knows how to order. Two forms writing one column
+                  must not offer two vocabularies. */}
+              <datalist id="edit-designation-options">
+                {gradeOptions.map((option) => (
+                  <option key={option} value={option} />
+                ))}
+              </datalist>
+            </>
+          )}
+        </Field>
+
+        {/*  Before "reports to", because that list is grouped by department and reads better once
+            this one is settled. Deliberately not a drag on the chart: a drag has no undo prompt,
+            no confirmation and no keyboard, and re-parenting a seat is not a gesture worth
+            getting wrong by a few pixels. */}
+        <Field
+          label={t("seatDepartment")}
+          htmlFor={unitFieldId}
+          hint={movingSeat ? t("seatDepartmentMoving") : t("seatDepartmentHint")}
+        >
+          {(field) => (
+            <select
+              {...field}
+              value={unitId}
+              disabled={busy}
+              onChange={(event) => setUnitId(event.target.value)}
+              className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--ub-focus)] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
 
         <Field label={t("reportsTo")} htmlFor="edit-reports-to" required={false}>
           {(field) => (
@@ -281,10 +350,13 @@ export function EditSeatDialog({
  */
 export function EditUnitDialog({
   unit,
+  units,
   onClose,
   onDone,
 }: {
   unit: OrgUnitRead;
+  /** Every department, so a new parent can be offered and its own subtree ruled out. */
+  units: OrgUnitRead[];
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -294,12 +366,86 @@ export function EditUnitDialog({
 
   const [name, setName] = useState(unit.name);
   const [confirming, setConfirming] = useState(false);
+  const [parentId, setParentId] = useState(unit.parent_id ?? "");
+  const [confirmingMove, setConfirmingMove] = useState(false);
+  const parentFieldId = useId();
+  /*  Focus follows the confirmation.
+
+      The button that opens it is the button that unmounts, so focus fell to `<body>` — and the
+      panel wraps Tab by listening for keys inside itself, which means the keyboard was left
+      outside a modal with no way back in. Moving focus to the confirming action also puts the
+      sentence explaining what is about to happen in a screen reader's path before the control
+      that does it. */
+  const confirmMoveRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (confirmingMove) confirmMoveRef.current?.focus();
+  }, [confirmingMove]);
   const seats = (unit.positions ?? []).filter((p) => p.archived_at === null).length;
+
+  /*  Everything under this department, however deep.
+      Needed twice: to say what a move takes with it, and to keep those same departments out of
+      the list of places it can go. The database refuses a cycle — migration 0011 walks
+      `parent_id` upward and raises — so offering one would only mean explaining a refusal after
+      somebody chose it. */
+  const subtree = useMemo(() => {
+    const children = new Map<string, OrgUnitRead[]>();
+    for (const candidate of units) {
+      const key = candidate.parent_id ?? "";
+      children.set(key, [...(children.get(key) ?? []), candidate]);
+    }
+    const found: OrgUnitRead[] = [];
+    const queue = [unit.id];
+    while (queue.length > 0) {
+      //  `shift` on a queue this size is fine, and a visited set is unnecessary: `parent_id` is
+      //  acyclic by database constraint, so this terminates.
+      const next = queue.shift() as string;
+      for (const child of children.get(next) ?? []) {
+        found.push(child);
+        queue.push(child.id);
+      }
+    }
+    return found;
+  }, [units, unit.id]);
+
+  const live = subtree.filter((candidate) => candidate.archived_at === null);
+  const travellingSeats = live.reduce(
+    (total, candidate) =>
+      total + (candidate.positions ?? []).filter((p) => p.archived_at === null).length,
+    seats,
+  );
+
+  const excluded = new Set([unit.id, ...subtree.map((candidate) => candidate.id)]);
+  const parentOptions = units.filter(
+    (candidate) => candidate.archived_at === null && !excluded.has(candidate.id),
+  );
+  const chosenParent = parentOptions.find((candidate) => candidate.id === parentId);
+  const parentChanged = parentId !== (unit.parent_id ?? "") && chosenParent !== undefined;
 
   const save = useMutation({
     mutationFn: () =>
       withStepUp(() =>
         updateUnit(unit.id, { name: name.trim(), expected_version: unit.version }),
+      ),
+    onSuccess: () => {
+      onDone();
+      onClose();
+    },
+  });
+
+  /*  Its own action, not part of Save.
+
+      Two reasons, and the second is a bug this shape cannot have. The first is that the backend
+      keeps moving separate on purpose — `OrgUnitMove` says re-parenting "is a different kind of
+      change from correcting a spelling, and it reads differently in the revision history because
+      it is a different endpoint" — and a UI that folds them together contradicts the record it
+      writes. The second: Save and Move are two requests against one row, and each one increments
+      `version`. Chained, the second would carry the version the first had already spent and come
+      back with *"changed by somebody else while you were editing"* — naming a conflict with
+      nobody, caused by the click itself. Separate actions cannot reach that state. */
+  const move = useMutation({
+    mutationFn: () =>
+      withStepUp(() =>
+        moveUnit(unit.id, { new_parent_id: parentId, expected_version: unit.version }),
       ),
     onSuccess: () => {
       onDone();
@@ -315,8 +461,8 @@ export function EditUnitDialog({
     },
   });
 
-  const error = save.error ?? remove.error;
-  const busy = save.isPending || remove.isPending;
+  const error = save.error ?? move.error ?? remove.error;
+  const busy = save.isPending || move.isPending || remove.isPending;
 
   return (
     <Dialog
@@ -359,6 +505,95 @@ export function EditUnitDialog({
             />
           )}
         </Field>
+
+        {/*  Moving, in its own bordered section with its own button — because it is its own
+            request, and because the thing worth confirming is not "are you sure" but *what comes
+            with it*. A department is not the box; it is everything in the box.
+
+            The whole section goes when there is nowhere to put it. That happens only at the top of
+            the organisation, where everything else is beneath it and `new_parent_id` cannot be
+            null — and the chart does not offer Edit on the company at all, so in practice this is
+            a guard rather than a state anybody reaches. It was a paragraph explaining itself,
+            which is worse than absent: copy nobody can see is copy nobody maintains. */}
+        {parentOptions.length === 0 ? null : (
+        <div className="space-y-3 border-t border-border pt-4">
+          <p className="text-sm font-medium">{t("moveUnitSection")}</p>
+
+          {confirmingMove && chosenParent ? (
+            <Alert
+              tone="warning"
+              title={t("moveUnitConfirmTitle", { name: unit.name, parent: chosenParent.name })}
+            >
+              <p>
+                {live.length === 0 && travellingSeats === 0
+                  ? t("moveUnitImpactEmpty")
+                  : t("moveUnitImpact", {
+                      seats: travellingSeats,
+                      departments: live.length,
+                    })}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  ref={confirmMoveRef}
+                  busy={move.isPending}
+                  onClick={() => move.mutate()}
+                >
+                  {t("moveUnitConfirm")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => setConfirmingMove(false)}
+                >
+                  {tCommon("cancel")}
+                </Button>
+              </div>
+            </Alert>
+          ) : (
+            <>
+              <Field
+                label={t("parentDepartment")}
+                htmlFor={parentFieldId}
+                hint={t("parentDepartmentHint")}
+              >
+                {(field) => (
+                  <select
+                    {...field}
+                    value={parentId}
+                    disabled={busy}
+                    onChange={(event) => setParentId(event.target.value)}
+                    className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--ub-focus)] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {/*  The department it is already under, so the select opens showing the truth
+                        rather than a change nobody asked for. Empty only while it is at the top,
+                        which the branch above already handles. */}
+                    {parentOptions.map((candidate) => (
+                      <option key={candidate.id} value={candidate.id}>
+                        {candidate.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </Field>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={busy || !parentChanged}
+                icon={<MoveRight className="size-3.5" />}
+                onClick={() => setConfirmingMove(true)}
+              >
+                {t("moveUnitAction")}
+              </Button>
+            </>
+          )}
+        </div>
+        )}
 
         <div className="space-y-3 border-t border-border pt-4">
           {confirming ? (

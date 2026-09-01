@@ -31,6 +31,7 @@ from uboss.modules.identity.schemas import (
     ChooseWorkspaceResponse,
     CurrentUser,
     PasswordStepUpRequest,
+    ProfileUpdate,
     SessionSummary,
     SignInRequest,
     SignInResponse,
@@ -350,6 +351,11 @@ async def me(context: CurrentContext, session: SessionDep) -> CurrentUser:
     route re-resolves permissions on the server, because a list sent to a browser is a list the
     browser can edit.
     """
+    return await _describe_current(session, context)
+
+
+async def _describe_current(session: SessionDep, context: CurrentContext) -> CurrentUser:
+    """One place that assembles the answer, so `GET` and `PATCH` cannot disagree about it."""
     loaded = (
         await session.execute(
             select(Membership, Tenant, Session)
@@ -368,6 +374,45 @@ async def me(context: CurrentContext, session: SessionDep) -> CurrentUser:
     return identity.describe(
         context, membership=membership, tenant=tenant, session_row=session_row
     )
+
+
+@router.patch("/me", summary="Change your own name, title or timezone")
+async def update_me(
+    body: ProfileUpdate,
+    context: CurrentContext,
+    session: SessionDep,
+    idempotency_key: Annotated[str, Depends(require_idempotency_key)],
+) -> CurrentUser:
+    """A person editing themselves — §13's *"Profile and timezone/locale"*.
+
+    Their own three fields and nothing else. Not their email, which is how they sign in; not their
+    roles, which are somebody else's decision by definition; and not anybody else's profile, which
+    would need `manage_access` and has no route at all.
+
+    **The timezone is the fix this route exists for.** `membership.timezone` decides how every
+    instant in the product is shown to this person, and until now nothing wrote it — so somebody
+    working outside the workspace's zone read everything in the wrong one. See
+    `service.update_profile`.
+    """
+    async with idempotency.execute(
+        session,
+        tenant_id=context.tenant_id,
+        key=idempotency_key,
+        operation="profile.update",
+        payload=body.model_dump(mode="json", exclude_unset=True),
+    ) as execution:
+        if execution.is_replay:
+            return CurrentUser.model_validate(execution.replay_body)
+
+        await identity.update_profile(session, context, body)
+        #  Re-read through the same path `GET /me` uses, so the answer a screen gets back is the
+        #  answer it would get on a reload. A hand-assembled response is how the two come to
+        #  disagree.
+        result = await _describe_current(session, context)
+        execution.complete_json(
+            status_code=status.HTTP_200_OK, body=result.model_dump(mode="json")
+        )
+        return result
 
 
 @router.get("/sessions", summary="Where this account is signed in")

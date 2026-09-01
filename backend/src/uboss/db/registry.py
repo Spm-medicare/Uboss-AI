@@ -30,6 +30,7 @@ def import_all() -> None:
     #  shape of the product from the list.
     from uboss.modules.agents import agent_models  # noqa: F401
     from uboss.modules.agents import models as agents_models  # noqa: F401
+    from uboss.modules.approvals import models as approvals_models  # noqa: F401
     from uboss.modules.audit import models as audit_models  # noqa: F401
     from uboss.modules.files import models as files_models  # noqa: F401
     from uboss.modules.hierarchy import import_models as hierarchy_imports  # noqa: F401
@@ -37,10 +38,15 @@ def import_all() -> None:
     from uboss.modules.identity import models as identity_models  # noqa: F401
     from uboss.modules.identity import policies as identity_policies  # noqa: F401
     from uboss.modules.jobs import models as jobs_models  # noqa: F401
+    from uboss.modules.notifications import models as notifications_models  # noqa: F401
     from uboss.modules.objectives import models as objectives_models  # noqa: F401
     from uboss.modules.objectives import proposal_models as objectives_proposals  # noqa: F401
+    from uboss.modules.privacy import models as privacy_models  # noqa: F401
+    from uboss.modules.privacy import retention_models as privacy_retention  # noqa: F401
     from uboss.modules.runtime import models as runtime_models  # noqa: F401
+    from uboss.modules.schedules import models as schedules_models  # noqa: F401
     from uboss.modules.supervisors import models as supervisors_models  # noqa: F401
+    from uboss.modules.tasks import models as tasks_models  # noqa: F401
     from uboss.modules.tenancy import models as tenancy_models  # noqa: F401
 
 

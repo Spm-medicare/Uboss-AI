@@ -52,6 +52,7 @@ from uboss.modules.hierarchy.schemas import (
     OrgUnitRead,
     OrgUnitUpdate,
     PersonInSeat,
+    PlaceablePerson,
     PositionCreate,
     PositionRead,
     PositionUpdate,
@@ -148,6 +149,7 @@ async def read_tree(
                 id=position.id,
                 org_unit_id=position.org_unit_id,
                 title=position.title,
+                designation=position.designation,
                 level=position.level,
                 location=position.location,
                 external_ref=position.external_ref,
@@ -190,6 +192,43 @@ def _visible(
     if include_archived:
         return statement
     return statement.where(model.archived_at.is_(None))
+
+
+async def placeable_people(
+    session: AsyncSession, context: SecurityContext
+) -> list[PlaceablePerson]:
+    """Everybody who can be put in a seat, invited people included.
+
+    **Deliberately wider than `objectives.people`.** That one answers "who may be named as owner
+    or approver" and is limited to `active`, because an owner has to be able to act. This answers
+    "who works here", and putting somebody in a seat grants them nothing — it records where they
+    sit. A picker limited to active members could offer two of the twenty-seven people already
+    visible on the chart, which is what it did.
+
+    `deactivated` is excluded: somebody who has left should not be placed into a new seat, and
+    §14 already makes deactivation trigger ownership reassignment rather than new assignments.
+    """
+    await guard.authorise(session, context, Action.VIEW)
+    members = (
+        (
+            await session.execute(
+                select(Membership)
+                .where(Membership.status != "deactivated")
+                .order_by(Membership.display_name)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        PlaceablePerson(
+            membership_id=member.id,
+            display_name=member.display_name,
+            job_title=member.job_title,
+            status=member.status,
+        )
+        for member in members
+    ]
 
 
 async def _holders_on(session: AsyncSession, on: date) -> dict[uuid.UUID, PersonInSeat]:
@@ -356,6 +395,10 @@ def _position_state(position: Position) -> dict[str, Any]:
     return {
         "org_unit_id": str(position.org_unit_id),
         "title": position.title,
+        #  Added when 0038 added the column, which this helper was not updated for — so an undo
+        #  of a title change silently dropped the grade back to nothing. Every field that can be
+        #  edited has to be in here, because this dict *is* what undo restores.
+        "designation": position.designation,
         "level": position.level,
         "location": position.location,
         "external_ref": position.external_ref,
@@ -467,6 +510,46 @@ async def move_unit(
     unit = await _get_unit(session, unit_id)
     _check_version(unit.version, payload.expected_version, "department")
     parent = await _get_unit(session, payload.new_parent_id)
+
+    #  The same rule as the seat above, and it matters more here: a move takes the whole subtree,
+    #  so re-parenting a live division under an archived one would hide every department, seat and
+    #  person below it from the chart while leaving them live and assigned. Nothing else in the
+    #  system can produce that state, and `validate` would not report it — an archived *parent* is
+    #  not an archived manager.
+    if parent.archived_at is not None:
+        raise ValidationFailed("That department is archived. Restore it first.")
+    #  And an archived unit stays where it was archived. Moving one is not a correction to
+    #  anything anybody can see, and it would rewrite the shape a restore comes back into.
+    if unit.archived_at is not None:
+        raise ValidationFailed("This department is archived. Restore it before moving it.")
+
+    #  A cycle, refused here rather than by the trigger.
+    #
+    #  `org_units_refuse_cycle` (migration 0011) is the real boundary and stays the real boundary
+    #  — it also guards the importer and anything that reaches the table another way. But a
+    #  trigger raises `check_violation`, nothing maps that to a status, and the caller was handed
+    #  a **500 with "Nothing was changed by this request"**: a server fault where there is none,
+    #  and untrue besides. Refusing before the flush gives the same answer as a sentence, and
+    #  leaves the transaction alive rather than poisoned.
+    ancestor: OrgUnit | None = parent
+    hops = 0
+    while ancestor is not None:
+        if ancestor.id == unit.id:
+            raise ValidationFailed(
+                f"“{parent.name}” is already inside “{unit.name}”. "
+                "A department cannot sit inside itself."
+            )
+        hops += 1
+        if hops > 100:
+            #  The same ceiling the trigger uses. Reached only by data the trigger would also
+            #  refuse, so this is a guard against looping here, not a rule of its own.
+            break
+        ancestor = (
+            await session.get(OrgUnit, ancestor.parent_id)
+            if ancestor.parent_id is not None
+            else None
+        )
+
     before = _unit_state(unit)
 
     unit.parent_id = parent.id
@@ -554,6 +637,7 @@ async def create_position(
         tenant_id=context.tenant_id,
         org_unit_id=payload.org_unit_id,
         title=payload.title,
+        designation=(payload.designation or "").strip() or None,
         level=payload.level,
         location=payload.location,
         external_ref=payload.external_ref,
@@ -587,8 +671,30 @@ async def update_position(
     before = _position_state(position)
 
     changes = payload.model_dump(exclude_unset=True, exclude={"expected_version"})
+
+    #  Moving a seat is one of these fields, so this is where a move is refused. `create_position`
+    #  has always refused an archived department; without the same check here the rule was one
+    #  request away from being bypassed — archive an empty department, then move a seat into it,
+    #  and the seat is live inside a box the chart does not draw. That is exactly the orphan state
+    #  `archive_unit` refuses to create, arrived at from the other direction.
+    #  An archived seat is not on the chart, so a change to it is a change nobody can review.
+    #  `assign` has always refused one; renaming or moving one was not checked.
+    if position.archived_at is not None:
+        raise ValidationFailed("This position is archived. Restore it before changing it.")
+
+    moved_to: OrgUnit | None = None
     if "org_unit_id" in changes:
-        await _get_unit(session, changes["org_unit_id"])
+        #  Sent, and sent as null. `positions.org_unit_id` is NOT NULL, so letting this through
+        #  reached the database as an integrity error and came back as a 500 saying "Nothing was
+        #  changed by this request" — a server fault, and a false one, for what is a plain
+        #  mistake in the request. Refused here, in words, as the 422 it is.
+        if changes["org_unit_id"] is None:
+            raise ValidationFailed("A position must sit in a department.")
+        if changes["org_unit_id"] != position.org_unit_id:
+            moved_to = await _get_unit(session, changes["org_unit_id"])
+            if moved_to.archived_at is not None:
+                raise ValidationFailed("That department is archived. Restore it first.")
+
     for field, value in changes.items():
         setattr(position, field, value)
     position.version += 1
@@ -600,7 +706,15 @@ async def update_position(
         change_type="position.updated",
         entity_type="position",
         entity_id=position.id,
-        summary=f"Updated position “{position.title}”",
+        #  A move and a rename are both "updated" to the contract, and undo treats them the same
+        #  way, so the type stays. The *summary* is what a person reads in the history, and
+        #  "Updated position" for a seat that changed department tells them nothing about the one
+        #  change they are most likely looking for.
+        summary=(
+            f"Moved position “{position.title}” to “{moved_to.name}”"
+            if moved_to is not None
+            else f"Updated position “{position.title}”"
+        ),
         before=before,
         after=_position_state(position),
     )
@@ -726,7 +840,11 @@ async def end_assignment(
         raise NotFound("No such assignment.")
     _check_version(assignment.version, payload.expected_version, "assignment")
 
-    if payload.effective_to <= assignment.effective_from:
+    #  `<`, not `<=`. Ending on the day it started is a **correction** — "the wrong person was
+    #  put in this seat, take them out" — and with an exclusive `effective_to` it is the only date
+    #  that empties the seat today. The row stays, so both facts are in the history. See migration
+    #  0039; this check and the constraint have to agree or one of them is decoration.
+    if payload.effective_to < assignment.effective_from:
         raise ValidationFailed("An assignment cannot end before it started.")
 
     before = {
@@ -768,6 +886,62 @@ async def add_reporting_line(
 
     position = await _get_position(session, position_id)
     manager = await _get_position(session, payload.manager_position_id)
+
+    #  A seat has one primary manager at a time, and until now nothing closed the old line.
+    #
+    #  `ex_edges_one_primary_manager` (migration 0011) excludes overlapping primary ranges for one
+    #  position, so drawing a second open-ended line raised an integrity error the API turned into
+    #  a **500 with "Nothing was changed by this request"**. In the seat dialog that lands after
+    #  the seat's own PATCH has already committed, so the sentence is false twice: it is not a
+    #  server fault, and something *was* changed. Then the retry replays the stored 200 for the
+    #  PATCH and 500s again on this call, identically, for as long as the idempotency record
+    #  lives. Changing a manager was simply not possible.
+    #
+    #  So the old line is closed on the day the new one starts. The range is half-open — `[)` in
+    #  the constraint — so ending one where the next begins leaves no overlap and no gap: on that
+    #  date the seat reports to the new manager, and to the old one on every day before it. The
+    #  edge is not deleted. Who reported to whom last March is the question this table exists to
+    #  answer, and `reporting.ended` is already in `UNDOABLE` waiting for a producer.
+    if payload.kind == ReportingKind.PRIMARY:
+        existing = (
+            await session.execute(
+                select(ReportingEdge).where(
+                    ReportingEdge.position_id == position_id,
+                    ReportingEdge.kind == ReportingKind.PRIMARY,
+                    ReportingEdge.effective_to.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            if existing.manager_position_id == payload.manager_position_id:
+                #  The line that is already drawn. Returning it rather than raising: the caller
+                #  asked for a state that holds, and a second identical edge would be a change
+                #  the history records and nobody made.
+                return existing
+            if existing.effective_from > payload.effective_from:
+                raise ValidationFailed(
+                    "This seat's current manager starts after that date. "
+                    "Choose a date on or after "
+                    f"{existing.effective_from.isoformat()}."
+                )
+            old_manager = await session.get(Position, existing.manager_position_id)
+            existing.effective_to = payload.effective_from
+            existing.version += 1
+            await session.flush()
+            await _revise(
+                session,
+                context,
+                change_type="reporting.ended",
+                entity_type="reporting_edge",
+                entity_id=existing.id,
+                summary=(
+                    f"“{position.title}” no longer reports to "
+                    f"“{old_manager.title if old_manager is not None else 'a removed seat'}” "
+                    f"from {payload.effective_from.isoformat()}"
+                ),
+                before={"effective_to": None},
+                after={"effective_to": payload.effective_from.isoformat()},
+            )
 
     edge = ReportingEdge(
         tenant_id=context.tenant_id,

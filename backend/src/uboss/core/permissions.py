@@ -232,6 +232,12 @@ HIGH_RISK_ACTIONS: frozenset[Action] = frozenset(
         Action.MANAGE_ACCESS,
         Action.INTEGRATE,
         Action.ADMINISTER,
+        #: Putting somebody in a seat, and taking them out of one. Adding a seat already asked
+        #: for a password because it is `administer`; ending an assignment did not, so removing a
+        #: person from the organisation was the one hierarchy change that needed no proof. Asked
+        #: for directly, and right: it decides who a run's work is addressed to, and §8's WHO
+        #: rules resolve through it.
+        Action.ASSIGN,
     }
 )
 #  PLAN line 366: risky settings require an impact summary, step-up authentication and audit.

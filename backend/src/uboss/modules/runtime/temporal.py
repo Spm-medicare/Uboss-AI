@@ -93,6 +93,32 @@ async def signal_step_completed(client: Client, *, workflow_id: str) -> None:
     await handle.signal("step_completed")
 
 
+async def wake_run(settings: Settings, workflow_id: str | None) -> None:
+    """Tell a waiting run that the step it was blocked on is finished.
+
+    Connect and signal in one call, because every caller does both and every caller needs the
+    same failure: the person's work is already committed, so a failure here loses nothing — but
+    it must be *reported*, or a run sits waiting on a step somebody already completed and nothing
+    on the screen says why.
+
+    `None` is not an error. A task whose run has gone has nothing to wake, and refusing would
+    make the absence of a run look like a fault in the decision that was just recorded.
+    """
+    if workflow_id is None:
+        return
+    try:
+        client = await connect(settings)
+        await signal_step_completed(client, workflow_id=workflow_id)
+    except DependencyUnavailable:
+        raise
+    except Exception as cause:
+        log.warning("run_wake_failed", workflow_id=workflow_id, error=type(cause).__name__)
+        raise DependencyUnavailable(
+            "Your work was saved, but the run could not be told to continue. It will need to be "
+            "resumed once the workflow service is back."
+        ) from cause
+
+
 async def cancel_run(client: Client, *, workflow_id: str) -> None:
     """Stop a workflow. The row is already marked cancelled by the caller.
 

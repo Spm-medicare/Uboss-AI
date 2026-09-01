@@ -62,14 +62,29 @@ If the API is not running it says so, rather than showing a placeholder.
 
 ```bash
 # backend (cwd: backend/)
-uv run ruff check .          # must be clean
-uv run mypy src              # must be clean
+uv run ruff check . ../tests   # must be clean — CI lints the tests too
+uv run mypy src                # must be clean
+
+# tests (cwd: the repository root, not backend/)
+backend/.venv/Scripts/python -m pytest        # Windows
+backend/.venv/bin/python -m pytest            # everything else
 
 # frontend (cwd: frontend/)
 npm run lint
 npm run typecheck
+npm test
 npm run build
 ```
+
+**The tests run from the root**, which `pytest.ini` explains: they exercise the schema — policies,
+triggers, grants — as much as the Python, so they need the repo root on the path for `tests` and
+`backend/src` for `uboss`. Run them from `backend/` and pytest finds no tests and says so cheerfully.
+
+They need `UBOSS_MIGRATION_DATABASE_URL` and the rest of `backend/.env` in the environment, because
+a throwaway database is built by running the migrations. On Git Bash: `set -a; . ./backend/.env; set
++a`. Anything in that file becomes a real environment variable, which is worth knowing — a test that
+asserts what the product concludes from *unset* configuration has to pass the values it means
+explicitly, or it ends up asserting against your machine. Decision 58 is the one that got caught.
 
 ## Secrets
 

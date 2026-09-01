@@ -17,12 +17,13 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from uboss.core.context import SecurityContext
-from uboss.core.errors import NotAuthenticated
+from uboss.core.errors import NotAuthenticated, ValidationFailed
 from uboss.core.permissions import Action, Grant, actions_from_rows
 from uboss.core.settings import Settings
 from uboss.db.base import bind_session_lookup, bind_tenant, bind_verified_user
@@ -38,7 +39,11 @@ from uboss.modules.identity.models import (
     RolePermission,
     Session,
 )
-from uboss.modules.identity.schemas import CurrentUser, WorkspaceSummary
+from uboss.modules.identity.schemas import CurrentUser, ProfileUpdate, WorkspaceSummary
+
+#  Imported for one line: the digest reads its own copy of a person's timezone, and
+#  `update_profile` keeps the two from diverging. See the note there.
+from uboss.modules.notifications.models import NotificationSettings
 from uboss.modules.tenancy.models import Tenant
 
 #: Consecutive failures before the account is held closed for a while. High enough that a person
@@ -585,6 +590,90 @@ async def prove_password_for_step_up(
         ip_address=ip_address,
     )
     return expires_at
+
+
+async def update_profile(
+    session: AsyncSession,
+    context: SecurityContext,
+    payload: ProfileUpdate,
+) -> Membership:
+    """Change what a person is called, what they do, and which zone they read times in.
+
+    **The membership owns a person's timezone**, and until now nothing wrote it. `describe()` has
+    always read `membership.timezone or tenant.timezone`, and the whole frontend formats every
+    instant with what it returns — so somebody working in Dubai read a workspace of Kolkata times
+    and had no way to change it. The one control that looked like it should was the notification
+    digest's own timezone, which only decides when a digest is sent.
+
+    Both are written here, deliberately. The membership is the owner; the notification settings'
+    own copy is kept in step because `digest_worker.send_due` reads that one, and a person whose
+    screen shows
+    Dubai must not receive their digest at Kolkata's eight o'clock. One column is the right
+    end state and belongs with the rest of the Settings work; two that cannot diverge is the honest
+    version of it today.
+
+    No permission check beyond being signed in: this is a person editing themselves. Changing
+    *somebody else's* name is a different act, needs `manage_access`, and has no route.
+    """
+    membership = await session.get(Membership, context.membership_id)
+    if membership is None:  # pragma: no cover — the session was resolved from this row
+        raise NotAuthenticated("Your session has ended. Sign in again.")
+
+    changed: list[str] = []
+
+    if payload.display_name is not None and payload.display_name.strip():
+        name = payload.display_name.strip()
+        if name != membership.display_name:
+            membership.display_name = name
+            changed.append("display_name")
+
+    if payload.job_title is not None:
+        title = payload.job_title.strip() or None
+        if title != membership.job_title:
+            membership.job_title = title
+            changed.append("job_title")
+
+    if payload.timezone is not None:
+        zone = payload.timezone.strip()
+        try:
+            ZoneInfo(zone)
+        except (ZoneInfoNotFoundError, ValueError) as cause:
+            #  Validated against the system's zone database rather than a list kept in the code.
+            #  The same rule `jobs/recurrence.py` applies to a schedule, and the same wording.
+            raise ValidationFailed(
+                f"“{zone}” is not a timezone this system knows. Use an IANA name such as "
+                "“Asia/Kolkata”."
+            ) from cause
+        if zone != membership.timezone:
+            membership.timezone = zone
+            changed.append("timezone")
+        #  Kept in step, for the reason in this function's docstring.
+        settings_row = (
+            await session.execute(
+                select(NotificationSettings).where(
+                    NotificationSettings.tenant_id == context.tenant_id,
+                    NotificationSettings.membership_id == context.membership_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if settings_row is not None and settings_row.timezone != zone:
+            settings_row.timezone = zone
+
+    if changed:
+        await session.flush()
+        await audit.record(
+            session,
+            tenant_id=context.tenant_id,
+            action="profile.updated",
+            resource_type="membership",
+            resource_id=context.membership_id,
+            actor=context,
+            #  Which fields, not their values. A name is personal data, and an audit trail that
+            #  copies it is a second place it lives with none of the retention rules of the first.
+            detail={"fields": changed},
+        )
+
+    return membership
 
 
 def describe(

@@ -288,6 +288,17 @@ async def test_one_provider_account_cannot_be_linked_to_two_people(
 
 
 # ------------------------------------------------------------------ what is configured
+#
+# `_env_file=None` on every Settings below, and it is not decoration. `Settings` reads `.env` by
+# default, so a developer with SMTP or a provider configured locally would have these tests assert
+# against *their machine* rather than against the code — passing here and failing in CI, or the
+# reverse. What is under test is what the class concludes from the values it is given.
+#
+# `_env_file=None` turned out not to be enough, and it took a real SMTP account in a local `.env`
+# to show it: pydantic-settings ignores the *file* when told to, and still reads the *environment*,
+# which is where a shell that has sourced that file puts everything. So the fields under test are
+# now passed explicitly — an argument beats an environment variable — and the test finally asserts
+# what its own heading claims.
 
 
 def test_no_provider_is_offered_without_credentials() -> None:
@@ -297,8 +308,18 @@ def test_no_provider_is_offered_without_credentials() -> None:
     a button that could not complete a sign-in is not something the interface can render.
     """
     settings = Settings(
+        _env_file=None,
         database_url="postgresql+psycopg://x:y@localhost/z",  # type: ignore[arg-type]
         auth_signing_key="x" * 32,  # type: ignore[arg-type]
+        #  Named, so an ambient value cannot supply them. This is the unconfigured deployment.
+        google_client_id="",
+        google_client_secret="",  # type: ignore[arg-type]
+        microsoft_client_id="",
+        microsoft_client_secret="",  # type: ignore[arg-type]
+        smtp_host="",
+        smtp_username="",
+        smtp_password="",  # type: ignore[arg-type]
+        mail_from_address="",
     )
     assert settings.enabled_oauth_providers == ()
     assert settings.mail_is_configured is False
@@ -311,19 +332,26 @@ def test_a_provider_with_only_half_its_credentials_is_not_offered() -> None:
     offering the button then would fail at the far end rather than here.
     """
     settings = Settings(
+        _env_file=None,
         database_url="postgresql+psycopg://x:y@localhost/z",  # type: ignore[arg-type]
         auth_signing_key="x" * 32,  # type: ignore[arg-type]
         google_client_id="an-id-with-no-secret",
+        google_client_secret="",  # type: ignore[arg-type]
+        microsoft_client_id="",
+        microsoft_client_secret="",  # type: ignore[arg-type]
     )
     assert settings.enabled_oauth_providers == ()
 
 
 def test_a_fully_configured_provider_is_offered() -> None:
     settings = Settings(
+        _env_file=None,
         database_url="postgresql+psycopg://x:y@localhost/z",  # type: ignore[arg-type]
         auth_signing_key="x" * 32,  # type: ignore[arg-type]
         google_client_id="an-id",
         google_client_secret="a-secret",  # type: ignore[arg-type]
+        microsoft_client_id="",
+        microsoft_client_secret="",  # type: ignore[arg-type]
     )
     assert settings.enabled_oauth_providers == ("google",)
 
@@ -332,6 +360,7 @@ def test_the_redirect_uri_comes_from_configuration_and_not_a_request() -> None:
     """It is registered with the provider, so a value taken from a `Host` header — which is
     attacker-controlled — would be a way to redirect an authorisation somewhere else."""
     settings = Settings(
+        _env_file=None,
         database_url="postgresql+psycopg://x:y@localhost/z",  # type: ignore[arg-type]
         auth_signing_key="x" * 32,  # type: ignore[arg-type]
         public_base_url="https://app.example.test/",

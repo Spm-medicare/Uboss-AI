@@ -15,7 +15,10 @@ from fastapi import APIRouter
 from uboss.core.errors import ErrorEnvelope
 from uboss.modules.agents.agent_api import router as agents_router
 from uboss.modules.agents.agent_publish_api import router as agent_publish_router
+from uboss.modules.agents.factory_api import router as skill_factory_router
 from uboss.modules.agents.resolver_api import router as skills_router
+from uboss.modules.approvals.api import router as approvals_router
+from uboss.modules.copilot.api import router as copilot_router
 from uboss.modules.hierarchy.api import router as hierarchy_router
 from uboss.modules.hierarchy.import_api import router as hierarchy_import_router
 from uboss.modules.identity.api import router as identity_router
@@ -23,12 +26,16 @@ from uboss.modules.identity.auth_api import router as auth_router
 from uboss.modules.jobs.api import router as jobs_router
 from uboss.modules.jobs.publish_api import router as job_publish_router
 from uboss.modules.jobs.schedule_api import router as job_schedule_router
+from uboss.modules.notifications.api import router as notifications_router
 from uboss.modules.objectives.api import router as objectives_router
 from uboss.modules.objectives.proposal_api import router as objective_plan_router
 from uboss.modules.objectives.publish_api import router as objective_publish_router
+from uboss.modules.privacy.api import router as privacy_router
 from uboss.modules.runtime.api import router as runs_router
+from uboss.modules.schedules.api import router as schedule_firings_router
 from uboss.modules.supervisors.api import router as supervisors_router
 from uboss.modules.supervisors.publish_api import router as supervisor_publish_router
+from uboss.modules.tasks.api import router as tasks_router
 
 #: Every failure any route can produce, declared once.
 #
@@ -66,10 +73,22 @@ def build_v1_router() -> APIRouter:
     router.include_router(jobs_router)
     router.include_router(job_schedule_router)
     router.include_router(job_publish_router)
+    #  **The Factory before the registry, and the order is load-bearing.** The registry ends with
+    #  `GET /skills/{skill_id}`, and FastAPI matches routes in registration order — so with the
+    #  registry first, `/skills/drafts` was read as a skill id and answered 422 about a malformed
+    #  uuid. Mounted the other way round, the literal path wins and `{skill_id}` still catches
+    #  everything else. Found by calling the route rather than by reading it.
+    router.include_router(skill_factory_router)
     router.include_router(skills_router)
     router.include_router(agents_router)
     router.include_router(runs_router)
+    router.include_router(tasks_router)
+    router.include_router(approvals_router)
+    router.include_router(schedule_firings_router)
+    router.include_router(notifications_router)
     router.include_router(agent_publish_router)
+    router.include_router(copilot_router)
+    router.include_router(privacy_router)
     router.include_router(supervisors_router)
     router.include_router(supervisor_publish_router)
 

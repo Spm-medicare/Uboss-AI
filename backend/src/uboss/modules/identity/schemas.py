@@ -68,6 +68,27 @@ class WorkspaceSelectionRequest(BaseModel):
     workspace: str = Field(min_length=1, max_length=63)
 
 
+class ProfileUpdate(BaseModel):
+    """What a person may change about themselves.
+
+    Three fields, and all three are theirs: what they are called, what they do, and which zone
+    their times are shown in. Not their email — that is how they sign in, and changing it is an
+    identity change with its own verification — and not their roles, which are somebody else's
+    decision by definition.
+
+    `exclude_unset` at the call site means a field left out is left alone. A form that has not
+    finished loading therefore cannot blank a name.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    display_name: str | None = Field(default=None, min_length=1, max_length=200)
+    job_title: str | None = Field(default=None, max_length=200)
+    #: An IANA name — `Asia/Kolkata`, `Europe/London`. Validated against the system's own database
+    #: rather than a list kept here, which would be a list that goes stale.
+    timezone: str | None = Field(default=None, min_length=1, max_length=64)
+
+
 class CurrentUser(BaseModel):
     """Who is signed in, and what they may do.
 

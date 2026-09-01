@@ -341,7 +341,8 @@ Only after Gate 1. Navigation is fixed by `PLAN.md` §3; nothing may be added to
 | AS.5 | ✅ Keyboard, focus order, reduced motion, mobile drawer |
 | AS.6 | ✅ Profile, workspace switcher, sign-out |
 
-Search shows an honest unavailable state until Gate 7. Notifications and Copilot show governed
+Search shows an honest unavailable state until Gate 7 — connected in 7.7, reading the Copilot’s
+own permission-filtered retrieval with the model left out. Notifications and Copilot show governed
 empty states. **No fake activity, no invented counts, no disconnected dashboard cards.**
 
 ---
@@ -424,9 +425,18 @@ Agent requirement → Search Skill Registry → Deterministic compatibility gate
 | 5.3 | Agent schema and §9's ten form groups, with skill selection | ✅ |
 | 5.4 | Sandbox tests and publish — immutable `AgentVersion`, tests as a publish gate | ✅ |
 | 5.5 | The Agent Builder screen, with the Registry inside it | ✅ |
+| 5.6 | The Skill Factory — private drafts, six tests, approval, frozen version | ✅ 14 tests · screen 18/18 |
 
 **Passes when** a search returns candidates a gate then refuses for a stated reason, an Agent
 publishes only after its tests pass, and no skill can publish itself.
+
+**The gap this gate was marked done with.** §39's flow ends *"→ Create private Skill Draft → Sandbox
+tests → Human approval → Versioned active Skill"*, and the resolver has returned that route since
+5.2 with nothing at the other end of it — so a third of Gate 5's scope sentence, *"private Skill
+Factory Drafts inside Agent Builder"*, did not exist. 5.6 is that, and decision 61 records what it
+found on the way: a composite `ON DELETE SET NULL` that turned private skills into catalogue rows
+when a person was deleted, a schema-name collision that renamed the Objective's `VersionRead`, and a
+route order that made every Factory route answer 422.
 
 **Not a sidebar module.** §39: *"Skill Registry is internal to Agent Builder."* Nothing here adds
 a menu item — §3 forbids it.
@@ -749,10 +759,20 @@ shown working.
 | 6.3 | §10's form groups 4–9 — order, dependency, quality gates, budget, SLA, escalation | ✅ |
 | 6.4 | Failure simulation and publish — immutable `SupervisorVersion` | ✅ |
 | 6.5 | The Supervisor screen | ✅ |
+| 6.6 | Both kinds reachable — the create dialog, the department on the card and the strip | ✅ 5 tests · screen 17/17 |
 
 **Passes when** the two scopes can be set to disjoint sets and both hold, a handler is refused an
 action above their role with the reason recorded, a Supervisor publishes only after its failure
 simulation passes, and nothing in it can grant a permission.
+
+**A gap found after the gate was marked done.** §10 has two kinds of Supervisor and the create
+control sent `kind: "personal"` as a literal, so a Department Supervisor could be created by an API
+client and by nobody using the product. Everything behind the screen already supported it — the
+schema, the service's two refusals, migration 0023's constraint and the tests that prove it — which
+is how a gap like this survives a green suite: every test asked what the backend refuses and none
+asked what a person can reach. Decision 60 records what was missing, and the one question it raised
+for the client: whether a department Supervisor's supervised members must belong to that department,
+and whether *in a department* means the node or its whole subtree.
 
 **Not a second permission system.** §14's `Action` vocabulary and the existing guard decide what a
 person may do in the workspace. A handler role narrows that *further* for one Supervisor; it never
@@ -959,10 +979,44 @@ from Supervisor to the to-do list, with a new test asserting both Builders now l
 
 9 backend tests, 342 total; 29 on the frontend. `tsc`, `eslint`, `vitest` and `next build` clean.
 | 7 | Temporal runtime, to-do, approvals, notifications, governed Copilot | 3–4 weeks |
-| 8.1 | Settings | |
+| 8.1 | Settings | ✅ 9 tests · screen 27/27 |
 | 8.2 | Privacy / DPDP | |
 | 8.3 | Enterprise identity, security, reliability | |
 | 8.4 | Final test campaign — E2E, security, load, DR, AI evaluation, pilot UAT | 4–6 weeks |
+
+## Gate 8.1 — Settings
+
+§13: *"Dedicated Settings page/panel with category navigation left and focused content right."*
+Seventeen categories, four of them working, thirteen saying which gate builds them and what they will
+hold. `/settings`, reachable from the sidebar row that read *"Not built yet — Gate 8"* for seven
+gates and from the header menu the person's own name opens.
+
+| | |
+|---|---|
+| Profile — name, job title, timezone | `PATCH /auth/me`, new |
+| Appearance — theme, reduced motion | theme real; motion reported from the system, never toggled |
+| Notifications — six categories, quiet hours, digest | real since 7.5, unchanged |
+| Security — where you are signed in, ending one | `GET`/`DELETE /auth/sessions`, existing |
+| The other thirteen | listed, opened, labelled with their gate |
+
+**The defect this closed.** `membership.timezone` decides how every instant in the product is shown
+to a person, and **no route wrote it** — so somebody outside the workspace's zone read everything in
+the wrong one, and the control that looked like it should help only moved their digest. It is
+writable now, and the digest's own copy is kept in step. `GET /notifications/settings` also answered
+`Asia/Kolkata` for anybody with no settings row, which made two sections of this very page disagree
+about one fact.
+
+**Three things the browser test found**, all mine and all the kind a screen hides: six invented
+notification categories where the backend has six real ones, an idempotency key that named the
+destination instead of the transition — so changing a setting back and forth replayed the first
+answer and did nothing — and a first test that called a route through a client it never used.
+Decision 62 has the detail.
+
+**Not here on purpose.** Locale: §13's heading says *"timezone/locale"* and there is one language
+pack, so a locale picker would offer one option. Step-up and impact summaries: §13 requires them for
+*risky* settings, and none of the four built sections is workspace-wide — the risky categories are
+among the thirteen, and `require_step_up` is already waiting for them.
+
 
 Broken into sub-steps when each is reached. Forty invented sub-steps for Gate 6 today would read
 as a plan and behave as a guess.
@@ -1033,19 +1087,64 @@ through, with the model on the outside of it.
 
 | | | |
 |---|---|---|
-| 7.1 | Runs — the durable executor, `runs`/`run_steps`/`run_events`, crash and retry | ✅ |
-| 7.2 | Tasks and the To-do list — §11's five tabs, complete, input, evidence, delegate | ⬜ |
-| 7.3 | Approvals — request, decide with reason, separation of duty, the Approvals tab | ⬜ |
-| 7.4 | Schedules that fire — Gate 4's configuration driving real runs, DST and overlap | ⬜ |
-| 7.5 | Notifications — six categories, preferences, digest, grouping, the bell drawer | ⬜ |
-| 7.6 | Run evidence — what a run read, did, produced and who decided, exportable | ⬜ |
-| 7.7 | The governed Copilot — permission-filtered retrieval, preview, confirmation, audit | ⬜ |
+| 7.1 | Runs — the durable executor, `runs`/`run_steps`/`run_events`, crash and retry | ✅ 8 tests + 6 replay |
+| 7.2 | Tasks and the To-do list — §11's five tabs, complete, input, evidence, delegate | ✅ 7 tests |
+| 7.3 | Approvals — request, decide with reason, separation of duty, the Approvals tab | ✅ 8 tests |
+| 7.4 | Schedules that fire — Gate 4's configuration driving real runs, DST and overlap | ✅ 7 tests |
+| 7.5 | Notifications — six categories, preferences, digest, grouping, the bell drawer | ✅ 9 tests |
+| 7.6 | Run evidence — what a run read, did, produced and who decided, exportable | ✅ 5 tests · screen 14/14 |
+| 7.7 | The governed Copilot — permission-filtered retrieval, preview, confirmation, audit | ✅ 35 tests · screen 23/23 · panel 7 |
 
 **Passes when** a published Job runs end to end without mock logic, a worker killed mid-step
 resumes without repeating an external effect, a schedule fires correctly across a DST boundary, a
 human step appears in the right person's To-do and its completion continues the run, an approval
 is refused to its own author, every run can be shown as evidence, and the Copilot is refused a
 publish, an approval and a grant.
+
+## Gate 7 — closed, and what its exit criteria actually rest on
+
+`PLAN.md`'s exit for this gate is two sentences: *"crash/retry/idempotency/outbox recovery tests
+pass. Copilot permission-ceiling, cross-tenant leakage, prompt-injection, source-grounding,
+mutation-preview and forbidden-action tests pass."* Each half is named here against the file that
+proves it, because a gate closed on a summary is a gate closed on somebody's memory.
+
+**Crash, retry, idempotency, outbox recovery**
+
+| | |
+|---|---|
+| A worker killed mid-step does not repeat the step | `test_a_killed_worker_does_not_do_it_twice.py` — 6 |
+| An event survives a worker killed mid-publish, and is retried then given up on | `test_outbox_relay.py` — 10 |
+| A repeated command replays instead of running again | `test_idempotency.py` — 9 |
+| A run executes the version and not the draft; a failed step fails the run and says why | `test_runs.py` — 8 |
+| A schedule fires across a DST boundary and never twice for one instant | `test_job_schedules.py` — 20, `test_schedule_firing.py` — 7 |
+| A human step becomes somebody's task, and completing it continues the run | `test_tasks.py` — 7 |
+| An approval is refused to its own author | `test_approvals.py` — 8 |
+| Every run can be shown as evidence | `test_run_evidence.py` — 5 |
+| Six notification categories, preferences, digest | `test_notifications.py` — 9 |
+
+**The Copilot's six**
+
+| | |
+|---|---|
+| Forbidden action | `test_the_copilot_cannot_decide.py` — 6 |
+| Permission ceiling, cross-tenant leakage | `test_copilot_retrieval_is_filtered.py` — 5 |
+| Source grounding, prompt injection | `test_the_copilot_answers_from_sources.py` — 10 |
+| Mutation preview | `test_a_copilot_proposal_never_saves.py` — 10 |
+
+Screens: the evidence screen 14/14 and the Copilot drawer and search box 23/23 in a browser, plus
+7 component tests for the three answer states a live run cannot reach without model credit.
+
+### The one thing a run still does not do
+
+`step.perform` records that no executor is wired and moves on, and it says so in the step's result
+so a run's evidence never implies work that did not happen. That is deliberate and stated in
+`activities.py`: what 7.1 delivered is the durable shape — begun, attempted, recorded, replay-safe —
+and a step's *business* effect (a model call, an integration, a tool) is not named in any of Gate
+7's own exit criteria. Wiring one before the shape was proven against a killed worker would have
+meant debugging both at once; the shape is now proven, by the six replay tests above.
+
+So a published Job runs end to end through the runtime with no mock logic anywhere in the runtime.
+What it performs at an AI step is nothing yet, honestly labelled.
 
 ## 7.1 — Runs, and why this one comes first
 
@@ -1105,3 +1204,231 @@ And two gaps in the suite's own fixture: it never cleared `jobs.published_versio
 the agent's and the supervisor's), so no test could ever tear down a published Job; and it did not
 know about `runs`, whose `RESTRICT` against a job version is exactly what stops a version being
 deleted while something that executed it still exists.
+
+## 7.2 — Tasks, and why nothing on this screen can be created by hand
+
+Migration 0032, `modules/tasks/`, and `/todo`. A task exists because a run reached a human step —
+there is **no `POST /tasks`** and no "add a task" control. A route that made one would be a way to
+put work into the governed list without a governed method behind it, which is the whole distinction
+between this and a notes app with a tick box.
+
+**Three decisions worth the reader's time.**
+
+* **WHO is resolved once, when the task is made.** §8's rules are tried in the author's order and
+  the answer is written into `assignee_membership_id`. Somebody who transfers next week does not
+  silently lose work already given to them, and two people opening the To-do list either side of a
+  transfer see the same list. A rule that matches nobody produces an **unassigned** task that says
+  so — inventing an assignee to avoid a blank puts work on somebody nobody chose.
+* **Closing a task closes its step, in one transaction.** A done task on a step still `waiting` is
+  a run nobody can explain. The Temporal signal is sent *after* that commits; it carries nothing,
+  so a signal that arrived first would wake the workflow to find the step unchanged. The step
+  records the outcome, so a run's evidence answers "what happened at step 1" without a join.
+* **Declining is not failing.** The task closes, the step stays `waiting`, and a fresh unheld task
+  takes its place. A runtime that failed a run because one person said "not mine" would teach
+  people never to decline. Delegating closes the original as `delegated`, not `done`: a report
+  counting delegations as completions would overstate what got done.
+
+**The screen shows only what the API returned.** Three tab badges, from `/tasks/counts`; *All* and
+*Done* carry no number, because a fourth count worked out from the rows on screen would change with
+the kind filter and disagree with the tab it labels. The sidebar's badge is the same query, fetched
+once in the shell rather than per sidebar — and a failed count draws nothing, since an invented `0`
+says "nothing is waiting on you", which is a statement rather than an absence.
+
+**Proven end to end against the running stack**, not asserted. A published version with a human
+first step was run: the step went to `waiting`, the task appeared in *Mine* assigned by the `user`
+rule, and completing it finished the step, woke the workflow, ran the second step and recorded
+`run.succeeded` — one `step.started` and one `step.succeeded` each, both at `attempt 1`. Declining
+produced an unassigned replacement; reassigning moved it to another person; completing somebody
+else's task was refused `403`, and `approved` on a work task `422`.
+
+**Two defects found on the way.**
+
+* `refuse_change()` fired during workspace teardown once tasks cascaded from runs, so the fixture
+  now lifts the `task_comments` trigger the way it already lifts `run_events`.
+* Four settings tests built `Settings(...)` without `_env_file=None`, so they asserted against
+  whatever the developer had configured locally — passing on a clean machine and failing on one
+  with SMTP set up. Now pinned to the values under test.
+
+## 7.3 — Approvals, and the one rule that cannot live in a single place
+
+Migration 0033, `modules/approvals/`, and the Approvals tab. §17 lists `approvals` beside `tasks`
+as its own runtime table, and the reason shows the moment you try to answer an auditor from
+`tasks` alone: a task records *what somebody did*, an approval has to record **who asked, who was
+entitled to decide, by when, and what happened if nobody did** — four facts with no column on a
+task and no business acquiring one, because they are meaningless for the other two kinds.
+
+**Separation of duty is enforced three times, and none of them is redundant.**
+`guard.refuse_self_approval` at the route, with a sentence somebody can read; `service.decide`
+before anything is written, so a caller that skipped the guard still cannot record one; and
+`ck_approvals_not_self` in the database, for the row written by a script or by a route somebody
+adds next year without reading the module. The doubling is not belt-and-braces: an approval that
+was never really a second pair of eyes is **indistinguishable in the data** from one that was.
+
+**Withdrawn is not rejected.** A cancelled or failed run closes its pending approvals as
+`withdrawn`. Nobody said no — the question stopped being asked — and a refusal nobody made would
+sit in somebody's record as though they had made it, which is a lie the data cannot later correct.
+
+**Escalation is recorded, not routed.** A Job's `escalation_to` is free text a person typed, so it
+is copied as text; `escalated_to_membership_id` is set only when somebody escalates to a named
+person, and the approval **stays pending** — a state that closed it would lose the fact that the
+question is still open, which is the entire reason it was escalated. Nothing fires on `due_at`
+yet; that sweep is 7.4's and 7.5's, and a column implying an automatic escalation nothing performs
+would be worse than no column.
+
+### The §11 tabs were wrong, and are now right
+
+7.2 shipped *Mine · Unassigned · Following · All · Done*. §11 names five tabs and they are
+**Assigned to me · Approvals · Input requested · Following · Completed**. `Unassigned` and `All`
+were invented. The five are now exactly the plan's; `unassigned` survives as a **filter**, offered
+only to somebody holding `assign`, because work no WHO rule matched has to be reachable by
+whoever may hand it out or it appears in nobody's list at all. It is documented as a filter rather
+than quietly re-added as a sixth tab.
+
+**Proven end to end on the running stack.** An approval step raised an approval carrying the
+question in the author's words, the requester, the approver and the escalation label. The
+requester was refused `403` — *"You submitted this, so someone else has to approve it."* A
+rejection with no reason was refused `422`. The approver signed off with a reason, and the
+approval, the task, the run step and the run all read `approved / done / succeeded / succeeded`
+together. Escalating left the state `pending`; cancelling the run left the approval `withdrawn`
+with no decider.
+
+**One defect found, and it was found live rather than by reasoning.** Escalation accepted a
+membership id without checking it belonged to this workspace. `escalated_to_membership_id` is a
+plain UUID column with no foreign key, and row-level security does not apply to a table's owner
+unless the table is `FORCE`d — so an id from elsewhere was written without complaint and then
+resolved to no name on every screen that read it. `assignment.is_active` now compares the tenant
+**explicitly**, so the answer no longer depends on which database role happens to be connected;
+reassignment and delegation went through the same function and are fixed with it.
+
+## 7.4 — Schedules that fire, and the ledger that makes firing exactly-once
+
+Migrations 0034–0036, `modules/schedules/`, `uboss.scheduler_worker`, and the history beside the
+preview on the Job's schedule section. Gate 4 built the configuration and `jobs/recurrence.py`
+already answered *when*, purely and testably. This is what acts on the answer — and the hard part
+was never the timer.
+
+**The ledger comes before the run.** Every scheduler is eventually run twice at the same moment:
+a second worker started by mistake, a deploy that overlaps, a container restarted before anybody
+noticed the first was alive. Each occurrence is written to `schedule_firings` and committed
+*before* a run is started, so the second worker's insert is refused by
+`uq_schedule_firings_occurrence` rather than by a lock somebody has to remember to take. A
+nightly reconciliation that ran twice is worse than one that did not run at all, because the
+second one looks legitimate.
+
+**The scheduler has no clock and no `SecurityContext`.** `tick()` takes `now`, so a test walks a
+schedule across the second Sunday of March without waiting for March. And it has no actor,
+because there is nobody: a scheduled run's `started_by_membership_id` is null, and separation of
+duty reads that as "there is nobody to separate the approver from" rather than silently naming
+whoever configured the schedule months ago. `runtime.start` was refactored to take
+`tenant_id` and an **optional** `actor` for exactly this.
+
+**Two connections, deliberately.** Discovery — *which workspaces have a schedule switched on* —
+runs on `uboss_relay`, the system's one cross-tenant credential, granted `SELECT` on
+`job_schedules` and nothing else by 0035. All the work runs on the ordinary application
+connection with the tenant bound, so every row the scheduler writes passes the same policies a
+request does. A scheduler whose *writes* were cross-tenant would be a scheduler whose bug reaches
+another company.
+
+**A skip is not a failure**, and every skip carries its reason — the overlap policy, the
+concurrency ceiling, a holiday, a job with no published version. A schedule that skips every bank
+holiday is behaving correctly, and a history that showed only the runs would make it look broken
+twice a year. `requires_approval_per_run` records `awaiting_approval` rather than skipping
+silently: a run that quietly did not happen is indistinguishable from a scheduler that is broken.
+
+**Proven live, and three real defects came out of it.**
+
+* The savepoint-and-catch claim left the refused row **pending** in the session, so the tick's own
+  commit re-issued it and the whole transaction died with a `PendingRollbackError` three
+  functions from the cause. Two attempted fixes were each wrong in the same way before the right
+  answer — `INSERT … ON CONFLICT DO NOTHING` — which raises nothing and leaves nothing in the
+  unit of work. The suite had missed it because the test ran both ticks in one uncommitted
+  transaction and so never flushed twice; it now uses a session per pass, as the worker does.
+* `ON DELETE SET NULL` on a **composite** foreign key nulls the whole key, `tenant_id` included —
+  and that column is `NOT NULL`, so `DELETE FROM runs` failed on a table three joins away.
+  Narrowing it to `SET NULL (run_id)` then broke `ck_schedule_firings_started_has_run`, because
+  the two rules contradict each other. Resolved by deciding what a firing *is*: evidence. The
+  foreign key is gone (0036) and the id stays as a plain value — *"run 47 was started and has
+  since been removed"* is the truth; a null is the loss of it. `tasks` decides the opposite way
+  and should: a task has no meaning without its run, a firing is a statement about the past.
+* The first DST test used Europe/London, whose spring gap is 01:00→02:00 — so its 02:30 exists on
+  both sides and the test asserted nothing. America/New_York's gap is 02:00→03:00, where 02:30
+  genuinely does not exist. The code was right and the test was wrong, which is why it is now
+  pinned to UTC instants rather than to prose.
+
+A live hourly schedule was then fired end to end: the occurrence was claimed, marked
+`was_missed`, a run was created with `trigger = schedule` and **no** starter, the workflow
+started, and the run reached its human step and waited. A second pass found the occurrence
+already claimed and did nothing.
+
+## 7.5 — Notifications, and the one direction this feature fails in
+
+Migration 0037, `modules/notifications/`, `uboss.digest_worker`, and the bell drawer that has
+been showing a governed empty state since AS.5. §12's six categories, its three tabs, per-category
+delivery, quiet hours and the digest.
+
+A notification system fails in exactly one direction: it becomes noise, people mute it, and then
+the one that mattered arrives in a channel nobody reads. Every decision below is against that.
+
+**Deduplication is a constraint, not a cleanup job.** `uq_notifications_unread_dedupe` is a
+partial unique index on `(membership_id, dedupe_key)` where the row is unread, so a repeat is an
+UPDATE — `occurrences` up, `last_at` forward. Five failures of one schedule overnight are one
+line saying *"failed 5 times"*. Five identical lines is the shape people mute. The index is
+**partial** on purpose: once a line has been read the constraint stops applying, because
+something recurring after you acknowledged it is genuinely new — an acknowledged problem
+recurring silently forever is the worse failure.
+
+**`dedupe_key` and `group_key` answer different questions** and collapsing them loses one.
+*"This is the same fact"* folds; *"these belong together"* does not — nine task assignments from
+one run are nine things a person may act on individually, shown under one heading.
+
+**Nobody is told what they just did.** Checked once in `raise_for` rather than at each of the
+dozen call sites, because one call site forgetting is all it takes. Proven live: a run started by
+the same person the task was assigned to produced *no* notification, which is correct.
+
+**Quiet hours defer email and never touch the bell.** An in-app line is not an interruption — it
+is a list that is there when somebody looks — so quiet hours hold back mail and let the bell fill
+up. A bell that also went quiet would hide the work that arrived overnight, which is exactly what
+people check it for in the morning. Deferred, never dropped: it goes to the digest. And
+**security is never quiet** — *"somebody signed in from a new device"* at 2 a.m. is the one
+notification whose whole value is arriving at 2 a.m.
+
+**Preferences are absent by default.** No rows are written at sign-up; a person with no row gets
+`policy.py`'s defaults, and `GET /notifications/preferences` returns all six labelled `chosen:
+false` so a screen can say *"using the default"* rather than presenting a default as a decision.
+The alternative — six rows per member — is six rows to migrate whenever a category is added, and
+a stored `false` nobody chose is indistinguishable from one they did.
+
+**The digest is the third sweeping worker, and follows the established pattern exactly**:
+discovery on `uboss_relay` (0037 grants it `SELECT` on `notification_settings` and nothing else),
+work on the application connection with the tenant bound, and staging on the outbox rather than
+sending — so a digest is queued if and only if `last_digest_at` moved in the same transaction. An
+empty digest is not sent but `last_digest_at` still moves, so tomorrow's covers only tomorrow. A
+mail that says *"nothing happened"* is the one people write a filter for, and once the filter
+exists they stop seeing the ones that matter.
+
+**The email address is resolved at staging time and carried in the payload.** The relay worker has
+no grant on `users` and no tenant bound; widening that one cross-tenant credential so it could
+look a recipient up is precisely what migration 0008 warned against.
+
+### Two things this gate corrected in existing code
+
+* `runtime.start` took a `SecurityContext` and derived the tenant from it. A scheduled run has no
+  actor, so 7.4 had already been passing one in awkwardly; it now takes `tenant_id` explicitly and
+  an **optional** `actor`. A run nobody started says so, rather than naming whoever configured the
+  schedule months ago.
+* `tasks.reassign` overwrote `assignee_membership_id` before anything could read it, so the
+  previous holder — the one person who needs telling the work is no longer theirs — was
+  unrecoverable. Captured before the write now. Found by the seam map, not by the tests.
+
+### Found on the way
+
+* `NotificationRead` collided with §10's supervisor schema of the same name, which makes FastAPI
+  fully-qualify **both** and turns every generated type into a path. `test_contract` refuses that
+  and was right to; the bell's model is `BellNotification`.
+* `structlog` reserves `event` for the log message, so a notification's own event name silently
+  replaced it. Passed as `notification_event`.
+
+**Proven live**: an approval step raised two notifications for the approver — the task and the
+decision — each with the actor's name, `action_required`, and a deep link that is a **path**, so
+a deployment that moves domain does not rewrite everybody's history. The bell badge read 2. The
+same run started by its own assignee raised nothing at all.

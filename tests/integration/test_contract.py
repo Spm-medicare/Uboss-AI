@@ -85,6 +85,13 @@ def test_every_mutating_route_requires_an_idempotency_key(
     #  identically every time, so replaying it is already what it does — and an unauthenticated
     #  browser has no sensible key to derive.
     #
+    #  `copilot/ask` is the one exemption that is not about sessions. It writes no domain state at
+    #  all — the Copilot has no route that applies anything, which `preview.py` explains at length
+    #  — so there is no duplicate effect for a key to prevent. And a key *would* cost something
+    #  real: an idempotent replay returns the stored response without writing an audit row, so the
+    #  second time somebody asked a question would vanish from the trail. §12 asks for audit
+    #  evidence of what was asked; two identical questions ten seconds apart are two questions.
+    #
     #  Listed exactly rather than matched on a prefix, so a new auth route has to be argued for
     #  here rather than inheriting the exemption by being under `/auth/`.
     allowed = {
@@ -94,6 +101,7 @@ def test_every_mutating_route_requires_an_idempotency_key(
         "POST /api/v1/auth/step-up/password",
         "POST /api/v1/auth/oauth/{provider}/callback",
         "POST /api/v1/auth/password/forgot",
+        "POST /api/v1/copilot/ask",
     }
     unexpected = sorted(set(missing) - allowed)
     assert not unexpected, f"mutating routes with no Idempotency-Key header: {unexpected}"
@@ -105,3 +113,24 @@ def test_the_error_envelope_is_part_of_the_contract(
     """The frontend should not keep a hand-written copy of what a failure looks like."""
     schemas = contract["components"]["schemas"]  # type: ignore[index]
     assert "ErrorEnvelope" in schemas
+
+
+def test_the_skill_factory_is_reachable_before_the_registrys_catch_all(
+    contract: dict[str, object],
+) -> None:
+    """A literal path and a `{id}` path under the same prefix, and the order decides which wins.
+
+    `GET /skills/{skill_id}` and `GET /skills/drafts` both match `/skills/drafts`, and FastAPI takes
+    the first one registered. With the registry mounted first, every Factory route answered 422
+    about a malformed uuid — which is what happened, and was found by calling the route rather than
+    by reading `router.py`.
+
+    Asserted on the published contract because that is where the order is visible: the paths appear
+    in registration order, so the literal one has to come first.
+    """
+    paths = list(contract["paths"])  # type: ignore[arg-type]
+    literal = paths.index("/api/v1/skills/drafts")
+    catch_all = paths.index("/api/v1/skills/{skill_id}")
+    assert literal < catch_all, (
+        "mount the Skill Factory's router before the registry's, or /skills/drafts is read as an id"
+    )

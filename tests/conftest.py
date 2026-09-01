@@ -307,6 +307,33 @@ async def two_workspaces(
         await session.execute(
             text("ALTER TABLE run_events DISABLE TRIGGER trg_run_events_append_only")
         )
+        #  A private skill's frozen version, from 0043. Append-only like every other version table,
+        #  and reachable now that the Skill Factory can produce one.
+        await session.execute(
+            text("ALTER TABLE skill_versions DISABLE TRIGGER skill_versions_append_only")
+        )
+        #  The privacy evidence tables, from 0044. Both are append-only by design — a consent and a
+        #  step of a rights request are evidence — so tearing a workspace down has to lift them, the
+        #  same narrow lift this fixture already makes for the audit trail.
+        await session.execute(
+            text("ALTER TABLE consent_records DISABLE TRIGGER consent_records_append_only")
+        )
+        await session.execute(
+            text("ALTER TABLE request_actions DISABLE TRIGGER request_actions_append_only")
+        )
+        #  0045's two: a retention run is the record that a disposal happened, and a breach action
+        #  is the decision log. Both refuse deletion by design, so a teardown has to lift them.
+        await session.execute(
+            text("ALTER TABLE retention_runs DISABLE TRIGGER retention_runs_append_only")
+        )
+        await session.execute(
+            text("ALTER TABLE breach_actions DISABLE TRIGGER breach_actions_append_only")
+        )
+        #  Tasks cascade from `runs`, and their comments cascade from tasks — so tearing a
+        #  workspace down deletes append-only rows, which the trigger refuses by design.
+        await session.execute(
+            text("ALTER TABLE task_comments DISABLE TRIGGER trg_task_comments_append_only")
+        )
         await session.execute(
             text(
                 "ALTER TABLE skill_resolver_decisions "
@@ -349,6 +376,17 @@ async def two_workspaces(
             await session.execute(
                 text(
                     "UPDATE agents SET published_version_id = NULL, status = 'archived' "
+                    "WHERE tenant_id = :t"
+                ),
+                {"t": workspace.tenant_id},
+            )
+            #  A private skill points at the version it published with RESTRICT, and
+            #  `ck_skills_published_has_version` refuses a published skill with no version — so the
+            #  status goes with the pointer, in one statement. Catalogue rows have neither and are
+            #  not this tenant's to touch: `tenant_id = :t` excludes them.
+            await session.execute(
+                text(
+                    "UPDATE skills SET published_version_id = NULL, status = 'archived' "
                     "WHERE tenant_id = :t"
                 ),
                 {"t": workspace.tenant_id},
@@ -396,8 +434,27 @@ async def two_workspaces(
                 "agent_escalation_rules",
                 "agent_steps",
                 "agents",
+                #  Privacy, in dependency order: a step points at its request, a request at a
+                #  hold, a consent at the notice version it was given against, and a notice at the
+                #  processing activity it describes. Every one of those is RESTRICT or SET NULL, so
+                #  the order is the schema's rather than a preference.
+                "breach_actions",
+                "breach_cases",
+                "retention_runs",
+                "retention_policies",
+                "processors",
+                "request_actions",
+                "data_principal_requests",
+                "legal_holds",
+                "consent_records",
+                "privacy_notice_versions",
+                "privacy_notices",
+                "processing_activities",
                 #  A decision points at the skill it chose with RESTRICT, so it goes first.
                 "skill_resolver_decisions",
+                #  And a frozen version points at the skill with RESTRICT too. `skill_tests` and
+                #  `skill_rules` cascade from the skill and need no line of their own.
+                "skill_versions",
                 "skills",
                 "job_tools",
                 "job_schedules",
@@ -489,6 +546,9 @@ async def two_workspaces(
             text("ALTER TABLE run_events ENABLE TRIGGER trg_run_events_append_only")
         )
         await session.execute(
+            text("ALTER TABLE task_comments ENABLE TRIGGER trg_task_comments_append_only")
+        )
+        await session.execute(
             text(
                 "ALTER TABLE skill_resolver_decisions "
                 "ENABLE TRIGGER skill_resolver_decisions_append_only"
@@ -502,6 +562,27 @@ async def two_workspaces(
                 "ALTER TABLE supervisor_versions "
                 "ENABLE TRIGGER supervisor_versions_append_only"
             )
+        )
+        #  Three that were disabled above and never turned back on — a hole worth naming, because
+        #  `ALTER TABLE … DISABLE TRIGGER` is a schema change and affects every session, not just
+        #  this one. Left off, an append-only test later in the run would pass because nothing was
+        #  guarding the table rather than because the guard worked. `skill_versions` was added with
+        #  the Skill Factory and the two privacy tables with 0044; the enable was missed each time,
+        #  which is why it is now the last thing this teardown does.
+        await session.execute(
+            text("ALTER TABLE skill_versions ENABLE TRIGGER skill_versions_append_only")
+        )
+        await session.execute(
+            text("ALTER TABLE consent_records ENABLE TRIGGER consent_records_append_only")
+        )
+        await session.execute(
+            text("ALTER TABLE request_actions ENABLE TRIGGER request_actions_append_only")
+        )
+        await session.execute(
+            text("ALTER TABLE retention_runs ENABLE TRIGGER retention_runs_append_only")
+        )
+        await session.execute(
+            text("ALTER TABLE breach_actions ENABLE TRIGGER breach_actions_append_only")
         )
         await session.commit()
 

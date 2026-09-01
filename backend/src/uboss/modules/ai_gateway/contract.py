@@ -37,6 +37,10 @@ class TaskKind(enum.StrEnum):
     COLUMN_MAPPING = "column_mapping"
     #: Drafting an objective from a description — Gate 3. Reasoning-heavy and reviewed.
     OBJECTIVE_PROPOSAL = "objective_proposal"
+    #: Answering a question from the workspace's own objects — Gate 7.7's Copilot. Reasoning over
+    #: retrieved material rather than generating a design, and the answer is read immediately by
+    #: the person who asked, so latency is part of whether it is useful at all.
+    COPILOT_ANSWER = "copilot_answer"
 
 
 class ModelUnavailableError(UbossError):

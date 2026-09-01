@@ -149,7 +149,15 @@ async def summary(
     passed = sum(1 for test in tests if test.status == SandboxTestStatus.PASS)
     granted = sum(1 for tool in tools if tool.granted)
 
-    can_submit = agent.status in (AgentStatus.DRAFT, AgentStatus.NEEDS_REVIEW)
+    #  Everything `submit()` checks, asked here so the control can be honest about itself.
+    #  It was the status alone, so the screen enabled Send for approval for a call that would
+    #  refuse — and the screen's own gate was tests-and-permission, which passes with no approver
+    #  and no tools at all.
+    can_submit = (
+        agent.status in (AgentStatus.DRAFT, AgentStatus.NEEDS_REVIEW)
+        and agent.main_approver_membership_id is not None
+        and all(gate.passed for gate in gates)
+    )
     can_approve = (
         agent.status == AgentStatus.READY_TO_PUBLISH
         and agent.main_approver_membership_id == context.membership_id
@@ -361,7 +369,11 @@ def _warnings(
                 ),
             )
         )
-    if running and not agent.main_approver_membership_id and not agent.main_approver_label:
+    #  The id, not either. A label cannot receive an approval — `can_approve` compares the
+    #  named approver against the signed-in membership — so an agent carrying only a label has no
+    #  approver in the sense that matters, and saying otherwise is how the screen came to report
+    #  itself ready for a submission that could only be refused.
+    if running and not agent.main_approver_membership_id:
         warnings.append(
             PublishWarning(
                 code="no_approver",
@@ -393,7 +405,7 @@ def _next_action(
     if agent.status in (AgentStatus.DRAFT, AgentStatus.NEEDS_REVIEW):
         if blocked:
             return blocked[0].reason
-        if agent.main_approver_membership_id is None and not agent.main_approver_label:
+        if agent.main_approver_membership_id is None:
             return "Name an approver, then send this for approval."
         return "Send this for approval."
     if agent.status == AgentStatus.READY_TO_PUBLISH:

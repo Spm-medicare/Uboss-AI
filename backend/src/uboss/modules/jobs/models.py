@@ -202,11 +202,17 @@ class Job(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion):
 
     @property
     def is_editable(self) -> bool:
-        return self.status in (
-            JobStatus.DRAFT,
-            JobStatus.NEEDS_REVIEW,
-            JobStatus.READY_TO_PUBLISH,
-        )
+        """A draft is written; a submitted design is read.
+
+        Not a display flag — `service.update` refuses when this is false. `READY_TO_PUBLISH` is
+        deliberately **not** here: between submitting and approving, the design has to hold still,
+        or the approver approves something other than what was sent and the immutable version
+        published from it is not the thing that was reviewed.
+
+        The same two states as `agents.EDITABLE` and `Supervisor.is_editable`. Submitting and
+        withdrawing both test `status` directly, so neither depends on this.
+        """
+        return self.status in (JobStatus.DRAFT, JobStatus.NEEDS_REVIEW)
 
 
 class JobStep(Base, PrimaryKey, TenantOwned, Timestamps):
@@ -493,6 +499,9 @@ class JobSchedule(Base, PrimaryKey, TenantOwned, Timestamps, OptimisticVersion):
             ondelete="RESTRICT",
         ),
         UniqueConstraint("tenant_id", "job_id", name="uq_job_schedules_one_per_job"),
+        #: What a `(tenant_id, id)` foreign key needs — `schedule_firings` has one, so a firing
+        #: cannot reference a schedule in another workspace. Added by migration 0034.
+        UniqueConstraint("tenant_id", "id", name="uq_job_schedules_tenant_id"),
         CheckConstraint(
             "frequency <> 'monthly' OR monthday IS NOT NULL",
             name="ck_schedules_monthly_has_a_day",

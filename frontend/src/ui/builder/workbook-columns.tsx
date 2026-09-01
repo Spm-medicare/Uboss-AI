@@ -74,7 +74,23 @@ export interface WorkbookLists {
   frequencies: readonly string[];
   work_places: readonly string[];
   problems?: readonly string[];
+  /** Form 2's *Approvals* — **who** signs off. Not the same list as a job step's timing. */
   approvals: readonly string[];
+}
+
+/**
+ * What a Job step needs on top of the shared set.
+ *
+ * Separate, and required rather than optional, because the two lists it adds are the ones that
+ * were being filled from the wrong place. A caller handing `jobColumns` the objective lists is now
+ * a compile error instead of a dropdown offering *Team Lead* where the sheet means *Before this
+ * step*.
+ */
+export interface JobWorkbookLists extends WorkbookLists {
+  /** Form 3's *Approval Timing* — **when** the sign-off happens. */
+  approval_timings: readonly string[];
+  /** Form 3's *Missing Action* — what to do when an input is missing or wrong. */
+  missing_actions: readonly string[];
 }
 
 /** A cell offering the workbook's list and accepting anything else. */
@@ -165,7 +181,7 @@ export function objectiveColumns<Row extends CurrentStepInput>(
  * the step does when reality does not cooperate, and it is fifteen columns along.
  */
 export function jobColumns<Row extends JobStepInput>(
-  lists: WorkbookLists,
+  lists: JobWorkbookLists,
   modes: readonly string[],
   modeLabel: string,
 ): readonly SheetColumn<Row>[] {
@@ -183,13 +199,16 @@ export function jobColumns<Row extends JobStepInput>(
     column<Row>("Output", "output"),
     column<Row>("Output Destination", "output_destination"),
     {
+      //  Column N of Form 3, and the sheet's validation for it is `$L$2:$L$6` — *Approval Timing*,
+      //  when the sign-off happens. It was offering Form 2's *Approvals*, which is who signs off:
+      //  an approved list, for the other question.
       label: "Approval",
       width: "narrow",
       cell: function Cell(row: Row, set: (next: Row) => void, disabled: boolean) {
         return (
           <CellSuggest
             value={row.approval ?? ""}
-            options={lists.approvals}
+            options={lists.approval_timings}
             label="Approval"
             disabled={disabled}
             onChange={(value) => set({ ...row, approval: value || null })}
@@ -210,8 +229,14 @@ export function jobColumns<Row extends JobStepInput>(
                 : "",
             )}
           >
-            <CellInput
+            {/*  Column O, *Missing Action*, and the sheet closes it: `$M$2:$M$7`. It was a plain
+                text box, so the one column that says what a run should do when an input is
+                wrong offered nothing to choose from. Still a suggestion rather than an enum —
+                the step fields accept a company's own words on purpose — but now the approved
+                words are the ones on offer. */}
+            <CellSuggest
               value={row.if_missing_or_wrong ?? ""}
+              options={lists.missing_actions}
               label="If Missing / Wrong"
               disabled={disabled}
               onChange={(value) => set({ ...row, if_missing_or_wrong: value || null })}

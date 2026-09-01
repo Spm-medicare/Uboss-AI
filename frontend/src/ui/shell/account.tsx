@@ -1,10 +1,9 @@
 "use client";
 
-import { Building2, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
-import type { CurrentUser } from "@/lib/api/auth";
 import { useSignOut } from "@/lib/auth/use-session";
 import { cn } from "@/lib/cn";
 import { Alert } from "@/ui/alert";
@@ -25,14 +24,7 @@ import { Button } from "@/ui/button";
  * whether to draw one button would widen a boundary that exists for a reason. The chooser is
  * where the real list is, and this is the way back to it.
  */
-export function AccountFooter({
-  user,
-  collapsed,
-}: {
-  user: CurrentUser;
-  collapsed: boolean;
-}) {
-  const t = useTranslations("account");
+export function AccountFooter({ collapsed }: { collapsed: boolean }) {
   const tCommon = useTranslations("common");
   const router = useRouter();
   const signOut = useSignOut();
@@ -43,47 +35,30 @@ export function AccountFooter({
   }
 
   return (
-    <div className="mt-1 border-t border-sidebar-border pt-2">
-      <div
-        className={cn(
-          "flex items-center gap-2.5 rounded-md px-2.5 py-2",
-          collapsed && "justify-center px-0",
-        )}
-      >
-        <span
-          aria-hidden
-          className="grid size-7 shrink-0 place-items-center rounded-full bg-sidebar-active text-xs font-semibold"
-        >
-          {initials(user.display_name)}
-        </span>
-        {!collapsed ? (
-          <span className="min-w-0 flex-1 leading-tight">
-            <span className="block truncate text-sm">{user.display_name}</span>
-            {user.job_title ? (
-              <span className="block truncate text-xs text-sidebar-muted">
-                {user.job_title}
-              </span>
-            ) : null}
-          </span>
-        ) : null}
-      </div>
+    <div
+      className={cn(
+        collapsed
+          //  `contents` so the single row joins the foot's own centred column instead of
+          //  starting a second, differently-spaced one inside it.
+          ? "contents"
+          : "mt-1 border-t border-sidebar-border pt-2",
+      )}
+    >
+      {/*  **The person moved to the top bar.** Their name, their workspace and the way out are
+          one menu there — see `header-account.tsx`. What is left here is the single action, so
+          that a collapsed rail still has an exit and so the sidebar does not become a second
+          place the same three facts are printed.
 
+          *Switch workspace* is gone. It ran `endSession("/sign-in")` — byte for byte what *Sign
+          out* ran — so two labels described one behaviour and only a tooltip distinguished them.
+          Choosing a workspace happens on the sign-in screen, which is where signing out leads. */}
       {signOut.error ? (
         <Alert tone="danger" className="mx-1 mb-1.5">
           {signOut.error.message}
         </Alert>
       ) : null}
 
-      <div className={cn("space-y-0.5", collapsed && "flex flex-col items-center")}>
-        <FooterAction
-          collapsed={collapsed}
-          label={t("switchWorkspace")}
-          hint={t("switchWorkspaceHint")}
-          icon={<Building2 className="size-4" />}
-          busy={signOut.isPending}
-          onClick={() => void endSession("/sign-in")}
-        />
-
+      <div className={cn(collapsed ? "contents" : "space-y-0.5")}>
         <FooterAction
           collapsed={collapsed}
           label={signOut.isPending ? tCommon("signingOut") : tCommon("signOut")}
@@ -131,10 +106,3 @@ function FooterAction({
   );
 }
 
-/** Two letters, never an image. There is no avatar upload, so there is nothing to display. */
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  const first = parts[0]?.[0] ?? "";
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
-  return (first + last).toUpperCase() || "?";
-}

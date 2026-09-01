@@ -202,3 +202,39 @@ today's answer and present it as history.
 
 Of the conceptual tables listed above, `skill_resolver_decisions` is implemented. The rest arrive
 with the Skill Factory in 5.3 and 5.4.
+
+---
+
+## As built — Gate 5.6, the Factory
+
+Migration 0043: `skill_tests`, `skill_versions`, three columns on `skills`
+(`approver_membership_id`, `submitted_by_membership_id`, `submitted_at`) and a third `layer` value.
+`modules/agents/factory.py`, `factory_publish.py`, `factory_api.py`, and the *Our skills* tab inside
+the Agent Builder's Skills panel — no sidebar item, as §39 requires.
+
+**The lifecycle, mapped honestly.** This document draws six states — *Proposed → Draft → Sandbox
+Tested → Pilot → Approved → Active*. The schema has four: `draft`, `ready_to_publish`, `published`,
+`archived`. *Sandbox Tested* is not a state but a **gate**: all six tests must read `pass` before a
+draft can be sent, and `skill_tests` holds the evidence. *Pilot* has no implementation at all and is
+not claimed by anything on the screen — a state a product cannot enter is worse than one it does not
+have.
+
+**The six tests are recorded, not run.** There is no sandbox runtime for a skill. A result is a
+person's account of running it, and the table refuses a decided result that carries no observation,
+no runner and no time. The panel says this in as many words rather than showing six green ticks with
+nobody's name against them.
+
+**The completeness gate is the resolver's own field list.** Every field required before submission is
+one a gate reads — most pointedly `source_ids`, without which the `evidence` gate refuses the skill
+E06 *"UNVERIFIED — no trace"* for the rest of its life. Approval would otherwise produce a skill
+that can never be selected.
+
+**Nothing approves itself.** The four checks every other builder uses, re-run at the moment of
+approval so a test result cleared by an intervening edit cannot be approved unnoticed.
+
+**Still unevaluated.** `data_classification`, `tool_scope`, `schema_compatibility` and
+`scope_exclusions` read tables that are still conceptual — `skill_inputs`, `skill_outputs`,
+`skill_tool_requirements`, `skill_approval_requirements`, `skill_evidence_sources`,
+`skill_visibility_grants`, `skill_compositions`. They continue to report `unevaluated` rather than
+passed, and a resolution carrying any of them still comes back `requires_confirmation: true`. The
+Factory does not close that gap and does not pretend to.

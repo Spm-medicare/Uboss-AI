@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     #: The application role's connection. It is deliberately *not* the owner role: row-level
     #: security is only a boundary if the connecting role cannot bypass it.
     database_url: SecretStr
+    #: The one cross-tenant credential — `uboss_relay`. The outbox worker delivers every
+    #: workspace's mail and the scheduler discovers every workspace's schedules, and neither can
+    #: do it as `uboss_app`, whose policies correctly show an unbound connection nothing at all.
+    #: Optional here because the API process never needs it; the workers refuse to start without
+    #: it, with a sentence, rather than polling forever over an empty view.
+    relay_database_url: SecretStr | None = None
     database_pool_size: int = Field(default=10, ge=1, le=100)
     redis_url: str = "redis://localhost:6380/0"
 
@@ -81,6 +87,9 @@ class Settings(BaseSettings):
     #: published, so it is served by a capable one.
     ai_model_column_mapping: str = "claude-haiku-4-5-20251001"
     ai_model_proposal: str = "claude-sonnet-5"
+    #: The Copilot answers while somebody waits, over material already retrieved rather than from
+    #: scratch, so a fast model is the right trade — the reasoning is grounding, not invention.
+    ai_model_copilot: str = "claude-haiku-4-5-20251001"
 
     #: Which provider serves every task. One setting, not one per task: a deployment has the
     #: credentials it has, and a policy that could route half the work to a provider with no key
@@ -96,6 +105,7 @@ class Settings(BaseSettings):
     #: the small structured job, a capable one for the reasoning-heavy one.
     openai_model_column_mapping: str = "gpt-4.1-mini"
     openai_model_proposal: str = "gpt-4.1"
+    openai_model_copilot: str = "gpt-4.1-mini"
 
     # ── object storage ───────────────────────────────────────────────────────────────────
     #: S3-compatible (PLAN §26). MinIO locally, whatever the deployment provides in production —
@@ -284,14 +294,16 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
-    @field_validator("database_url")
+    @field_validator("database_url", "relay_database_url")
     @classmethod
-    def refuse_a_synchronous_driver(cls, value: SecretStr) -> SecretStr:
+    def refuse_a_synchronous_driver(cls, value: SecretStr | None) -> SecretStr | None:
         """The API is async end to end; a synchronous driver would block the event loop.
 
         Caught here rather than at the first query, because a URL that works in a shell and
         stalls under load is the worst kind of configuration mistake.
         """
+        if value is None:
+            return None
         url = value.get_secret_value()
         if not url.startswith("postgresql+psycopg://"):
             raise ValueError("database_url must use the async driver: postgresql+psycopg://…")

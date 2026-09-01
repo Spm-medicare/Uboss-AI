@@ -8,6 +8,7 @@ import { useCallback, useMemo, useState, useRef } from "react";
 
 import type {
   AgentUpdate,
+  PersonRef,
   SandboxTestInput,
   Situation,
 } from "@/lib/api/contract";
@@ -27,7 +28,10 @@ import {
   type AgentLists,
 } from "@/lib/api/agents";
 import { can } from "@/lib/api/auth";
+import { fetchPeople } from "@/lib/api/objectives";
 import { useSession } from "@/lib/auth/use-session";
+import { unsavedSince } from "@/lib/builder/unsaved-since";
+import { useAdoptServerVersion } from "@/lib/builder/use-adopt-server-version";
 import { useAutosave } from "@/lib/builder/use-autosave";
 import { contextFor, formatDate } from "@/lib/format";
 import {
@@ -52,6 +56,7 @@ import {
   BuilderSectionCard,
   type BuilderSection,
 } from "@/ui/builder/builder-layout";
+import { PersonSelect } from "@/ui/builder/person-select";
 import { SkillRegistry } from "@/ui/builder/skill-registry";
 import { Suggest } from "@/ui/builder/suggest";
 import { AppShell } from "@/ui/shell/app-shell";
@@ -83,21 +88,33 @@ export default function AgentBuilderFormPage() {
     queryFn: ({ signal }) => fetchAgentLists(signal),
     staleTime: 60 * 60 * 1000,
   });
+  //  Who may be named as approver. Wrapped in the same states as the other two, so a failed
+  //  lookup reads as a failure rather than as a workspace with nobody in it.
+  const people = useQuery({
+    queryKey: ["objective", "people"],
+    queryFn: ({ signal }) => fetchPeople(signal),
+    staleTime: 5 * 60 * 1000,
+  });
 
   return (
     <AppShell
+      //  **The top bar names the room, the builder's own heading names the record.** Putting
+      //  the record's name here as well printed it twice within an inch of itself — the
+      //  duplication complaint. The crumb is the way back to the list and is deliberately
+      //  worded differently from the screen name, so it is a link rather than an echo.
       title={t("builderTitle")}
-      breadcrumb={[{ label: t("agents"), href: "/agent-builder" }]}
+      breadcrumb={[{ label: t("backToList"), href: "/agent-builder" }]}
     >
       <QueryStates
-        isPending={agent.isPending || lists.isPending}
-        error={agent.error ?? lists.error}
+        isPending={agent.isPending || lists.isPending || people.isPending}
+        error={agent.error ?? lists.error ?? people.error}
         onRetry={() => void agent.refetch()}
       >
-        {agent.data && lists.data ? (
+        {agent.data && lists.data && people.data ? (
           <Editor
             initial={agent.data}
             lists={lists.data}
+            people={people.data}
             onReload={() => void agent.refetch()}
           />
         ) : null}
@@ -119,10 +136,12 @@ type SectionId =
 function Editor({
   initial,
   lists,
+  people,
   onReload,
 }: {
   initial: Agent;
   lists: AgentLists;
+  people: PersonRef[];
   onReload: () => void;
 }) {
   const t = useTranslations("agent");
@@ -161,6 +180,7 @@ function Editor({
       prohibited_actions: next.prohibited_actions,
       visibility: next.visibility,
       model_policy_key: next.model_policy_key,
+      main_approver_membership_id: next.main_approver_membership_id,
       main_approver_label: next.main_approver_label,
       escalation_label: next.escalation_label,
       cost_cap_minor_units: next.cost_cap_minor_units,
@@ -191,8 +211,10 @@ function Editor({
     };
     const saved = await saveAgent(next.id, payload);
     confirmedVersion.current = saved.version;
-    //  The server's copy wins, except for anything typed while the request was out.
-    setDraft((current) => ({ ...saved, name: current.name === next.name ? saved.name : current.name }));
+    //  The server's copy wins, except for anything typed while the request was out — all of it.
+    //  This kept only the name, so every other field somebody was editing while a save was going
+    //  out was replaced by the server's copy of it.
+    setDraft((current) => ({ ...saved, ...unsavedSince(current, next) }));
     //  Saving clears every recorded test result, so the panel that shows them has to be refetched
     //  rather than left displaying passes that no longer apply.
     void queryClient.invalidateQueries({ queryKey: ["agent-tests", next.id] });
@@ -200,6 +222,17 @@ function Editor({
   }, [queryClient]);
 
   const autosave = useAutosave<Agent>(send, { enabled: editable });
+
+  /*  The form follows the server: it takes a fresher copy whenever one arrives and nothing is
+      queued, and `resolveConflict` is the way out of a real conflict. See the hook — the reasoning
+      is the same on all four Builders, which is why it is one hook. */
+  const { resolveConflict } = useAdoptServerVersion<Agent>({
+    server: initial,
+    confirmedVersionRef: confirmedVersion,
+    setDraft,
+    autosave,
+    reload: onReload,
+  });
 
   const edit = useCallback(
     (patch: Partial<Agent>) => {
@@ -252,7 +285,6 @@ function Editor({
 
   return (
     <BuilderLayout
-      eyebrow={t("eyebrow")}
       title={draft.name}
       status={<StatusPill status={draft.status} />}
       meta={
@@ -312,8 +344,12 @@ function Editor({
       {autosave.conflicted ? (
         <Alert tone="danger" title={t("conflictTitle")}>
           {t("conflictBody")}{" "}
-          <button type="button" className="underline underline-offset-4" onClick={onReload}>
-            {t("reloadIt")}
+          <button
+            type="button"
+            className="underline underline-offset-4"
+            onClick={resolveConflict}
+          >
+            {t("keepMyChange")}
           </button>
         </Alert>
       ) : null}
@@ -552,7 +588,13 @@ function Editor({
         title={t("sections.limits")}
         description={t("limitsDescription")}
       >
-        <LimitsSection draft={draft} lists={lists} editable={editable} onEdit={edit} />
+        <LimitsSection
+          draft={draft}
+          lists={lists}
+          people={people}
+          editable={editable}
+          onEdit={edit}
+        />
       </BuilderSectionCard>
 
       {/*  ── 8. Form 4 section C, the two gates, and publish ─────────────────────── */}
@@ -665,11 +707,13 @@ function ControlsSection({
 function LimitsSection({
   draft,
   lists,
+  people,
   editable,
   onEdit,
 }: {
   draft: Agent;
   lists: AgentLists;
+  people: PersonRef[];
   editable: boolean;
   onEdit: (patch: Partial<Agent>) => void;
 }) {
@@ -713,6 +757,22 @@ function LimitsSection({
           )}
         </Field>
       </div>
+
+      {/*  The person first, then the role.
+
+          `submit()` requires the membership id and refuses a label — *"Name an approver, a person,
+          not a role"* — because an approval has to be performed by somebody: `can_approve` compares
+          the named approver against the signed-in membership, which a role name can never match. So
+          the picker is the approver and the label below it is the note the workbook asked for. */}
+      <PersonSelect
+        label={t("mainApprover")}
+        hint={t("mainApproverHint")}
+        required
+        value={draft.main_approver_membership_id ?? null}
+        people={people}
+        disabled={!editable}
+        onChange={(value) => onEdit({ main_approver_membership_id: value })}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Suggest

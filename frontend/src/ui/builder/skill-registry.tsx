@@ -24,12 +24,16 @@ import type {
 import { fetchRegistryLists, resolveRequirement, searchSkills } from "@/lib/api/skills";
 import { cn } from "@/lib/cn";
 import { Alert, Badge, Button, Field, Input, QueryStates, Textarea } from "@/ui";
+import { SkillDrafts } from "@/ui/builder/skill-drafts";
 
 /**
  * The Skill Registry, inside the Agent Builder.
  *
  * `PLAN.md` §39: *"Skill Registry is internal to Agent Builder and is not a sidebar module."*
  * There is no route and no menu entry — this panel is the whole of it, and §3 forbids adding one.
+ *
+ * Three tabs, which are `docs/product/SKILL_REGISTRY.md`'s own three: Registry, Resolver and
+ * Private Skill Drafts.
  *
  * **The search discovers; the gates decide.** They are two separate acts on this screen because
  * they are two separate acts in the design. *Browse* ranks by resemblance and every card carries
@@ -58,13 +62,32 @@ export function SkillRegistry({
   onDetach: (skillId: string) => void;
 }) {
   const t = useTranslations("registry");
-  const [mode, setMode] = useState<"browse" | "resolve">("browse");
+  const [mode, setMode] = useState<"browse" | "resolve" | "drafts">("browse");
+  //  The same query the filters use, so the counts cost nothing extra.
+  const counts = useQuery({
+    queryKey: ["registry-lists"],
+    queryFn: ({ signal }) => fetchRegistryLists(signal),
+    staleTime: 60 * 60 * 1000,
+  });
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-border bg-muted/30 p-3">
-        <p className="text-sm text-muted-foreground">{t("intro")}</p>
-      </div>
+      {/*  Shown once the numbers have arrived, not before. This sentence used to state a figure
+          nobody had counted — on a production path, four lines below this file's own promise that
+          nothing here is invented — and a count is not a thing to guess at while a request is
+          still out. */}
+      {counts.data ? (
+        <div className="rounded-lg border border-border bg-muted/30 p-3">
+          <p className="text-sm text-muted-foreground">
+            {counts.data.workspaceSkills > 0
+              ? t("intro", {
+                  catalogue: counts.data.catalogueSkills,
+                  mine: counts.data.workspaceSkills,
+                })
+              : t("introCatalogueOnly", { catalogue: counts.data.catalogueSkills })}
+          </p>
+        </div>
+      ) : null}
 
       {attached.length > 0 ? (
         <Attached rows={attached} disabled={disabled} onDetach={onDetach} />
@@ -75,7 +98,7 @@ export function SkillRegistry({
         aria-label={t("modes")}
         className="flex gap-1 rounded-lg border border-border bg-card p-1"
       >
-        {(["browse", "resolve"] as const).map((option) => (
+        {(["browse", "resolve", "drafts"] as const).map((option) => (
           <button
             key={option}
             type="button"
@@ -104,7 +127,7 @@ export function SkillRegistry({
           disabled={disabled}
           onAttach={(skillId) => onAttach(skillId, null, null)}
         />
-      ) : (
+      ) : mode === "resolve" ? (
         <Resolve
           department={department}
           industry={industry}
@@ -112,6 +135,11 @@ export function SkillRegistry({
           disabled={disabled}
           onAttach={onAttach}
         />
+      ) : (
+        /*  `docs/product/SKILL_REGISTRY.md`'s own tree has three things under Skills: Registry,
+            Resolver and Private Skill Drafts. This is the third, and it is where the resolver's
+            *Create* route finally leads. */
+        <SkillDrafts disabled={disabled} />
       )}
     </div>
   );

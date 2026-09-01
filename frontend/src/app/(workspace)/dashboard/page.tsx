@@ -7,27 +7,36 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth/use-session";
 import { canSee, NAVIGATION } from "@/lib/shell/navigation";
 import { cn } from "@/lib/cn";
-import { Badge, LoadingState } from "@/ui";
+import { LoadingState } from "@/ui";
+import { AgentCards } from "@/ui/dashboard/agent-cards";
+import { DashboardMetrics } from "@/ui/dashboard/metrics";
 import { AppShell } from "@/ui/shell/app-shell";
+import { toneFor, toneVars } from "@/ui/agent-tone";
+import { PageHeader } from "@/ui/shell/page-header";
 
 /**
- * The first screen inside a workspace.
+ * The first screen inside a workspace — PLAN §4.
  *
- * PLAN §4 defines the Dashboard as pending tasks, approvals waiting, running and failed Agents,
- * upcoming schedules and recent outputs — *"Every metric is clickable, defined and timestamped."*
- * None of those exist yet: there are no tasks, no approvals and no runs in the product, so there
- * is nothing to count.
+ * §4's purpose is one sentence: *"show what needs attention now"*, and *"every metric is
+ * clickable, defined and timestamped."*
  *
- * The alternative is a wall of cards showing zeros or, worse, sample figures. `CLAUDE.md` is
- * blunt about which of those matters: *"Never display a value the backend did not return."* A
- * fabricated "3 approvals waiting" is not a placeholder, it is a number somebody will act on.
+ * This screen used to say the opposite. Its comment read *"None of those exist yet: there are no
+ * tasks, no approvals and no runs in the product, so there is nothing to count"* — true when it
+ * was written, and false from Gate 7.1 onward. It was also **contradicted on screen**: the shell
+ * around it was already badging the sidebar from `/tasks/counts` and the bell from
+ * `/notifications/counts`, so somebody with seven open tasks read "7 waiting on you" in the rail
+ * and "nothing has been built yet" in the body.
  *
- * **So the screen is built out of two things that are true right now**: what this session
- * actually returned — roles, permissions, placement, time zone — and where the person can
- * usefully go next, which is the set of screens that exist and that their permissions admit
- * them to. Both are read from the session, both are links to real routes, and neither is a
- * count of anything. The metrics arrive with the features that produce them, and this layout
- * has a place waiting for them above the fold.
+ * The honesty rule that produced that comment is still the right rule; it just belongs to
+ * *rendering* rather than to a claim about the backend:
+ *
+ * * a number is drawn only from a resolved response;
+ * * a failed request draws an error, **never** a zero — "nothing is waiting on you" and "we could
+ *   not find out" are opposite statements;
+ * * a resolved zero is drawn as a real zero, because it is a real answer.
+ *
+ * The layout follows the question order: what needs doing, then the four Agents and what they
+ * hold, then who you are here — which is the only part somebody reads once and never again.
  */
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
@@ -54,26 +63,41 @@ export default function DashboardPage() {
 
   return (
     <AppShell title={t("title")}>
-      <div className="mx-auto max-w-5xl">
+      <div>
         {/*  ── who you are here ──────────────────────────────────────────── */}
-        <header>
-          <h2 className="text-[1.75rem] font-bold leading-tight tracking-tight">
-            {t("welcome", {
-              name: user.display_name.split(" ")[0] ?? user.display_name,
-            })}
-          </h2>
-          <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
-            {t("nothingYet")}
-          </p>
-        </header>
+        {/*  The shared component, like every other workspace screen. A hand-rolled heading here
+            was a second set of type sizes to keep in step with the first. */}
+        <PageHeader
+          title={t("welcome", {
+            name: user.display_name.split(" ")[0] ?? user.display_name,
+          })}
+          description={t("intro")}
+        />
+
+        {/*  ── what needs attention now ──────────────────────────────────── */}
+        {/*  §4's purpose in one line: *"show what needs attention now"*. It goes first,
+            above the session facts, because the answer to "what should I do" outranks the
+            answer to "who am I here" on every visit after the first. */}
+        <div className="mt-7">
+          <DashboardMetrics timeZone={user.timezone} />
+        </div>
+
+        {/*  ── the four Agents ───────────────────────────────────────────── */}
+        {/*  §3 numbers them 01 to 04 and §4 asks for *"quick actions that route into the correct
+            Builder"*. Each card carries its own real counts and its three most recently changed
+            records, so the row is a way in rather than a menu. */}
+        <div className="mt-9">
+          <AgentCards timeZone={user.timezone} actions={user.actions} />
+        </div>
 
         {/*  Three facts the session returned, laid out so they can be read at a glance rather
             than parsed out of a table. Nothing here is computed, aggregated or estimated. */}
-        <dl className="mt-7 grid gap-3 sm:grid-cols-3">
+        <h3 className="mt-9 text-sm font-semibold">{t("youHeading")}</h3>
+        <dl className="mt-3 grid gap-3 grid-cols-[repeat(auto-fill,minmax(min(100%,16rem),1fr))]">
           <Fact
             icon={<ShieldCheck className="size-4" />}
             label={t("roles")}
-            value={user.roles.map(readable).join(", ") || tCommon("none")}
+            value={user.roles.map(spelled).join(", ") || tCommon("none")}
           />
           <Fact
             icon={<MapPin className="size-4" />}
@@ -88,29 +112,6 @@ export default function DashboardPage() {
           />
         </dl>
 
-        {/*  ── what you may do ───────────────────────────────────────────── */}
-        <section className="mt-9" aria-labelledby="access-heading">
-          <h3 id="access-heading" className="text-sm font-semibold">
-            {t("accessHeading")}
-          </h3>
-          <p className="mt-1 text-sm text-muted-foreground">{t("accessSubtitle")}</p>
-
-          {user.actions.length > 0 ? (
-            <ul className="mt-3 flex flex-wrap gap-1.5">
-              {user.actions.map((action) => (
-                <li key={action}>
-                  {/*  The verb as the server returned it, spelled for a person. A permission is
-                      the one thing on this screen somebody might screenshot and query, so it
-                      says exactly what the token says and nothing rounder. */}
-                  <Badge tone="neutral">{readable(action)}</Badge>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-sm text-muted-foreground">{t("nothingYouCan")}</p>
-          )}
-        </section>
-
         {/*  ── where to go ───────────────────────────────────────────────── */}
         {destinations.length > 0 ? (
           <section className="mt-9" aria-labelledby="start-heading">
@@ -119,20 +120,26 @@ export default function DashboardPage() {
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">{t("startSubtitle")}</p>
 
-            <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+            <ul className="mt-3 grid gap-3 grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))]">
               {destinations.map((item) => (
                 <li key={item.id}>
                   <Link
                     href={item.href}
+                    style={toneVars(toneFor(item.id))}
                     className={cn(
                       "group flex h-full items-start gap-3.5 rounded-xl border border-border bg-card p-4",
-                      "transition-colors duration-150 hover:border-primary/40 hover:bg-accent motion-reduce:transition-none",
+                      "border-l-[3px] border-l-[var(--card-accent)]",
+                      "transition-colors duration-150 hover:bg-[var(--card-soft)] motion-reduce:transition-none",
                       "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
                     )}
                   >
                     <span
                       aria-hidden
-                      className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"
+                      className="grid size-9 shrink-0 place-items-center rounded-lg"
+                      style={{
+                        background: "var(--card-soft)",
+                        color: "var(--card-accent)",
+                      }}
                     >
                       <item.icon className="size-4" />
                     </span>
@@ -202,14 +209,14 @@ function Fact({
 }
 
 /**
- * `edit_draft` reads badly on screen; "edit draft" does not.
+ * `workspace_owner` reads badly on screen; "Workspace owner" does not.
  *
  * Formatting of a value the server returned, never a substitute for one — the underscores go and
  * the first letter is raised, and nothing else changes. A lookup table mapping keys to friendlier
  * names would be this screen inventing vocabulary the token does not carry, which is the thing a
- * permission display must never do.
+ * role display must never do.
  */
-function readable(value: string): string {
+function spelled(value: string): string {
   const spaced = value.replace(/_/g, " ");
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }

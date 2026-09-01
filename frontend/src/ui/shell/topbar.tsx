@@ -1,34 +1,41 @@
 "use client";
 
-import { Bell, Menu, Search, Sparkles, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Bell, Menu, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { fetchNotificationCounts } from "@/lib/api/notifications";
+import type { CurrentUser } from "@/lib/api/auth";
 import { cn } from "@/lib/cn";
-import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
-import { EmptyState } from "@/ui/states";
+import { CopilotPanel } from "@/ui/shell/copilot-panel";
+import { GlobalSearch } from "@/ui/shell/global-search";
+import { HeaderAccount, ThemeSwitch } from "@/ui/shell/header-account";
+import { NotificationsPanel } from "@/ui/shell/notifications-panel";
 
 /**
  * The compact top bar of PLAN §3:
  *
  *     Breadcrumb/title | Global search | Context action | Notifications | UBOSS Copilot
  *
- * Three of those five have no backend yet, and this is where a shell usually starts lying — a
- * search box that silently returns nothing, a bell with a hard-coded "3", a Copilot that replies
- * from a fixture. `docs/delivery/WORK_BREAKDOWN.md` is explicit about the alternative: *"Search
- * shows an honest unavailable state until Gate 7. Notifications and Copilot show governed empty
- * states. No fake activity, no invented counts."*
+ * All five are connected as of Gate 7. Three of them were not, for six gates, and what they did
+ * in the meantime is the part worth keeping in mind: the search box was disabled and said why, the
+ * bell carried no number at all, and the Copilot drawer held one honest sentence. The work
+ * breakdown asked for exactly that — *"Search shows an honest unavailable state until Gate 7.
+ * Notifications and Copilot show governed empty states. No fake activity, no invented counts."*
  *
- * So the search field is disabled and says why, and the bell carries no count until something
- * real can produce one. An empty bell is accurate. A bell showing `0` would also be accurate but
- * would claim the number is known; it is not.
+ * The bell still shows nothing rather than `0` when the count fails. An empty bell is accurate; a
+ * `0` would claim the number is known.
  */
 export function Topbar({
   title,
   breadcrumb,
   action,
   onOpenNavigation,
+  timeZone,
+  user,
+  onOpenSettings,
 }: {
   title: string;
   /** Ancestors, nearest last. The current screen is the `title` and is never repeated here. */
@@ -37,9 +44,33 @@ export function Topbar({
   action?: ReactNode;
   /** Opens the mobile drawer. Absent on wide screens, where the sidebar is always present. */
   onOpenNavigation: () => void;
+  /** The reader's own zone, so every instant in the drawer is shown where they are. */
+  timeZone?: string | undefined;
+  /** The signed-in person. Their name and the way out live here, not in the sidebar. */
+  user: CurrentUser;
+  /** Opens §13's Settings panel over the current screen. */
+  onOpenSettings: () => void;
 }) {
   const t = useTranslations("shell");
   const [drawer, setDrawer] = useState<"notifications" | "copilot" | null>(null);
+
+  //  The badge. Real since Gate 7.5 — before that the bell deliberately carried no number,
+  //  because an invented one is worse than none. A failed count still shows nothing rather than
+  //  a `0`, which would claim the number is known.
+  const counts = useQuery({
+    queryKey: ["notifications", "counts"],
+    queryFn: ({ signal }) => fetchNotificationCounts(signal),
+  });
+  const unread = counts.data?.unread ?? 0;
+
+  //  **A crumb that repeats the title is dropped.** Three screens read "Job Builder / Job
+  //  Builder" because the list's name and the builder's name are the same words — which is
+  //  correct in the message catalogue and wrong on the screen. Fixed here rather than by
+  //  renaming three strings, so the next screen whose parent shares its name cannot bring the
+  //  duplicate back.
+  const trail = (breadcrumb ?? []).filter(
+    (crumb) => crumb.label.trim().toLowerCase() !== title.trim().toLowerCase(),
+  );
 
   return (
     <header
@@ -58,10 +89,10 @@ export function Topbar({
       />
 
       <div className="min-w-0 flex-1">
-        {breadcrumb && breadcrumb.length > 0 ? (
+        {trail.length > 0 ? (
           <nav aria-label={t("breadcrumb")}>
             <ol className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              {breadcrumb.map((crumb) => (
+              {trail.map((crumb, index) => (
                 <li key={crumb.href} className="flex items-center gap-1.5">
                   <a
                     href={crumb.href}
@@ -69,7 +100,9 @@ export function Topbar({
                   >
                     {crumb.label}
                   </a>
-                  <span aria-hidden>/</span>
+                  {/*  A separator *between* crumbs. It was emitted after every one, so the trail
+                      ended in a slash pointing at nothing. */}
+                  {index < trail.length - 1 ? <span aria-hidden>/</span> : null}
                 </li>
               ))}
             </ol>
@@ -80,25 +113,57 @@ export function Topbar({
 
       <GlobalSearch />
 
-      {action}
+      {/*  **One group, and it does not shrink.** Before this the bar was a flat row: a screen
+          whose `action` is an inline create form — a 16rem input plus two buttons — competed with
+          the search box, the bell and the Copilot for the same line, and between `md` and `lg` the
+          row overflowed the window. Grouping the right side and pinning it `shrink-0` makes the
+          title the only thing that gives, which is right: it truncates, and it is the one item
+          repeated in the browser tab. */}
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        {action}
 
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-label={t("notifications")}
-        aria-expanded={drawer === "notifications"}
-        onClick={() => setDrawer(drawer === "notifications" ? null : "notifications")}
-        icon={<Bell className="size-4" />}
-      />
+        <span className="relative inline-flex">
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={
+            unread > 0 ? t("notificationsWith", { count: unread }) : t("notifications")
+          }
+          aria-expanded={drawer === "notifications"}
+          onClick={() =>
+            setDrawer(drawer === "notifications" ? null : "notifications")
+          }
+          icon={<Bell className="size-4" />}
+        />
+        {unread > 0 ? (
+          <span
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute -right-0.5 -top-0.5 min-w-[1.05rem]",
+              "rounded-full bg-primary px-1 text-center text-[0.625rem] font-semibold",
+              "leading-[1.05rem] text-primary-foreground tabular-nums",
+            )}
+          >
+            {unread > 99 ? "99+" : unread}
+          </span>
+        ) : null}
+      </span>
 
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-label={t("copilot")}
-        aria-expanded={drawer === "copilot"}
-        onClick={() => setDrawer(drawer === "copilot" ? null : "copilot")}
-        icon={<Sparkles className="size-4" />}
-      />
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={t("copilot")}
+          aria-expanded={drawer === "copilot"}
+          onClick={() => setDrawer(drawer === "copilot" ? null : "copilot")}
+          icon={<Sparkles className="size-4" />}
+        />
+
+        <ThemeSwitch />
+
+        <span aria-hidden className="mx-0.5 h-5 w-px bg-border" />
+
+        <HeaderAccount user={user} onOpenSettings={onOpenSettings} />
+      </div>
 
       {drawer ? (
         <Drawer
@@ -106,16 +171,12 @@ export function Topbar({
           onClose={() => setDrawer(null)}
         >
           {drawer === "notifications" ? (
-            <EmptyState
-              title={t("notificationsEmptyTitle")}
-              description={t("notificationsEmptyBody")}
+            <NotificationsPanel
+              timeZone={timeZone}
+              onNavigate={() => setDrawer(null)}
             />
           ) : (
-            <div className="p-4">
-              <Alert tone="info" title={t("copilotUnavailableTitle")}>
-                {t("copilotUnavailableBody")}
-              </Alert>
-            </div>
+            <CopilotPanel onNavigate={() => setDrawer(null)} />
           )}
         </Drawer>
       ) : null}
@@ -124,47 +185,15 @@ export function Topbar({
 }
 
 /**
- * Search, before there is anything to search.
- *
- * Disabled and labelled rather than absent: a person looks for a search box, and finding none
- * reads as "this product has no search". Finding one that says it is not connected yet is a
- * smaller and truer thing to say.
- */
-function GlobalSearch() {
-  const t = useTranslations("shell");
-
-  return (
-    <div className="hidden min-w-0 max-w-xs flex-1 md:block">
-      <label htmlFor="global-search" className="sr-only">
-        {t("search")}
-      </label>
-      <div className="relative">
-        <Search
-          aria-hidden
-          className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-        />
-        <input
-          id="global-search"
-          type="search"
-          disabled
-          placeholder={t("searchUnavailable")}
-          title={t("searchUnavailableWhy")}
-          className={cn(
-            "w-full rounded-md border border-border bg-card py-1.5 pl-8 pr-3 text-sm",
-            "placeholder:text-muted-foreground",
-            "disabled:cursor-not-allowed disabled:opacity-60",
-          )}
-        />
-      </div>
-    </div>
-  );
-}
-
-/**
  * The right-hand panel §29 calls the "optional right Copilot/help drawer".
  *
- * A dialog, so focus is trapped inside it and Escape closes it. Both are what makes it dismissible
- * for someone using a keyboard, and both are what a `<div>` with an onClick does not give.
+ * A dialog, so focus is trapped inside it and Escape closes it. Both are what makes it usable for
+ * someone on a keyboard, and both are what a `<div>` with an onClick does not give.
+ *
+ * The trap was documented here before it existed — the panel took focus on open and handled
+ * Escape, but Tab walked straight out of an `aria-modal="true"` region into the page behind it.
+ * It is implemented now, in the same shape `ui/dialog.tsx` uses: only the two ends of the tab
+ * order are handled, because everything between them is the browser's own order and is correct.
  */
 function Drawer({
   title,
@@ -190,6 +219,28 @@ function Drawer({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  /** Tab wrapping, so an `aria-modal` region actually behaves like one. */
+  function trap(event: React.KeyboardEvent) {
+    if (event.key !== "Tab") return;
+
+    const focusable = Array.from(
+      panel.current?.querySelectorAll<HTMLElement>(
+        'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+      ) ?? [],
+    );
+    if (focusable.length === 0) return;
+
+    const first = focusable[0]!;
+    const last = focusable[focusable.length - 1]!;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   return (
     <>
       <div
@@ -203,6 +254,7 @@ function Drawer({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
+        onKeyDown={trap}
         className={cn(
           "fixed inset-y-0 right-0 z-50 flex w-[var(--ub-drawer-width)] max-w-full flex-col",
           "border-l border-border bg-background shadow-dialog",

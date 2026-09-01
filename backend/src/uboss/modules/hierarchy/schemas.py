@@ -16,7 +16,14 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from uboss.modules.hierarchy.models import ReportingKind, UnitType
 
@@ -78,6 +85,9 @@ class OrgUnitMove(_Payload):
 class PositionCreate(_Payload):
     org_unit_id: uuid.UUID
     title: str = Field(min_length=1, max_length=200)
+    #: The grade in the organisation's own words. Free text, because three fixed bands describe a
+    #: company that does not exist — see migration 0038. `level` is what orders seats.
+    designation: str | None = Field(default=None, max_length=80)
     level: int | None = Field(default=None, ge=0, le=100)
     location: str | None = Field(default=None, max_length=200)
     external_ref: str | None = Field(default=None, max_length=120)
@@ -85,6 +95,9 @@ class PositionCreate(_Payload):
 
 class PositionUpdate(_Payload):
     title: str | None = Field(default=None, min_length=1, max_length=200)
+    #: The grade in the organisation's own words. Free text, because three fixed bands describe a
+    #: company that does not exist — see migration 0038. `level` is what orders seats.
+    designation: str | None = Field(default=None, max_length=80)
     level: int | None = Field(default=None, ge=0, le=100)
     location: str | None = Field(default=None, max_length=200)
     external_ref: str | None = Field(default=None, max_length=120)
@@ -134,6 +147,39 @@ class ReportingEdgeCreate(_Payload):
 # ---------------------------------------------------------------------------- reading
 
 
+class InvitePerson(_Payload):
+    """A colleague to add to this workspace, so a seat can be filled with somebody new.
+
+    Both fields are required. A name without an address cannot become an account —
+    `memberships.user_id` is NOT NULL and an account is reached by email — and an address without
+    a name gives the chart nothing to draw.
+    """
+
+    display_name: str = Field(min_length=1, max_length=200)
+    email: EmailStr
+
+
+class PlaceablePerson(BaseModel):
+    """Somebody who can be put in a seat.
+
+    A different question from *"who can be named as owner or approver"*, which
+    `objectives.people` answers and which is correctly limited to **active** members — an owner
+    has to be able to act.
+
+    Placing somebody in a seat grants them nothing. It records a fact about the organisation, and
+    a person who has been invited and has not signed in yet is exactly who an org chart is drawn
+    around during onboarding. So `invited` counts here and does not there.
+
+    `status` is returned so the picker can say which is which rather than presenting an invited
+    colleague as though they were already working.
+    """
+
+    membership_id: uuid.UUID
+    display_name: str
+    job_title: str | None = None
+    status: str
+
+
 class PersonInSeat(BaseModel):
     """Whoever holds a position on the date being asked about."""
 
@@ -150,6 +196,8 @@ class PositionRead(BaseModel):
     id: uuid.UUID
     org_unit_id: uuid.UUID
     title: str
+    #: What the chart's badge says. Null for a seat whose grade nobody recorded.
+    designation: str | None = None
     level: int | None
     location: str | None
     external_ref: str | None

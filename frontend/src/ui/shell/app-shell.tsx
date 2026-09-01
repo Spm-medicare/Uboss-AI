@@ -1,14 +1,17 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { fetchTaskCounts } from "@/lib/api/tasks";
 import { useSession } from "@/lib/auth/use-session";
 import { cn } from "@/lib/cn";
 import { useSidebar } from "@/lib/shell/use-sidebar";
 import { ErrorState, LoadingState } from "@/ui/states";
 import { AccountFooter } from "@/ui/shell/account";
+import { SettingsDialog } from "@/ui/settings/settings-dialog";
 import { Sidebar } from "@/ui/shell/sidebar";
 import { Topbar } from "@/ui/shell/topbar";
 
@@ -46,7 +49,21 @@ export function AppShell({
   //  without an effect — leaving it open over the screen a person just chose is the single most
   //  common bug in a mobile shell, and an effect that closed it would render the page twice.
   const [openedAt, setOpenedAt] = useState<string | null>(null);
+  //  §13's Settings, as a panel over whatever somebody was doing. The state lives here because two
+  //  controls open it — the header menu and the sidebar row — and a shared panel needs one owner.
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const drawerOpen = openedAt === pathname;
+
+  //  The one number the shell itself shows: how much work is waiting on this person. Fetched
+  //  here rather than inside the sidebar because the sidebar is rendered twice on small screens
+  //  — once in the drawer — and two components asking would be two requests for one answer.
+  //  A failure draws no badge at all: an invented zero would say "nothing is waiting on you",
+  //  which is a statement, not an absence.
+  const todo = useQuery({
+    queryKey: ["tasks", "counts"],
+    queryFn: ({ signal }) => fetchTaskCounts(signal),
+    enabled: Boolean(user),
+  });
 
   useEffect(() => {
     if (isSignedOut) router.replace("/sign-in");
@@ -54,7 +71,7 @@ export function AppShell({
 
   if (error) {
     return (
-      <main id="main" className="grid min-h-dvh place-items-center bg-background px-6">
+      <main id="main" tabIndex={-1} className="grid min-h-dvh place-items-center bg-background px-6">
         <ErrorState error={error} onRetry={() => router.refresh()} />
       </main>
     );
@@ -64,6 +81,10 @@ export function AppShell({
     return (
       <main
         id="main"
+        //  Focusable by the skip link, but not in the tab order. Without `tabIndex={-1}` the
+        //  link scrolls the page and leaves focus at the top, so the next Tab goes back through
+        //  the whole navigation — exactly what the link is there to skip.
+        tabIndex={-1}
         className="grid min-h-dvh place-items-center bg-background px-6"
         aria-busy
       >
@@ -78,7 +99,9 @@ export function AppShell({
       collapsed={sidebar.collapsed}
       onToggle={sidebar.toggle}
       ready={sidebar.ready}
-      footer={<AccountFooter user={user} collapsed={sidebar.collapsed} />}
+      footer={<AccountFooter collapsed={sidebar.collapsed} />}
+      onOpenSettings={() => setSettingsOpen(true)}
+      {...(todo.data ? { counts: { todo: todo.data.mine_open } } : {})}
     />
   );
 
@@ -108,14 +131,32 @@ export function AppShell({
         </MobileDrawer>
       ) : null}
 
+      {/*  Over the top of the screen, not instead of it. `/settings` is still a real route for a
+          link somebody sends; this is what the gear opens. */}
+      {settingsOpen ? <SettingsDialog onClose={() => setSettingsOpen(false)} /> : null}
+
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
           title={title}
           {...(breadcrumb ? { breadcrumb } : {})}
           {...(action ? { action } : {})}
+          timeZone={user.timezone}
+          user={user}
           onOpenNavigation={() => setOpenedAt(pathname)}
+          onOpenSettings={() => setSettingsOpen(true)}
         />
-        <main id="main" className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        {/*  **No cap, and that is the fix.** Every screen used to set its own `max-w-7xl` or
+            `max-w-5xl`, which is why a wide monitor — or a zoomed-out window — showed a narrow
+            column marooned in white space. Replacing five caps with one did not solve it: a
+            measured pass at 3840px found the content filling 49% of the window, because any
+            fixed number that is generous on a laptop is a ribbon on a 4K display.
+
+            So width is the *content's* responsibility, at the only place that knows what the
+            content is. Card grids use `repeat(auto-fill, minmax(…, 1fr))` and gain columns at
+            whatever width they are given; prose sets `max-w-prose`, because a reading measure
+            belongs to the text and not to the screen. One rule, no breakpoints, right at 390px
+            and at 3840px. */}
+        <main id="main" tabIndex={-1} className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8">
           {children}
         </main>
       </div>

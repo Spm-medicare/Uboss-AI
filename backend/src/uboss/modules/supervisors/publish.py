@@ -168,7 +168,14 @@ async def summary(
         gates=[gate],
         warnings=warnings,
         next_action=_next_action(supervisor, gate, context),
-        can_submit=supervisor.is_editable,
+        #  Not `is_editable` alone. `submit()` also requires an approver, something supervised
+        #  and a passing simulation gate, so a button driven by editability alone was enabled for
+        #  a call that could only be refused — and said nothing about why.
+        can_submit=(
+            supervisor.is_editable
+            and supervisor.approver_membership_id is not None
+            and gate.passed
+        ),
         can_approve=can_approve,
         version=supervisor.version,
     )

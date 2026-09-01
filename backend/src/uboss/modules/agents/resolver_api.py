@@ -152,11 +152,14 @@ async def registry_lists(context: CurrentContext, session: SessionDep) -> Regist
     """Read from the rows, so a filter can never offer a value that matches nothing."""
     await guard.authorise(session, context, Action.VIEW)
     layers, departments, industries, archetypes = await search.registry_lists(session)
+    catalogue, mine = await search.registry_counts(session)
     return RegistryLists(
         layers=layers,
         departments=departments,
         industries=industries,
         archetypes=[{"id": code, "name": name} for code, name in archetypes],
+        catalogue_skills=catalogue,
+        workspace_skills=mine,
     )
 
 

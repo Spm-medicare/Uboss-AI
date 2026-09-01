@@ -66,11 +66,9 @@ export interface NavItem {
 }
 
 export interface NavGroup {
-  /** Message key under `nav.groups.`, or `null` for the unlabelled Agents group. */
+  /** Message key under `nav.groups.`. */
   id: string;
   items: NavItem[];
-  /** Agents is the one collapsible group in §3. */
-  collapsible?: boolean;
 }
 
 export const NAVIGATION: NavGroup[] = [
@@ -95,7 +93,6 @@ export const NAVIGATION: NavGroup[] = [
   },
   {
     id: "agents",
-    collapsible: true,
     items: [
       {
         id: "objectiveBuilder",
@@ -142,7 +139,7 @@ export const NAVIGATION: NavGroup[] = [
         href: "/todo",
         icon: ListChecks,
         requires: "view",
-        buildsIn: "Gate 7",
+        buildsIn: null,
       },
     ],
   },
@@ -157,7 +154,10 @@ export const SETTINGS_ITEM: NavItem = {
   href: "/settings",
   icon: ClipboardList,
   requires: "view",
-  buildsIn: "Gate 8",
+  //  Built in 8.1: §13's four working categories — profile, appearance, notifications and
+  //  sessions — plus the rest of its list, each saying which gate builds it. This row read
+  //  "Not built yet — Gate 8" for seven gates, which was the truth until now.
+  buildsIn: null,
 };
 
 /**

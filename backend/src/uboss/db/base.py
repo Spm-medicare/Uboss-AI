@@ -45,6 +45,30 @@ class Base(DeclarativeBase):
     metadata = NAMING
 
 
+def build_relay_engine(settings: Settings) -> AsyncEngine:
+    """The cross-tenant connection — `uboss_relay` — for the workers that sweep every workspace.
+
+    Refuses loudly when unconfigured. The failure it prevents was found by a probe, not a theory:
+    the outbox worker connected as `uboss_app`, whose policy correctly shows an unbound connection
+    **nothing**, so it polled an empty view forever while the queue looked healthy and no mail
+    ever left. A worker that cannot see its work must say so and stop.
+    """
+    if settings.relay_database_url is None:
+        raise RuntimeError(
+            "UBOSS_RELAY_DATABASE_URL is not set. The workers that sweep every workspace — the "
+            "outbox and the scheduler — connect as uboss_relay, because uboss_app's row-level "
+            "policies correctly show an unbound connection nothing at all."
+        )
+    return create_async_engine(
+        settings.relay_database_url.get_secret_value(),
+        pool_size=2,
+        max_overflow=2,
+        pool_pre_ping=True,
+        future=True,
+        echo=False,
+    )
+
+
 def build_engine(settings: Settings) -> AsyncEngine:
     return create_async_engine(
         settings.database_url.get_secret_value(),

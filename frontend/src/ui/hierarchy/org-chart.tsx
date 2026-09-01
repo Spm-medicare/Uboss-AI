@@ -2,7 +2,7 @@
 
 import { Pencil, Plus, UserRound, UserRoundX } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { OrgUnitRead, PositionRead } from "@/lib/api/contract";
 import { cn } from "@/lib/cn";
@@ -60,6 +60,26 @@ function wash(index: number): string {
   return `var(--ub-level-${index % HUES}-soft)`;
 }
 
+/**
+ * A department's hue, from its name.
+ *
+ * FNV-1a over the name, taken modulo the palette. Not a security primitive and not used as one:
+ * it only has to be *stable*, so that moving one department does not recolour the others, and
+ * spread, so that two departments in one company rarely collide. Collisions are cosmetic — two
+ * boxes share a colour, which already happens past six departments — where instability is not:
+ * it re-labels the whole chart for a change to one box.
+ */
+function hueFromName(name: string): number {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < name.length; index += 1) {
+    hash ^= name.charCodeAt(index);
+    hash = (hash + (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24)) >>> 0;
+  }
+  //  Never 0: the company owns `--ub-level-0`, and a department taking it would read as the
+  //  company. So the ramp available to departments is 1..HUES-1.
+  return (hash % (HUES - 1)) + 1;
+}
+
 export function OrgChart({
   units,
   actions,
@@ -87,15 +107,16 @@ export function OrgChart({
   }
   const roots = byParent.get(null) ?? [];
 
-  //  Which hue each department owns. Assigned from the order the units arrive in and inherited by
-  //  every unit and seat beneath it — so a team inside Engineering is Engineering's colour rather
-  //  than a fourth one.
+  /*  Which hue each department owns, inherited by every unit and seat beneath it — so a team
+      inside Engineering is Engineering's colour rather than a fourth one.
+
+      Assigned from the department's own name rather than the order it arrives in. Arrival order
+      meant one re-org repainted every department after the moved one, and a chart whose colours
+      all change is a chart somebody has to re-learn to read for a change to one box. A name is
+      stable across a move, which is exactly the property wanted here. */
   const hueOf = new Map<string, number>();
-  let taken = 0;
   function paint(unit: OrgUnitRead, inherited: number | null) {
-    //  The company keeps hue 0; each department under it takes the next one along, and everything
-    //  inside a department inherits that department's.
-    const mine = inherited ?? (unit.parent_id === null ? 0 : (taken += 1));
+    const mine = inherited ?? (unit.parent_id === null ? 0 : hueFromName(unit.name));
     hueOf.set(unit.id, mine);
     for (const child of byParent.get(unit.id) ?? []) {
       paint(child, unit.parent_id === null ? null : mine);
@@ -108,11 +129,16 @@ export function OrgChart({
   //  with the company itself off to the right. Centre it so the top of the organisation is the
   //  thing on screen.
   const scroller = useRef<HTMLDivElement>(null);
+  /*  Keyed on the *shape*, not the count. A move changes no count at all — the same departments
+      and the same seats, in a different arrangement — so an effect watching `units.length` never
+      re-ran, the scroll position stayed where the old tree had put it, and a department that had
+      just moved could be off-screen. Read as nothing having happened. */
+  const shape = units.map((unit) => `${unit.id}:${unit.parent_id ?? "root"}`).join("|");
   useEffect(() => {
     const box = scroller.current;
     if (!box) return;
     box.scrollLeft = (box.scrollWidth - box.clientWidth) / 2;
-  }, [units.length]);
+  }, [shape]);
 
   return (
     <div ref={scroller} className="overflow-x-auto pb-4">
@@ -386,11 +412,46 @@ function SeatNode({
   const t = useTranslations("hierarchy");
   const colour = hue(index);
   const holder = position.holder ?? null;
-  const band = bandFor(position.level ?? null);
+  //  What the organisation calls this grade, in its own words. `bandFor(level)` is the fallback
+  //  for seats recorded before the field existed — so a chart drawn from older data still shows
+  //  its grades rather than going blank.
+  const band = position.designation?.trim() || bandLabel(position.level ?? null);
+
+  //  **Driven by pointer events, not by a `:hover` variant.** The behaviour is identical — on the
+  //  card, they show; off it, they go — and the mechanism is one a stale bundle or a missing
+  //  Tailwind variant cannot silently break. It also covers touch, where `:hover` either never
+  //  fires or sticks after the finger lifts, and keyboard, through the focus handlers below.
+  const [showing, setShowing] = useState(false);
 
   return (
     <div
-      className="group/seat relative w-52 rounded-xl border bg-card px-3 py-2.5 shadow-sm"
+      //  `role="group"` because that is what the card is: one seat's person, grade and controls
+      //  gathered together. It also satisfies `jsx-a11y/no-static-element-interactions`, which
+      //  is right to ask — a bare `div` carrying handlers is usually a button somebody forgot to
+      //  make a button. Here the handlers only *reveal*; the two controls inside are real
+      //  buttons, and the card itself does nothing when clicked.
+      role="group"
+      aria-label={
+        holder ? `${holder.display_name} — ${position.title}` : position.title
+      }
+      onPointerEnter={() => setShowing(true)}
+      onPointerLeave={() => setShowing(false)}
+      //  Focus bubbles from the buttons, so tabbing into the card reveals them too.
+      onFocus={() => setShowing(true)}
+      onBlur={(event) => {
+        //  Only when focus has actually left the card — moving between its two buttons must not
+        //  make them vanish under the pointer.
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setShowing(false);
+        }
+      }}
+      className={cn(
+        "relative w-52 rounded-xl border bg-card px-3 py-2.5 shadow-sm",
+        //  The card itself reacts, so a person can see that it responds before they go looking
+        //  for what it responds with.
+        "transition-shadow duration-150 motion-reduce:transition-none",
+        showing && "shadow-md ring-2 ring-primary/30",
+      )}
       style={{
         borderColor: holder
           ? `color-mix(in oklab, ${colour} 30%, transparent)`
@@ -441,20 +502,29 @@ function SeatNode({
 
       {band ? (
         <span
-          className="mt-1.5 inline-block rounded-sm px-1.5 py-px text-[0.5625rem] font-semibold uppercase tracking-wide"
+          className="mt-1.5 inline-block max-w-full truncate rounded-sm px-1.5 py-px text-[0.5625rem] font-semibold uppercase tracking-wide"
+          title={band}
           style={{
             backgroundColor: `color-mix(in oklab, ${colour} 14%, transparent)`,
             color: `color-mix(in oklab, ${colour} 70%, var(--ub-text))`,
           }}
         >
-          {t(`designations.${band}`)}
+          {band}
         </span>
       ) : null}
 
-      {/*  Overlaid on the corner rather than laid out in the row: they appear on hover and on
-          keyboard focus, and the space they would otherwise reserve is width the name needs. */}
-      {seatEdit || seatAction ? (
-        <span className="absolute right-1.5 top-1.5 flex gap-0.5 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover/seat:opacity-100 motion-reduce:transition-none">
+      {/*  **Mounted only while the card is active** — on the card they show, off it they go, which
+          is the behaviour asked for. Not `opacity-0`: a transparent button is still clickable,
+          still focusable and still read out, so thirty cards meant sixty invisible controls in
+          the tab order.
+
+          Tap-target sized with an edge, because two borderless 24px glyphs were easy to miss even
+          while hovering them.
+
+          Overlaid on the corner rather than laid out in the row, so no width is reserved for
+          them — that width is what the name needs the rest of the time. */}
+      {showing && (seatEdit || seatAction) ? (
+        <span className="absolute right-1.5 top-1.5 flex gap-1">
           {seatEdit ? (
             <RowButton
               label={t("editSeatFor", { title: position.title })}
@@ -493,9 +563,15 @@ function RowButton({
       title={label}
       aria-label={label}
       className={cn(
-        "grid size-6 place-items-center rounded-md bg-card text-muted-foreground shadow-sm",
-        "transition-colors duration-150 hover:bg-accent hover:text-foreground motion-reduce:transition-none",
-        "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ub-focus)]",
+        //  Bordered and full-strength, always. Three states were tried: invisible until hover,
+        //  then a 60% ghost, and both were reported as "the plus does not appear" — a 24px
+        //  borderless glyph on a white card is not a control anybody finds. It is now the size of
+        //  a tap target with an edge, which is what makes it read as a button.
+        "grid size-7 place-items-center rounded-md border border-border bg-card",
+        "text-muted-foreground shadow-sm",
+        "transition-colors duration-150 hover:border-primary hover:bg-primary hover:text-white",
+        "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--ub-focus)]",
+        "motion-reduce:transition-none",
       )}
     >
       {children}
@@ -512,8 +588,18 @@ function RowButton({
  * customer's own scale — is left unlabelled rather than rounded into the nearest band, which
  * would put a word on screen that nobody chose.
  */
-function bandFor(level: number | null): string | null {
-  if (level === 1) return "executive";
-  if (level === 2) return "manager";
+/**
+ * The badge for a seat recorded before `designation` existed.
+ *
+ * Only the two ranks the product ever wrote. A seat at level 3 got no badge then and gets none
+ * now — inventing "Employee" for it would be labelling a seat with a grade nobody chose.
+ *
+ * Capitalised here rather than translated: from now on the badge shows the organisation's own
+ * words, and a fallback that went through the message catalogue would be the one badge on the
+ * chart in a different vocabulary from all the others.
+ */
+function bandLabel(level: number | null): string | null {
+  if (level === 1) return "Executive";
+  if (level === 2) return "Manager";
   return null;
 }

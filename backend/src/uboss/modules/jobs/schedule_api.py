@@ -94,17 +94,34 @@ async def remove(
     context: CurrentContext,
     session: SessionDep,
     idempotency_key: Annotated[str, Depends(require_idempotency_key)],
+    expected_version: Annotated[
+        int,
+        Query(
+            ge=1,
+            description="The version of the schedule being deleted.",
+        ),
+    ],
 ) -> None:
-    """The job stays; it simply no longer runs on its own."""
+    """The job stays; it simply no longer runs on its own.
+
+    The version is required, and is a query parameter because a `DELETE` carries no body. It was
+    the one destructive operation in this module with no optimistic guard at all — so a screen
+    holding a stale copy could delete a recurrence somebody had just rewritten, and neither of them
+    would ever know.
+    """
     async with idempotency.execute(
         session,
         tenant_id=context.tenant_id,
         key=idempotency_key,
         operation="job.schedule.remove",
-        payload={"job_id": str(job_id)},
+        #  The version is in the fingerprint: a retry of *this* deletion replays, and a delete of
+        #  something that has changed since is a different operation and must not.
+        payload={"job_id": str(job_id), "expected_version": expected_version},
     ) as execution:
         if execution.is_replay:
             return
 
-        await schedule_service.remove(session, context, job_id)
+        await schedule_service.remove(
+            session, context, job_id, expected_version=expected_version
+        )
         execution.complete_json(status_code=200, body={"status": "removed"})

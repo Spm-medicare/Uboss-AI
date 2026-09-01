@@ -39,6 +39,7 @@ from uboss.core.logging import correlation_id, get_logger
 from uboss.db.base import tenant_scope
 from uboss.modules.runtime import service
 from uboss.modules.runtime.models import Run, RunState, RunStep, StepState
+from uboss.modules.tasks import service as tasks
 
 log = get_logger(__name__)
 
@@ -150,11 +151,21 @@ class RunActivities:
 
     @activity.defn(name="step.wait_for_person")
     async def wait_for_person(self, ref: StepRef) -> None:
+        """Mark the step waiting **and make the task**, in one transaction.
+
+        Together, always. A step marked `waiting` with no task is a run waiting on nobody — it
+        appears in no To-do list and nothing will ever complete it — so the two facts are written
+        by one activity rather than by two that could half-fail. `create_for_step` returns the
+        existing task rather than a second one, which is what makes an at-least-once redelivery
+        harmless.
+        """
         async with self._scope(ref) as (session, run):
             step = await self._step(session, ref)
             if step.state in StepState.finished():
                 return
-            await service.wait_for_person(session, run, step)
+            if step.state != StepState.WAITING:
+                await service.wait_for_person(session, run, step)
+            await tasks.create_for_step(session, run, step)
 
     @activity.defn(name="step.perform")
     async def perform(self, ref: StepRef) -> dict[str, str]:

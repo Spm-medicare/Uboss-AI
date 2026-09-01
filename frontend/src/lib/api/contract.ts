@@ -214,3 +214,61 @@ export type ForgotPasswordAnswer = Schemas["ForgotPasswordAnswer"];
 export type ResetPassword = Schemas["ResetPassword"];
 export type AcceptInvite = Schemas["AcceptInvite"];
 export type Delivery = Schemas["Delivery"];
+
+//  §11 — the To-do list. Gate 7.2.
+export type TaskRead = Schemas["TaskRead"];
+export type TaskDetail = Schemas["TaskDetail"];
+export type TaskCounts = Schemas["TaskCounts"];
+export type TaskComment = Schemas["CommentRead"];
+export type TaskEvidence = Schemas["EvidenceRead"];
+//  The tabs and the kinds come from the route's own query parameter and the task's `kind`, so a
+//  tab the backend does not serve cannot be typed here.
+export type TaskTab = NonNullable<
+  paths["/api/v1/tasks"]["get"]["parameters"]["query"]
+>["tab"];
+export type TaskKind = "work" | "input" | "approval";
+
+//  §11's Approvals tab, and the decision behind it — Gate 7.3.
+export type ApprovalRead = Schemas["ApprovalRead"];
+export type ApprovalCounts = Schemas["ApprovalCounts"];
+
+//  What a schedule actually did — Gate 7.4.
+export type FiringRead = Schemas["FiringRead"];
+
+//  §12's bell — Gate 7.5.
+export type BellNotification = Schemas["BellNotification"];
+export type NotificationCounts = Schemas["NotificationCounts"];
+export type NotificationPreference = Schemas["PreferenceRead"];
+export type NotificationSettings = Schemas["SettingsRead"];
+
+//  Runs, as the Dashboard reads them — Gate 7.1.
+export type RunRead = Schemas["RunRead"];
+export type RunDetail = Schemas["RunDetail"];
+
+//  Who can be put in a seat — wider than PersonRef, which is only active members.
+export type PlaceablePerson = Schemas["PlaceablePerson"];
+
+//  Adding a colleague so the chart can place somebody new.
+export type InvitePerson = Schemas["InvitePerson"];
+
+//  §12's governed Copilot — Gate 7.7. `CopilotAnswer` carries its own sources and, when the
+//  question asked for a change, the difference somebody could go and make. There is no
+//  corresponding "apply" shape, because there is no route that applies one.
+export type CopilotAnswer = Schemas["AnswerRead"];
+export type CopilotSource = Schemas["SourceRead"];
+export type CopilotPreview = Schemas["PreviewRead"];
+export type CopilotChange = Schemas["ChangeRead"];
+
+//  §39's Skill Factory — a private skill, its six tests and the version approval freezes.
+export type SkillDraft = Schemas["DraftRead"];
+export type SkillDraftList = Schemas["DraftListRead"];
+export type SkillDraftSummary = Schemas["DraftSummaryRead"];
+export type SkillDraftUpdate = Schemas["DraftUpdate"];
+export type SkillDraftCard = Schemas["DraftCard"];
+export type SkillRule = Schemas["RuleRead"];
+export type SkillRuleInput = Schemas["RuleInput"];
+export type SkillTestRead = Schemas["SkillTestRead"];
+export type SkillTestKind = Schemas["SkillTestKind"];
+export type SkillTestResultStatus = Schemas["SkillResultStatus"];
+export type SkillVersionRef = Schemas["SkillVersionRead"];
+export type SkillGap = Schemas["GapRead"];

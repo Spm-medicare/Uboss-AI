@@ -4,9 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Save, Send, Undo2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
-import type { SimulationInput, SupervisorUpdate } from "@/lib/api/contract";
+import type { PersonRef, SimulationInput, SupervisorUpdate } from "@/lib/api/contract";
 import {
   fetchSimulations,
   fetchSupervisor,
@@ -23,6 +23,9 @@ import {
   type Supervisor,
   type SupervisorVocabulary,
 } from "@/lib/api/supervisors";
+import { fetchPeople } from "@/lib/api/objectives";
+import { unsavedSince } from "@/lib/builder/unsaved-since";
+import { useAdoptServerVersion } from "@/lib/builder/use-adopt-server-version";
 import { useAutosave } from "@/lib/builder/use-autosave";
 import { useSession } from "@/lib/auth/use-session";
 import { contextFor, formatDate } from "@/lib/format";
@@ -38,6 +41,13 @@ import {
   RuntimeControls,
   SupervisedScope,
 } from "@/ui/builder/supervisor-scopes";
+import { PersonSelect } from "@/ui/builder/person-select";
+import {
+  Escalations,
+  isComplete,
+  Notifications,
+  QualityGates,
+} from "@/ui/builder/supervisor-policy";
 import { AppShell } from "@/ui/shell/app-shell";
 
 /**
@@ -67,21 +77,33 @@ export default function SupervisorFormPage() {
     queryFn: ({ signal }) => fetchSupervisorLists(signal),
     staleTime: 60 * 60 * 1000,
   });
+  //  Who may be named as approver. Inside the same states as the other two, so a failed lookup
+  //  reads as a failure rather than as a workspace with nobody in it.
+  const people = useQuery({
+    queryKey: ["objective", "people"],
+    queryFn: ({ signal }) => fetchPeople(signal),
+    staleTime: 5 * 60 * 1000,
+  });
 
   return (
     <AppShell
+      //  **The top bar names the room, the builder's own heading names the record.** Putting
+      //  the record's name here as well printed it twice within an inch of itself — the
+      //  duplication complaint. The crumb is the way back to the list and is deliberately
+      //  worded differently from the screen name, so it is a link rather than an echo.
       title={t("builderTitle")}
-      breadcrumb={[{ label: t("supervisors"), href: "/supervisor" }]}
+      breadcrumb={[{ label: t("backToList"), href: "/supervisor" }]}
     >
       <QueryStates
-        isPending={supervisor.isPending || lists.isPending}
-        error={supervisor.error ?? lists.error}
+        isPending={supervisor.isPending || lists.isPending || people.isPending}
+        error={supervisor.error ?? lists.error ?? people.error}
         onRetry={() => void supervisor.refetch()}
       >
-        {supervisor.data && lists.data ? (
+        {supervisor.data && lists.data && people.data ? (
           <Editor
             initial={supervisor.data}
             lists={lists.data}
+            people={people.data}
             onReload={() => void supervisor.refetch()}
           />
         ) : null}
@@ -90,15 +112,23 @@ export default function SupervisorFormPage() {
   );
 }
 
-type SectionId = "identity" | "scopes" | "policy" | "limits" | "publish";
+type SectionId =
+  | "identity"
+  | "scopes"
+  | "policy"
+  | "policy-lists"
+  | "limits"
+  | "publish";
 
 function Editor({
   initial,
   lists,
+  people,
   onReload,
 }: {
   initial: Supervisor;
   lists: SupervisorVocabulary;
+  people: PersonRef[];
   onReload: () => void;
 }) {
   const t = useTranslations("supervisor");
@@ -115,6 +145,16 @@ function Editor({
   //  second copy of `roles.py`, and the copy on screen is the one people would trust.
   const mayManageHandlers = draft.my_actions.includes("manage_access");
 
+  /*  The version the server last confirmed, in a ref rather than read off the queued draft.
+
+      `autosave.schedule(next)` snapshots the form as it was when somebody typed. If a save is
+      already in flight, that snapshot carries the version from *before* it — spent by the time it
+      is sent, so the server refuses it and the screen says *"Somebody else saved this"* about a
+      person who does not exist. `expected_version` guards against somebody else's write, not
+      against this client's own queued edit, so the right value is the newest version this client
+      has been given. */
+  const confirmedVersion = useRef(draft.version);
+
   const send = useCallback(
     async (next: Supervisor) => {
       const payload: SupervisorUpdate = {
@@ -130,6 +170,7 @@ function Editor({
         deadline_minutes: next.deadline_minutes,
         max_retries: next.max_retries,
         retry_backoff_seconds: next.retry_backoff_seconds,
+        approver_membership_id: next.approver_membership_id,
         approver_label: next.approver_label,
         escalation_label: next.escalation_label,
         supervised: next.supervised.map((row, index) => ({
@@ -138,17 +179,35 @@ function Editor({
           agent_id: row.agent_id,
           agent_version_id: row.agent_version_id,
         })),
-        quality_gates: next.quality_gates.map(({ id: _id, ...rest }) => rest),
-        escalations: next.escalations.map(
-          ({ id: _id, escalate_to_name: _n, ...rest }) => rest,
-        ),
-        notifications: next.notifications.map(
-          ({ id: _id, recipient_name: _n, ...rest }) => rest,
-        ),
-        expected_version: next.version,
+        /*  These three were mapped from arrays the screen had no way to fill, so they went out
+            empty on every save and two publish warnings could never be cleared.
+
+            A row still being typed is held back rather than sent: all three lists have required
+            fields, and the escalation's addressee is a check constraint — so an empty new row
+            would be refused, and refused while somebody was mid-sentence. It stays on screen and
+            says it is not saved yet, which is neither losing it nor claiming it is stored. */
+        quality_gates: next.quality_gates
+          .filter(isComplete.gate)
+          .map(({ id: _id, ...rest }, index) => ({ ...rest, position: index + 1 })),
+        escalations: next.escalations
+          .filter(isComplete.escalation)
+          .map(({ id: _id, escalate_to_name: _n, ...rest }, index) => ({
+            ...rest,
+            position: index + 1,
+          })),
+        notifications: next.notifications
+          .filter(isComplete.notification)
+          .map(({ id: _id, recipient_name: _n, ...rest }, index) => ({
+            ...rest,
+            position: index + 1,
+          })),
+        expected_version: confirmedVersion.current,
       };
       const saved = await saveSupervisor(next.id, payload);
-      setDraft(saved);
+      confirmedVersion.current = saved.version;
+      //  The server's copy, plus whatever was typed after the payload went out. Taking it
+      //  wholesale — which is what this did — discarded those keystrokes.
+      setDraft((current) => ({ ...saved, ...unsavedSince(current, next) }));
       //  Saving clears every simulation result, so the panel showing them has to be refetched
       //  rather than left displaying passes that no longer apply.
       void queryClient.invalidateQueries({ queryKey: ["supervisor-sim", next.id] });
@@ -158,6 +217,18 @@ function Editor({
   );
 
   const autosave = useAutosave<Supervisor>(send, { enabled: editable });
+
+  /*  The form follows the server: it takes a fresher copy whenever one arrives and nothing is
+      queued, and `resolveConflict` is the way out of a real conflict. See the hook — the reasoning
+      is the same on all four Builders, which is why it is one hook. */
+  const { resolveConflict } = useAdoptServerVersion<Supervisor>({
+    server: initial,
+    confirmedVersionRef: confirmedVersion,
+    setDraft,
+    autosave,
+    reload: onReload,
+  });
+
 
   const edit = useCallback(
     (patch: Partial<Supervisor>) => {
@@ -201,13 +272,21 @@ function Editor({
 
   return (
     <BuilderLayout
-      eyebrow={t("eyebrow")}
       title={draft.name}
       status={<StatusPill status={draft.status} />}
       meta={
         <>
           <span>{t("kindIs", { kind: t(`kind.${draft.kind}`) })}</span>
           <span aria-hidden>·</span>
+          {/*  §10's first group is *"Identity, owner, department and linked Objective scope"*, and
+              for a department Supervisor the department is the fact that defines what it watches.
+              `org_node_name` was on the read schema and shown nowhere. */}
+          {draft.org_node_name ? (
+            <>
+              <span>{t("departmentIs", { name: draft.org_node_name })}</span>
+              <span aria-hidden>·</span>
+            </>
+          ) : null}
           <span>{t("ownerIs", { name: draft.owner_name ?? tCommon("none") })}</span>
           <span aria-hidden>·</span>
           <span>{t("versionIs", { version: draft.version })}</span>
@@ -256,8 +335,12 @@ function Editor({
       {autosave.conflicted ? (
         <Alert tone="danger" title={t("conflictTitle")}>
           {t("conflictBody")}{" "}
-          <button type="button" className="underline underline-offset-4" onClick={onReload}>
-            {t("reloadIt")}
+          <button
+            type="button"
+            className="underline underline-offset-4"
+            onClick={resolveConflict}
+          >
+            {t("keepMyChange")}
           </button>
         </Alert>
       ) : null}
@@ -342,6 +425,23 @@ function Editor({
               />
             )}
           </Field>
+          {/*  The person, and then the role beside it.
+
+              `submit()` refuses without this id, and until now nothing on the screen could set
+              it — so Send for approval was enabled for a call that could only fail, and Approve
+              and publish, which compares this against the signed-in person, could never appear at
+              all. The free-text label below is the note the workbook asked for, not the
+              approver. */}
+          <PersonSelect
+            label={t("approver")}
+            hint={t("approverPerson")}
+            required
+            value={draft.approver_membership_id ?? null}
+            people={people}
+            disabled={!editable}
+            onChange={(value) => edit({ approver_membership_id: value })}
+          />
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("field.approver")} hint={t("approverHint")}>
               {(field) => (
@@ -371,6 +471,39 @@ function Editor({
         </div>
       </BuilderSectionCard>
 
+      {/*  §10 groups 6, 8 and 9. One card, because they are the same question asked three ways:
+          what must hold, who to tell when it does not, and who hears about it either way. */}
+      <BuilderSectionCard
+        id="policy-lists"
+        title={t("sections.policyLists")}
+        description={t("policyListsDescription")}
+      >
+        <div className="space-y-6">
+          <QualityGates
+            rows={draft.quality_gates}
+            onFailureOptions={lists.on_failure}
+            disabled={!editable}
+            onChange={(rows) =>
+              edit({ quality_gates: rows as Supervisor["quality_gates"] })
+            }
+          />
+          <Escalations
+            rows={draft.escalations}
+            people={people}
+            disabled={!editable}
+            onChange={(rows) => edit({ escalations: rows as Supervisor["escalations"] })}
+          />
+          <Notifications
+            rows={draft.notifications}
+            people={people}
+            disabled={!editable}
+            onChange={(rows) =>
+              edit({ notifications: rows as Supervisor["notifications"] })
+            }
+          />
+        </div>
+      </BuilderSectionCard>
+
       <BuilderSectionCard
         id="limits"
         title={t("sections.limits")}
@@ -385,6 +518,10 @@ function Editor({
               ["deadline_minutes", t("field.deadline"), 1],
               ["max_retries", t("field.retries"), 0],
               ["retry_backoff_seconds", t("field.backoff"), 0],
+              //  §10 group 7 is *"Budget, SLA and retry limits"*. The budget half was read on load
+              //  and echoed on save with nothing to set it — a value that could round-trip and
+              //  never be entered.
+              ["cost_cap_minor_units", t("field.costCap"), 0],
             ] as const
           ).map(([key, label, min]) => (
             <Field key={key} label={label}>
@@ -404,6 +541,24 @@ function Editor({
             </Field>
           ))}
         </fieldset>
+        <div className="mt-4 max-w-48">
+          <Field label={t("field.costCurrency")} hint={t("costCurrencyHint")}>
+            {(field) => (
+              <Input
+                {...field}
+                value={draft.cost_cap_currency ?? ""}
+                disabled={!editable}
+                maxLength={3}
+                placeholder="INR"
+                onChange={(event) =>
+                  edit({
+                    cost_cap_currency: event.target.value.toUpperCase() || null,
+                  })
+                }
+              />
+            )}
+          </Field>
+        </div>
       </BuilderSectionCard>
 
       <BuilderSectionCard id="publish" title={t("sections.publish")}>
@@ -467,15 +622,29 @@ function ScopesSection({
         disabled={!editable}
         onChange={(rows) =>
           onEdit({
-            supervised: rows.map((row, index) => ({
-              id: draft.supervised[index]?.id ?? `pending-${index}`,
-              position: row.position,
-              membership_id: row.membership_id,
-              person_name: draft.supervised[index]?.person_name ?? null,
-              agent_id: row.agent_id ?? null,
-              agent_name: draft.supervised[index]?.agent_name ?? null,
-              agent_version_id: row.agent_version_id ?? null,
-            })),
+            /*  Matched on who the row is about, never on where it sits.
+
+                The server-resolved name and row id were looked up by index, into an array the edit
+                had already changed. Remove the first of three and the two survivors were
+                re-labelled with the removed person's name and given the wrong ids — until a save
+                round-tripped, and permanently if that save failed. On the one thing this section
+                exists to state. */
+            supervised: rows.map((row, index) => {
+              const known = draft.supervised.find(
+                (existing) =>
+                  existing.membership_id === row.membership_id &&
+                  (existing.agent_id ?? null) === (row.agent_id ?? null),
+              );
+              return {
+                id: known?.id ?? `pending-${index}`,
+                position: row.position,
+                membership_id: row.membership_id,
+                person_name: known?.person_name ?? null,
+                agent_id: row.agent_id ?? null,
+                agent_name: known?.agent_name ?? null,
+                agent_version_id: row.agent_version_id ?? null,
+              };
+            }),
           })
         }
       />

@@ -34,11 +34,19 @@ function readStoredChoice(): ThemeChoice {
   return "system";
 }
 
+/**
+ * Whether the device asks for dark.
+ *
+ * `matchMedia` is guarded rather than assumed. It is missing in jsdom, in some embedded
+ * webviews, and in any environment that implements a partial `window` — and the failure mode
+ * without the guard is a `TypeError` that takes down the whole sidebar, not a wrong colour.
+ * Light is the honest fallback: it is what the bootstrap script paints when it cannot tell.
+ */
 function systemPrefersDark(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-  );
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false;
+  }
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
 export interface ThemeState {
@@ -66,18 +74,24 @@ function computeSnapshot(): ThemeState {
 }
 
 function subscribe(onChange: () => void): () => void {
-  const media = window.matchMedia("(prefers-color-scheme: dark)");
   const handle = () => {
     computeSnapshot();
     onChange();
   };
-  media.addEventListener("change", handle);
+  //  Same guard as above. Without `matchMedia` there is no system preference to follow, so
+  //  there is nothing to subscribe to — the explicit choices still work through the two window
+  //  events below.
+  const media =
+    typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-color-scheme: dark)")
+      : null;
+  media?.addEventListener("change", handle);
   // `storage` fires in the *other* tabs, so a change made in one window follows the person into
   // the next. The custom event covers this tab, where `storage` deliberately does not fire.
   window.addEventListener("storage", handle);
   window.addEventListener(THEME_EVENT, handle);
   return () => {
-    media.removeEventListener("change", handle);
+    media?.removeEventListener("change", handle);
     window.removeEventListener("storage", handle);
     window.removeEventListener(THEME_EVENT, handle);
   };
